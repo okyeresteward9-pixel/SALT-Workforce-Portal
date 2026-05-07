@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Employee</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            /* 🔥 Gradient background */
+            background: linear-gradient(135deg, #0d6efd, #00c6ff);
+        }
+
+        /* 🔥 Glass Card */
+        .form-container {
+            width: 400px;
+            padding: 30px;
+            border-radius: 16px;
+
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+
+            border: 1px solid rgba(255, 255, 255, 0.2);
+
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            color: white;
+        }
+
+        .form-container h2 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        /* 🔥 Inputs */
+        label {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            margin-bottom: 10px;
+
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        input::placeholder {
+            color: #eee;
+        }
+
+        select option {
+            color: black; /* fix dropdown readability */
+        }
+
+        /* 🔥 Button */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        }
+
+        /* 🔙 Back link */
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="form-container">
+    <h2>Edit Employee</h2>
+
+    <form method="POST">
+
+        <label>Name</label>
+        <input type="text" name="name" value="{{ employee['name'] }}" required>
+
+        <label>Email</label>
+        <input type="email" name="email" value="{{ employee['email'] }}" required>
+
+        <label>Role</label>
+        <select name="role">
+            <option value="employee" {% if employee['role'] == 'employee' %}selected{% endif %}>Employee</option>
+            <option value="admin" {% if employee['role'] == 'admin' %}selected{% endif %}>Admin</option>
+        </select>
+
+        <button type="submit" class="btn">Update</button>
+
+    </form>
+
+    <a href="/admin/employees" class="back-link">← Back to Employees</a>
+</div>
+
+</body>
+</html>

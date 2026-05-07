@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employees - SALT Workforce Portal</title>
+    <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<div class="wrapper">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+        <div class="logo">
+            <img src="{{ url_for('static', filename='salt-logo.png') }}">
+            <p class="portal-name">Workforce Portal</p>
+        </div>
+
+        <ul>
+            <li><a href="/dashboard"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
+        
+            {% if role == 'admin' %}
+            <li class="active"><a href="/admin/employees"><i class="fas fa-users"></i> <span>Employees</span></a></li>
+            <li><a href="/admin/tasks"><i class="fas fa-table"></i> <span>Task Board</span></a></li>
+            <li><a href="/admin/assign_task"><i class="fas fa-plus"></i> <span>Assign Task</span></a></li>
+            <li><a href="/admin/announcements"><i class="fas fa-bullhorn"></i> <span>Announcements</span></a></li>
+            {% endif %}
+        
+            <li><a href="/attendance"><i class="fas fa-clock"></i> <span>Attendance</span></a></li>
+            <li><a href="/tasks"><i class="fas fa-tasks"></i> <span>My Tasks</span></a></li>
+            <li><a href="#"><i class="fas fa-calendar-alt"></i> <span>Leave</span></a></li>
+            <li><a href="/logout"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>
+        </ul>
+
+    </div>
+
+    <!-- Main Section -->
+    <div class="main">
+
+        <!-- Topbar -->
+        <div class="topbar">
+            <button id="toggle-btn"><i class="fas fa-bars"></i></button>
+            <h3>Welcome, {{ name }}</h3>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+
+            <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
+                <h2>Employees</h2>
+                <a href="/admin/add_employee" class="btn add-btn">
+                    <i class="fas fa-user-plus"></i> Add Employee
+                </a>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% if employees %}
+                        {% for emp in employees %}
+                        <tr>
+                            <td>{{ emp['name'] }}</td>
+                            <td>{{ emp['email'] }}</td>
+                            <td>{{ emp['role'] }}</td>
+                            <td>
+                                <a href="/admin/edit_employee/{{ emp['id'] }}" class="btn edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+
+                                <a href="/admin/delete_employee/{{ emp['id'] }}" class="btn delete"
+                                   onclick="return confirm('Delete this employee?');">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4">No employees found</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+        </div> <!-- content -->
+
+    </div> <!-- main -->
+
+</div> <!-- wrapper -->
+
+<!-- Sidebar toggle script -->
+<script>
+const toggleBtn = document.getElementById("toggle-btn");
+const sidebar = document.querySelector(".sidebar");
+const main = document.querySelector(".main");
+
+toggleBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("collapsed");
+    main.classList.toggle("expanded");
+});
+</script>
+
+</body>
+</html>

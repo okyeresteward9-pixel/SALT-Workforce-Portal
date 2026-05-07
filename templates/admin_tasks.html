@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Task Board</title>
+
+    <!-- Your main CSS -->
+    <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="wrapper">
+
+    <!-- ================= SIDEBAR ================= -->
+    <div class="sidebar">
+
+        <div class="logo">
+            <img src="{{ url_for('static', filename='salt-logo.png') }}">
+            <p class="portal-name">Workforce Portal</p>
+        </div>
+
+        <ul>
+            <li><a href="/dashboard"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
+            <li><a href="/admin/employees"><i class="fas fa-users"></i> <span>Employees</span></a></li>
+            <li class="active"><a href="/admin/tasks"><i class="fas fa-tasks"></i> <span>Task Board</span></a></li>
+            <li><a href="/admin/announcements"><i class="fas fa-bullhorn"></i> <span>Announcements</span></a></li>
+            <li><a href="/attendance"><i class="fas fa-clock"></i> <span>Attendance</span></a></li>
+        </ul>
+
+        <div class="sidebar-bottom">
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+
+    </div>
+
+    <!-- ================= MAIN ================= -->
+    <div class="main">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <button id="toggle-btn"><i class="fas fa-bars"></i></button>
+
+            <div class="topbar-right">
+                <span>TaskBoard</span>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+
+            <!-- BACK BUTTON -->
+            <a href="/dashboard" class="back-btn">← Back to Dashboard</a>
+
+            <h2 style="margin-bottom:20px;">All Tasks</h2>
+
+            <!-- ================= STATS ================= -->
+            <div class="stats">
+
+                <div class="card">
+                    <h4>Pending</h4>
+                    <p style="color:#e6a700;">{{ pending_count }}</p>
+                </div>
+
+                <div class="card">
+                    <h4>In Progress</h4>
+                    <p style="color:#0077b6;">{{ progress_count }}</p>
+                </div>
+
+                <div class="card">
+                    <h4>Completed</h4>
+                    <p style="color:#28a745;">{{ completed_count }}</p>
+                </div>
+
+            </div>
+
+            <!-- ================= FILTER ================= -->
+            <div style="margin-bottom:15px;">
+
+                <a href="/admin/tasks" class="btn" style="background:#6c757d;">All</a>
+
+                <a href="/admin/tasks?status=Pending" class="btn" style="background:#ffc107;">Pending</a>
+
+                <a href="/admin/tasks?status=In Progress" class="btn" style="background:#0d6efd;">In Progress</a>
+
+                <a href="/admin/tasks?status=Completed" class="btn" style="background:#28a745;">Completed</a>
+
+            </div>
+
+            <!-- ================= TABLE ================= -->
+            <div class="working-section">
+
+                {% if tasks %}
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Task</th>
+                            <th>Employee</th>
+                            <th>Deadline</th>
+                            <th>Status</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for task in tasks %}
+                        <tr>
+
+                            <td>{{ task.id }}</td>
+
+                            <td>
+                                <strong>{{ task.title }}</strong><br>
+                                <small>{{ task.description }}</small>
+                            </td>
+
+                            <td>{{ task.employee_name }}</td>
+
+                            <td>
+                                {{ task.deadline }}
+
+                                {% if task.deadline and task.status != "Completed" and task.deadline < today %}
+                                <div class="alert error" style="margin-top:5px; padding:5px; font-size:12px;">
+                                    Overdue
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- STATUS -->
+                            <td>
+                                {% if task.status == "Pending" %}
+                                    <span class="btn" style="background:#ffc107;">Pending</span>
+                                {% elif task.status == "In Progress" %}
+                                    <span class="btn" style="background:#0d6efd;">In Progress</span>
+                                {% else %}
+                                    <span class="btn green">Completed</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- TYPE -->
+                            <td>
+                                {% if task.created_by == task.assigned_to %}
+                                    <span class="btn" style="background:#17a2b8;">Self</span>
+                                {% else %}
+                                    <span class="btn" style="background:#6f42c1;">Assigned</span>
+                                {% endif %}
+                            </td>
+
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% else %}
+                    <p style="text-align:center; color:gray;">No tasks available.</p>
+                {% endif %}
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ================= SIDEBAR TOGGLE ================= -->
+<script>
+const toggleBtn = document.getElementById("toggle-btn");
+const sidebar = document.querySelector(".sidebar");
+const main = document.querySelector(".main");
+
+toggleBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("collapsed");
+    main.classList.toggle("expanded");
+});
+</script>
+
+</body>
+</html>

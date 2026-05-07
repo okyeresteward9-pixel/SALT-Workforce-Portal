@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SALT Workforce Portal</title>
+
+<link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family: "Segoe UI", sans-serif;
+}
+
+/* Background */
+
+body{
+height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+overflow:hidden;
+
+/* Image background */
+background: url("{{ url_for('static', filename='motion_bg.png') }}") no-repeat center center;
+background-size: cover;
+position: relative;
+}
+
+/* Add motion overlay */
+body::before{
+content:"";
+position:absolute;
+top:0;
+left:0;
+width:100%;
+height:100%;
+
+/* soft animated gradient overlay */
+background: linear-gradient(-45deg, rgba(0,31,63,0.7), rgba(0,63,127,0.6), rgba(0,116,217,0.5), rgba(0,31,63,0.7));
+background-size:400% 400%;
+animation:bgMove 15s ease infinite;
+z-index:0;
+}
+
+
+@keyframes bgMove{
+0%{background-position:0% 50%}
+50%{background-position:100% 50%}
+100%{background-position:0% 50%}
+}
+
+/* Blobs */
+
+.blob{
+position:absolute;
+border-radius:50%;
+filter:blur(60px);
+opacity:.5;
+animation:float 14s infinite ease-in-out;
+z-index:0;
+}
+
+.blob1{
+width:350px;
+height:350px;
+background:linear-gradient(45deg,#00eaff,#0074ff);
+top:-100px;
+left:-100px;
+}
+
+.blob2{
+width:300px;
+height:300px;
+background:linear-gradient(45deg,#00c6ff,#0072ff);
+bottom:-80px;
+right:-80px;
+animation-delay:3s;
+}
+
+.blob3{
+width:250px;
+height:250px;
+background:linear-gradient(45deg,#00f2fe,#4facfe);
+top:40%;
+left:60%;
+animation-delay:6s;
+}
+
+@keyframes float{
+0%{transform:translateY(0px)}
+50%{transform:translateY(-40px)}
+100%{transform:translateY(0px)}
+}
+
+/* Login Card */
+
+.login-card{
+width:380px;
+padding:45px;
+border-radius:20px;
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(18px);
+border:1px solid rgba(255,255,255,0.25);
+box-shadow:0 20px 60px rgba(0,0,0,0.5);
+color:white;
+animation:fadeUp 1s ease;
+position:relative;
+z-index:10;
+}
+
+@keyframes fadeUp{
+from{opacity:0; transform:translateY(40px);}
+to{opacity:1; transform:translateY(0);}
+}
+
+.login-card h2{
+font-size:30px;
+margin-bottom:10px;
+}
+
+.subtitle{
+font-size:14px;
+color:#9ee7ff;
+margin-bottom:25px;
+}
+
+/* Inputs */
+
+.input-group{
+position:relative;
+margin-bottom:25px;
+}
+
+input{
+width:100%;
+padding:12px;
+background:transparent;
+border:none;
+border-bottom:1px solid rgba(255,255,255,0.4);
+color:white;
+font-size:16px;
+outline:none;
+}
+
+input:focus{
+border-bottom:1px solid #00eaff;
+}
+
+input::placeholder{
+color:rgba(255,255,255,0.6);
+}
+
+/* Password Toggle */
+
+.toggle-password{
+position:absolute;
+right:5px;
+top:50%;
+transform:translateY(-50%);
+cursor:pointer;
+}
+
+/* Checkbox */
+
+label{
+display:flex;
+align-items:center;
+gap:8px;
+font-size:14px;
+margin-top:10px;
+}
+
+/* Button */
+
+button{
+width:100%;
+margin-top:25px;
+padding:14px;
+border:none;
+border-radius:30px;
+font-size:16px;
+cursor:pointer;
+background:linear-gradient(45deg,#00c6ff,#0072ff);
+color:white;
+}
+
+/* Spinner */
+
+.spinner{
+display:none;
+margin:auto;
+margin-top:15px;
+border:3px solid rgba(255,255,255,.3);
+border-top:3px solid white;
+border-radius:50%;
+width:25px;
+height:25px;
+animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+to{transform:rotate(360deg);}
+}
+
+/* Mascot */
+
+.assistant{
+position:absolute;
+left:40px;
+bottom:40px;
+display:flex;
+flex-direction:column;
+align-items:center;
+animation:floatAssistant 4s ease-in-out infinite;
+pointer-events:none;
+z-index:1;
+}
+
+@keyframes floatAssistant{
+0%{transform:translateY(0)}
+50%{transform:translateY(-15px)}
+100%{transform:translateY(0)}
+}
+
+.assistant img{
+width:120px;
+}
+
+/* Speech */
+
+.speech{
+margin-top:10px;
+background:white;
+color:#003f7f;
+padding:8px 14px;
+border-radius:20px;
+font-size:13px;
+font-weight:bold;
+}
+
+/* Shake only */
+
+.shake{
+animation:shake 0.4s;
+}
+
+@keyframes shake{
+0%{transform:translateX(0);}
+25%{transform:translateX(-6px);}
+50%{transform:translateX(6px);}
+75%{transform:translateX(-6px);}
+100%{transform:translateX(0);}
+}
+
+/* Mobile */
+
+@media(max-width:768px){
+.assistant{display:none;}
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- Mascot -->
+<div class="assistant">
+<img id="mascotImg" src="{{ url_for('static', filename='salt-mascot.png') }}">
+<div class="speech" id="mascotText">
+Hi 👋 I'm Salty!<br>Login to continue
+</div>
+</div>
+
+<!-- Background -->
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+<div class="blob blob3"></div>
+
+<!-- Login Card -->
+<div class="login-card">
+
+<h2>SALT Workforce Portal</h2>
+<p class="subtitle">Secure employee management system</p>
+
+<form id="loginForm" action="/login" method="POST">
+
+<div class="input-group">
+<input type="email" name="email" placeholder="Email address" required>
+</div>
+
+<div class="input-group">
+<input type="password" id="password" name="password" placeholder="Password" required>
+<i class="fa-solid fa-eye toggle-password" onclick="togglePassword()"></i>
+</div>
+
+<label>
+<input type="checkbox" name="remember"> Remember me
+</label>
+
+<button type="submit" id="loginBtn">Login</button>
+
+<div class="spinner" id="spinner"></div>
+
+</form>
+
+</div>
+
+<script>
+
+/* Password toggle */
+function togglePassword(){
+const pass = document.getElementById("password");
+const icon = document.querySelector(".toggle-password");
+
+if(pass.type === "password"){
+pass.type = "text";
+icon.classList.replace("fa-eye","fa-eye-slash");
+}else{
+pass.type = "password";
+icon.classList.replace("fa-eye-slash","fa-eye");
+}
+}
+
+/* Mascot reactions (TEXT ONLY) */
+function mascotReact(type){
+
+const img = document.getElementById("mascotImg");
+const text = document.getElementById("mascotText");
+
+if(type === "error"){
+text.innerHTML = "Oops 😢<br>Invalid email or password";
+img.classList.add("shake");
+}
+
+if(type === "success"){
+text.innerHTML = "Welcome 🎉<br>Login successful!";
+}
+
+if(type === "typing"){
+text.innerHTML = "Good,You are 🤔<br>Typing...";
+}
+
+setTimeout(()=>{
+img.classList.remove("shake");
+},500);
+
+}
+
+/* Typing reaction */
+document.querySelectorAll("input").forEach(input=>{
+input.addEventListener("focus", ()=>{
+mascotReact("typing");
+});
+});
+
+/* Submit */
+document.getElementById("loginForm").addEventListener("submit", function(e){
+
+const email = document.querySelector("input[name='email']").value;
+const password = document.querySelector("input[name='password']").value;
+
+if(email === "" || password === ""){
+e.preventDefault();
+mascotReact("error");
+return;
+}
+
+const btn = document.getElementById("loginBtn");
+const spinner = document.getElementById("spinner");
+
+btn.disabled = true;
+btn.innerText = "Logging in...";
+spinner.style.display = "block";
+
+});
+
+</script>
+
+</body>
+</html>

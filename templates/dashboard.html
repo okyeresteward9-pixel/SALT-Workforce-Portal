@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SALT Workforce Portal</title>
+
+    <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* Announcements Card */
+        .announcements {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 10px auto;
+            max-width: 950px; /* 👈 controls width */
+            margin-left: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        /* Title */
+        .announcements h3 {
+            color: #023e8a;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* List */
+        .announcements ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        /* Each Announcement */
+        .announcements li {
+            background: #f6fbff;
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-bottom: 12px;
+            border-left: 5px solid #0077b6;
+            transition: 0.2s;
+        }
+        
+        /* Hover effect */
+        .announcements li:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+        }
+        
+        /* Title text */
+        .announcements li strong {
+            display: block;
+            color: #023e8a;
+            margin-bottom: 5px;
+        }
+        
+        /* Message text */
+        .announcements li span {
+            color: #333;
+            font-size: 14px;
+        }
+        
+        /* Date */
+        .announcements li small {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+
+    /* SALTY CHAT */
+        #chatToggle{
+        position:fixed;
+        right:20px;
+        bottom:20px;
+        background:#0072ff;
+        color:white;
+        padding:15px;
+        border-radius:50%;
+        cursor:pointer;
+        z-index:9999;
+        box-shadow:0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        #saltyChat{
+        position:fixed;
+        right:20px;
+        bottom:80px;
+        width:320px;
+        background:white;
+        border-radius:15px;
+        box-shadow:0 10px 30px rgba(0,0,0,0.3);
+        overflow:hidden;
+        z-index:9999;
+        }
+
+        .hidden{display:none;}
+
+        .chat-header{
+        background:#0072ff;
+        color:white;
+        padding:10px;
+        display:flex;
+        justify-content:space-between;
+        font-weight:bold;
+        }
+
+        .chat-body{
+        height:260px;
+        overflow-y:auto;
+        padding:10px;
+        background:#f5f7fb;
+        }
+
+        .bot-msg{
+        background:#e1f0ff;
+        padding:8px;
+        border-radius:10px;
+        margin-bottom:8px;
+        font-size:13px;
+        }
+
+        .user-msg{
+        background:#0072ff;
+        color:white;
+        padding:8px;
+        border-radius:10px;
+        margin-bottom:8px;
+        text-align:right;
+        font-size:13px;
+        }
+
+        .chat-input{
+        display:flex;
+        border-top:1px solid #ddd;
+        }
+
+        .chat-input input{
+        flex:1;
+        border:none;
+        padding:10px;
+        outline:none;
+        }
+
+        .chat-input button{
+        background:#0072ff;
+        color:white;
+        border:none;
+        padding:10px;
+        cursor:pointer;
+        }
+
+    </style>
+    
+</head>
+
+<!-- 💬 FLOAT BUTTON -->
+<div id="chatToggle" onclick="toggleChat()">🗣️</div>
+
+<!-- 🤖 SALTY CHAT -->
+<div id="saltyChat" class="hidden">
+
+    <div class="chat-header">
+        🤖 Salty
+        <span onclick="toggleChat()">✖</span>
+    </div>
+
+    <div class="chat-body" id="chatBody">
+        <div class="bot-msg">Hi 👋 I’m Salty! Ask me anything.</div>
+    </div>
+
+    <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Type or speak...">
+        <button 
+            onmousedown="startVoice()" 
+            onmouseup="stopVoice()" 
+            onmouseleave="stopVoice()">
+            🎤 Hold
+        </button>
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+</div>
+
+<body>
+
+<div class="wrapper">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+        <div class="logo">
+            <img src="{{ url_for('static', filename='salt-logo.png') }}">
+            <p class="portal-name">Workforce Portal</p>
+        </div>
+    
+        <ul>
+            <li class="active">
+                <a href="/dashboard">
+                    <i class="fas fa-home"></i> <span>Dashboard</span>
+                </a>
+            </li>
+    
+            {% if role == 'admin' %}
+            <li>
+                <a href="/admin/employees">
+                    <i class="fas fa-users"></i> <span>Employees</span>
+                </a>
+            </li>
+            <li>
+                <a href="/admin/tasks">
+                    <i class="fas fa-table"></i> <span>Task Board</span>
+                </a>
+            </li>
+            <li>
+                <a href="/admin/assign_task">
+                    <i class="fas fa-plus"></i> <span>Assign Task</span>
+                </a>
+            </li>
+            <li>
+                <a href="/admin/announcements">
+                    <i class="fas fa-bullhorn"></i> <span>Announcements</span>
+                </a>
+            </li>
+            {% endif %}
+    
+            <li>
+                <a href="/attendance">
+                    <i class="fas fa-clock"></i> <span>Attendance</span>
+                </a>
+            </li>
+            <li>
+                <a href="/tasks">
+                    <i class="fas fa-tasks"></i> <span>My Tasks</span>
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-calendar-alt"></i> <span>Leave</span>
+                </a>
+            </li>
+            <li>
+                <a href="/logout" onclick="return confirm('Are you sure you want to logout?')">
+                    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- 🔽 SETTINGS GOES HERE (BOTTOM FIXED AREA) -->
+        <div class="sidebar-bottom">
+            <a href="/settings/profile" 
+                <i class="fas fa-cog"></i> <span>settings</span>
+            </a>
+        </div>  
+
+    </div>
+
+    <!-- Main Section -->
+    <div class="main">
+
+        <!-- Topbar -->
+        <div class="topbar">
+
+            <button id="toggle-btn">
+                <i class="fas fa-bars"></i>
+            </button>
+        
+            <h3>Welcome, {{ name }}</h3>
+        
+            <!-- RIGHT SIDE GROUP -->
+            <div class="topbar-right">
+        
+                <div class="notification">
+                    <a href="/notifications">
+                        <i class="fas fa-bell"></i>
+                        {% if notification_count > 0 %}
+                        <span class="badge">{{ notification_count }}</span>
+                        {% endif %}
+                    </a>
+                </div>
+        
+                <div class="profile-avatar">
+                    {% if user and user.profile_pic %}
+                    <img src="{{ url_for('static', filename='profiles/' + user.profile_pic) }}">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='default.png') }}">
+                    {% endif %}
+                </div>
+        
+            </div>
+        
+        </div>
+        <!-- Quick Actions -->
+        <div class="content">
+
+        <h2>Quick Actions</h2>
+
+    {% if not clocked_in and not clocked_out %}
+
+        <!-- 🟢 NOT STARTED -->
+        <form method="POST" action="/clockin">
+            <input type="hidden" name="latitude" id="lat">
+            <input type="hidden" name="longitude" id="lon">
+            <button type="submit" class="btn green">
+                <i class="fas fa-location-dot"></i> Clock In
+            </button>
+        </form>
+
+    {% elif clocked_in and not clocked_out %}
+
+        <!-- 🔴 WORKING -->
+        <form method="POST" action="/clockout">
+            <button type="submit" class="btn red">
+                <i class="fas fa-sign-out-alt"></i> Clock Out
+            </button>
+        </form>
+
+    {% elif clocked_out %}
+
+        <!-- ✅ DONE -->
+        <div style="
+            padding: 15px;
+            background: #0d6efd;
+            color: white;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 10px;
+        ">
+            ✅ You are done for today 🎉
+        </div>
+
+    {% endif %}
+
+        <!-- Announcements Section -->
+        <div class="announcements">
+            <h3><i class="fas fa-bullhorn"></i> Latest Announcements</h3>
+            {% if latest_announcements %}
+                <ul>
+                {% for ann in latest_announcements %}
+                <li>
+                    <strong>{{ ann['title'] }}</strong>
+                    <span>{{ ann['message'] }}</span>
+                
+                    {% if ann['file_path'] %}
+                
+                        {% set file = ann['file_path'].lower() %}
+                
+                        <!-- 🖼️ IMAGE PREVIEW -->
+                        {% if file.endswith('.png') or file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.gif') %}
+                            
+                            <div class="ann-image">
+                                <img src="{{ url_for('download_announcement_file', filename=ann['file_path']) }}" alt="attachment">
+                            </div>
+                
+                        <!-- 📄 PDF -->
+                        {% elif file.endswith('.pdf') %}
+                
+                            <a href="{{ url_for('download_announcement_file', filename=ann['file_path']) }}" target="_blank" class="file-link">
+                                📄 View PDF
+                            </a>
+                
+                        <!-- 📦 OTHER FILES -->
+                        {% else %}
+                
+                            <a href="{{ url_for('download_announcement_file', filename=ann['file_path']) }}" class="file-link">
+                                📎 Download File
+                            </a>
+                
+                        {% endif %}
+                
+                    {% endif %}
+                
+                    <small>{{ ann['created_at'] }}</small>
+                </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p>No announcements yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- ADMIN ONLY: Working Employees -->
+        {% if role == 'admin' %}
+        <div class="working-section">
+
+            <h3><i class="fas fa-user-clock"></i> Currently Working Employees</h3>
+
+            <table class="working-table">
+                <tr>
+                    <th>Employee</th>
+                    <th>Clock In</th>
+                    <th>Status</th>
+                </tr>
+                {% if working_employees %}
+                    {% for emp in working_employees %}
+                    <tr>
+                        <td>{{ emp['name'] }}</td>
+                        <td>{{ emp['clock_in'] }}</td>
+                        <td><span class="status-working">Working</span></td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="3">No employees currently working</td>
+                    </tr>
+                {% endif %}
+            </table>
+
+        </div>
+        {% endif %}
+
+        <!-- ADMIN ONLY: Full Stats -->
+        {% if role == 'admin' %}
+        <div class="stats">
+
+            <div class="card">
+                <i class="fas fa-users"></i>
+                <h3>Total Employees</h3>
+                <p>{{ total_employees }}</p>
+            </div>
+
+            <div class="card">
+                <i class="fas fa-user-check"></i>
+                <h3>Present Today</h3>
+                <p>{{ present_today }}</p>
+            </div>
+
+            <div class="card">
+                <i class="fas fa-user-times"></i>
+                <h3>Absent Today</h3>
+                <p>{{ absent_today }}</p>
+            </div>
+
+            <div class="card">
+                <i class="fas fa-clock"></i>
+                <h3>Clock-ins Today</h3>
+                <p>{{ clockins_today }}</p>
+            </div>
+
+        </div>
+        {% endif %}
+
+        <h3>Live Employee Locations</h3>
+        <div id="map" style="height: 400px; width: 100%; border-radius: 10px;"></div>
+
+        <!-- Charts -->
+        <div class="charts">
+
+            <div class="chart-box">
+                <h3>Weekly Attendance</h3>
+                <canvas id="attendanceChart"></canvas>
+            </div>
+
+            <div class="chart-box">
+                <h3>Task Completion</h3>
+                <canvas id="taskChart"></canvas>
+            </div>
+
+            
+    
+        </div>        
+
+    </div>
+
+</div>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<!-- Marker Cluster CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- Marker Cluster JS -->
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+<script>
+
+    var employees = {{ employee_locations | default([]) | tojson }};
+    console.log("EMPLOYEES:", employees);
+
+    var defaultLat = 5.6037;
+    var defaultLon = -0.1870;
+
+    if (employees.length > 0) {
+        defaultLat = employees[0].lat;
+        defaultLon = employees[0].lon;
+    }
+
+    // ✅ Create map
+    var map = L.map('map').setView([defaultLat, defaultLon], 13);
+
+    // ✅ Load tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data © OpenStreetMap contributors'
+    }).addTo(map);
+
+    // ✅ Marker Cluster Group
+    var markers = L.markerClusterGroup();
+
+    employees.forEach(emp => {
+
+        var marker = L.marker([emp.lat, emp.lon]);
+
+        marker.bindPopup(
+            "<b>" + emp.name + "</b><br>Clock-in: " + emp.time
+        );
+
+        markers.addLayer(marker);
+    });
+
+    map.addLayer(markers);
+
+    // ✅ FIXED AUTO ZOOM
+    if (employees.length > 0) {
+        map.fitBounds(markers.getBounds());
+    }
+
+</script>
+
+<!-- Sidebar Toggle -->
+<script>
+const toggleBtn = document.getElementById("toggle-btn");
+const sidebar = document.querySelector(".sidebar");
+const main = document.querySelector(".main");
+
+toggleBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("collapsed");
+    main.classList.toggle("expanded");
+});
+</script>
+
+<!-- GPS -->
+<script>
+    navigator.geolocation.getCurrentPosition(
+        function(position){
+            document.getElementById("lat").value = position.coords.latitude;
+            document.getElementById("lon").value = position.coords.longitude;
+        },
+        function(error){
+            console.warn("GPS not allowed. Using default location.");
+            document.getElementById("lat").value = "0";
+            document.getElementById("lon").value = "0";
+        }
+    );
+    </script>
+
+<!-- Attendance Chart -->
+<script>
+const attendanceChart = new Chart(
+document.getElementById('attendanceChart'),
+{
+type: 'bar',
+data: {
+labels: {{ labels | tojson | safe }},
+datasets: [{
+label: 'Employees Present',
+data: {{ week_data | tojson | safe }},
+borderWidth: 1
+}]
+},
+options:{
+responsive:true,
+scales:{ y:{ beginAtZero:true } }
+}
+});
+</script>
+
+<!-- Task Chart -->
+<script>
+const taskChart = new Chart(
+document.getElementById('taskChart'),
+{
+type: 'doughnut',
+data: {
+labels: ['Completed','Pending'],
+datasets: [{
+data: [{{ tasks_completed }}, {{ tasks_pending }}]
+}]
+}
+});
+
+</script>
+
+<script>
+    /* =========================
+       🧠 SALTY COMMAND ENGINE
+    ========================= */
+    
+    const SALTY_COMMANDS = {
+        "open dashboard": () => window.location.href="/dashboard",
+        "open attendance": () => window.location.href="/attendance",
+        "open tasks": () => window.location.href="/tasks",
+        "open employees": () => window.location.href="/admin/employees",
+    
+        "clock in": () => document.querySelector("form[action='/clockin'] button")?.click(),
+        "clock out": () => document.querySelector("form[action='/clockout'] button")?.click(),
+    
+        "toggle sidebar": () => document.getElementById("toggle-btn")?.click(),
+    
+        "open chat": () => document.getElementById("saltyChat").classList.remove("hidden"),
+        "close chat": () => document.getElementById("saltyChat").classList.add("hidden"),
+    
+        "refresh dashboard": () => location.reload()
+    };
+    
+    function runLocalCommand(text){
+        for (const key in SALTY_COMMANDS){
+            if(text.includes(key)){
+                SALTY_COMMANDS[key]();
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /* =========================
+       💬 CHAT SYSTEM
+    ========================= */
+    
+    async function sendMessage(){
+    
+        const input = document.getElementById("chatInput");
+        const msg = input.value.trim();
+        const chat = document.getElementById("chatBody");
+    
+        if(!msg) return;
+    
+        chat.innerHTML += `<div class="user-msg">${msg}</div>`;
+    
+        const typing = document.createElement("div");
+        typing.className = "bot-msg";
+        typing.innerText = "Thinking...";
+        chat.appendChild(typing);
+    
+        chat.scrollTop = chat.scrollHeight;
+        input.value = "";
+    
+        const result = await processCommand(msg.toLowerCase());
+    
+        typing.innerText = result.reply;
+    
+        chat.scrollTop = chat.scrollHeight;
+    
+        speak(result.reply);
+    }
+    
+    /* =========================
+       🤖 COMMAND ROUTER
+    ========================= */
+    
+    async function processCommand(msg){
+    
+        // 1. LOCAL FIRST
+        if(runLocalCommand(msg)){
+            return { reply: "Done." };
+        }
+    
+        // 2. BACKEND
+        try {
+            const res = await fetch("/api/salty", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ message: msg })
+            });
+    
+            const data = await res.json();
+    
+            if(data.action){
+                setTimeout(() => {
+                    window.location.href = data.action;
+                }, 600);
+            }
+    
+            return data;
+    
+        } catch (err) {
+            return { reply: "Server error." };
+        }
+    }
+    
+    /* =========================
+       🎤 VOICE INPUT (FIXED)
+    ========================= */
+    
+    let recognition;
+    let isListening = false;
+    
+    function startVoice(){
+    
+        if (!('webkitSpeechRecognition' in window)) {
+            alert("Use Chrome browser");
+            return;
+        }
+    
+        recognition = new webkitSpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.continuous = false; // ✅ FIXED
+        recognition.interimResults = false;
+    
+        recognition.onstart = () => {
+            isListening = true;
+            document.getElementById("chatInput").placeholder = "🎤 Listening...";
+        };
+    
+        recognition.onresult = function(e){
+    
+            const text = e.results[0][0].transcript;
+            document.getElementById("chatInput").value = text;
+        };
+    
+        recognition.onerror = () => {
+            isListening = false;
+        };
+    
+        recognition.start();
+    }
+    
+    function stopVoice(){
+        if(recognition && isListening){
+            recognition.stop();
+            isListening = false;
+    
+            document.getElementById("chatInput").placeholder = "Type or speak...";
+    
+            setTimeout(() => {
+                sendMessage();
+            }, 200);
+        }
+    }
+    
+    /* =========================
+       🔊 SPEECH
+    ========================= */
+    
+    let speaking = false;
+    
+    function speak(text){
+    
+        if(speaking){
+            window.speechSynthesis.cancel();
+        }
+    
+        speaking = true;
+    
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = "en-US";
+    
+        utter.onend = () => speaking = false;
+    
+        window.speechSynthesis.speak(utter);
+    }
+    
+    /* =========================
+       💬 TOGGLE CHAT
+    ========================= */
+    
+    function toggleChat(){
+        document.getElementById("saltyChat").classList.toggle("hidden");
+    }
+    
+    /* =========================
+       🔄 LIVE UPDATE (SAFE FIX)
+    ========================= */
+    
+    async function updateDashboard(){
+        try {
+            const res = await fetch("/api/live-dashboard");
+            const data = await res.json();
+    
+            console.log("Live:", data);
+    
+        } catch (e) {
+            console.log("Live update error:", e);
+        }
+    }
+    
+    setInterval(updateDashboard, 5000);
+    </script>
+
+
+</body>
+</html>
