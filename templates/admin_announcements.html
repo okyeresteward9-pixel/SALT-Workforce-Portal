@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Announcements - SALT Workforce Portal</title>
+    <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+
+.main{
+    max-width:11000px;
+    margin:auto;
+}
+
+/* Card style */
+.announcements-form,
+.announcements-table{
+    background:rgb(233, 237, 243);
+    border-radius:12px;
+    padding:25px;
+    margin:25px auto;
+    max-width:1000px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Form */
+.announcements-form h3{
+    margin-bottom:15px;
+    color:#023e8a;
+}
+
+.announcements-form input,
+.announcements-form textarea{
+    width:100%;
+    padding:12px;
+    margin-bottom:12px;
+    border-radius:8px;
+    border:1px solid #d0d7de;
+    font-size:14px;
+}
+
+.announcements-form textarea{
+    resize:none;
+}
+
+.announcements-form input[type="file"]{
+    background:white;
+    padding:10px;
+}
+
+/* Buttons */
+.btn{
+    padding:8px 14px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:13px;
+    text-decoration:none;
+}
+
+.btn-add{
+    background:#0077b6;
+    color:white;
+}
+
+.btn-edit{
+    background:#ffb703;
+    color:white;
+}
+
+.btn-delete{
+    background:#d90429;
+    color:white;
+}
+
+/* Table */
+.announcements-table h3{
+    margin-bottom:15px;
+    color:#023e8a;
+}
+
+.announcements-table table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+}
+
+.announcements-table th{
+    background:#023e8a;
+    color:white;
+    padding:10px;
+}
+
+.announcements-table td{
+    padding:10px;
+    border-bottom:1px solid #e6e6e6;
+    vertical-align:middle;
+}
+
+.announcements-table tr:hover{
+    background:#f6fbff;
+}
+
+/* Actions column */
+.actions{
+    white-space:nowrap;
+}
+
+/* File button */
+.file-btn{
+    background:#6c757d;
+    color:white;
+    padding:6px 10px;
+    border-radius:6px;
+    text-decoration:none;
+    font-size:12px;
+}
+
+.file-btn:hover{
+    background:#495057;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.5);
+    justify-content:center;
+    align-items:center;
+}
+
+.modal-content{
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    width:400px;
+}
+
+.toast{
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    background:#023e8a;
+    color:white;
+    padding:12px 20px;
+    border-radius:8px;
+    display:none;
+}
+
+</style>
+</head>
+
+
+
+<body>
+<div class="wrapper">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='salt-logo.png') }}">
+            <p class="portal-name">Workforce Portal</p>
+        </div>
+
+        <ul>
+            <li><a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a></li>
+            <li><a href="/admin/employees"><i class="fas fa-users"></i> Employees</a></li>
+            <li><a href="/admin/tasks"><i class="fas fa-table"></i> Task Board</a></li>
+            <li class="active"><a href="/admin/announcements"><i class="fas fa-bullhorn"></i> Announcements</a></li>
+            <li><a href="/attendance"><i class="fas fa-clock"></i> Attendance</a></li>
+            <li><a href="/tasks"><i class="fas fa-tasks"></i> My Tasks</a></li>
+            <li><a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+    </div>
+
+    <!-- Main Section -->
+    <div class="main">
+
+        <div class="topbar">
+            <button id="toggle-btn"><i class="fas fa-bars"></i></button>
+            <h3>Welcome, {{ name }}</h3>
+        </div>
+
+        <!-- Add Announcement Form -->
+        <div class="announcements-form">
+
+            <h3><i class="fas fa-plus"></i> Add New Announcement</h3>
+
+            <form method="POST" action="/admin/announcements" enctype="multipart/form-data">
+
+                <input type="text" name="title" placeholder="Announcement Title" required>
+
+                <textarea name="message" placeholder="Message" rows="4" required></textarea>
+
+                <label style="font-size:13px; margin-bottom:5px; display:block;">
+                    Attach File (optional)
+                </label>
+
+                <input type="file" name="file">
+
+                <button type="submit" class="btn btn-add">
+                    <i class="fas fa-bullhorn"></i> Post Announcement
+                </button>
+
+            </form>
+
+        </div>
+
+        <!-- Existing Announcements -->
+        <div class="announcements-table">
+
+            <h3><i class="fas fa-list"></i> All Announcements</h3>
+
+            {% if announcements %}
+
+            <table>
+
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Message</th>
+                    <th>File</th>
+                    <th>Created By</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+
+                {% for ann in announcements %}
+                <tr>
+                    <td>{{ ann['id'] }}</td>
+                    <td>{{ ann['title'] }}</td>
+                    <td>{{ ann['message'] }}</td>
+
+                    <!-- FILE COLUMN -->
+                    <td>
+                        {% if ann['file_path'] %}
+                            <a href="{{ url_for('download_announcement_file', filename=ann['file_path']) }}" 
+                            target="_blank" class="file-btn">
+                                <i class="fas fa-file"></i> View / Download
+                            </a>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+
+                    <td>{{ ann['name'] }}</td>
+                    <td>{{ ann['created_at'] }}</td>
+
+                    <td class="actions">
+                        <button class="btn btn-edit"
+                        data-id="{{ ann['id'] }}"
+                        data-title="{{ ann['title']|e }}"
+                        data-message="{{ ann['message']|e }}"
+                        onclick="openEditModal(this.dataset.id, this.dataset.title, this.dataset.message)">
+                            <i class="fas fa-edit"></i>
+                        </button>
+
+                        <button class="btn btn-delete"
+                        data-id="{{ ann['id'] }}"
+                        onclick="deleteAnnouncement(this.dataset.id)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+
+                </tr>
+                {% endfor %}
+
+            </table>
+
+            {% else %}
+                <p>No announcements yet.</p>
+            {% endif %}
+
+        </div>
+
+    </div>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3>Edit Announcement</h3>
+
+        <input type="hidden" id="edit-id">
+
+        <input type="text" id="edit-title" placeholder="Title">
+        <textarea id="edit-message" rows="4"></textarea>
+
+        <button class="btn btn-add" onclick="saveEdit()">Save</button>
+        <button class="btn btn-delete" onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+
+<script>
+const toggleBtn = document.getElementById("toggle-btn");
+const sidebar = document.querySelector(".sidebar");
+const main = document.querySelector(".main");
+
+toggleBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("collapsed");
+    main.classList.toggle("expanded");
+});
+</script>
+
+<script>
+    function openEditModal(id, title, message){
+        document.getElementById('editModal').style.display = 'flex';
+        document.getElementById('edit-id').value = id;
+        document.getElementById('edit-title').value = title;
+        document.getElementById('edit-message').value = message;
+    }
+    
+    function closeModal(){
+        document.getElementById('editModal').style.display = 'none';
+    }
+    
+    function saveEdit(){
+        const id = document.getElementById('edit-id').value;
+        const title = document.getElementById('edit-title').value;
+        const message = document.getElementById('edit-message').value;
+    
+        fetch(`/admin/delete_announcement/${id}`, {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success"){
+                showToast("Deleted successfully 🗑");
+                location.reload();
+            }
+        });
+    }
+</script>
+
+<script>
+function deleteAnnouncement(id){
+    showToast("Click again to confirm delete ⚠️");
+
+    setTimeout(() => {
+        fetch(`/admin/delete_announcement/${id}`, {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            showToast("Deleted successfully 🗑");
+            location.reload();
+        });
+    }, 1000);
+}
+</script>
+
+<script>
+    function showToast(message){
+        const toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.style.display = "block";
+    
+        setTimeout(() => {
+            toast.style.display = "none";
+        }, 3000);
+    }
+    
+</script>
+
+<script>
+    window.onclick = function(e){
+    const modal = document.getElementById('editModal');
+    if(e.target === modal){
+        closeModal();
+    }
+}
+</script>
+
+</body>
+</html>

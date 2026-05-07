@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings - SALT Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        .settings-container{
+            max-width:900px;
+            margin:30px auto;
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .settings-title{
+            font-size:22px;
+            margin-bottom:20px;
+            color:#023e8a;
+        }
+
+        .settings-grid{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:20px;
+        }
+
+        .card{
+            background:#f6fbff;
+            padding:15px;
+            border-radius:10px;
+        }
+
+        .card h4{
+            margin-bottom:10px;
+            color:#0077b6;
+        }
+
+        input, select{
+            width:100%;
+            padding:10px;
+            margin-top:5px;
+            border-radius:8px;
+            border:1px solid #ccc;
+        }
+
+        button{
+            margin-top:10px;
+            padding:10px;
+            border:none;
+            background:#0077b6;
+            color:white;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#023e8a;
+        }
+
+        .full{
+            grid-column: span 2;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="settings-container">
+
+    <div class="settings-title">
+        <i class="fas fa-cog"></i> Profile Settings
+    </div>
+
+    <a href="/dashboard" class="back-btn">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert {{ category }}">
+                 {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="/settings/profile" enctype="multipart/form-data">
+
+        <div class="settings-grid">
+
+            <!-- 1. Name -->
+            <div class="card">
+                <h4>Name</h4>
+                <input type="text" name="name" value="{{ user.name }}">
+            </div>
+
+            <!-- 2. Phone -->
+            <div class="card">
+                <h4>Phone Number</h4>
+                <input type="text" name="phone" value="{{ user.phone or '' }}">
+            </div>
+
+            <!-- 3. Profile Picture -->
+            <div class="card">
+                <h4>Profile Picture</h4>
+                <input type="file" name="image" accept="image/*">
+            </div>
+
+            <!-- 4. Department (admin only) -->
+            {% if role == 'admin' %}
+            <div class="card">
+                <h4>Department</h4>
+                <input type="text" name="department" value="{{ user.department or '' }}">
+            </div>
+            {% endif %}
+
+            <!-- 5. Password -->
+            <div class="card full">
+                <h4>Change Password</h4>
+            
+                <small style="color: gray;">
+                    Leave blank if you don’t want to change your password
+                </small>
+            
+                <input type="password" name="current_password" placeholder="Current Password">
+            
+                <input type="password" name="new_password" placeholder="New Password">
+            
+                <input type="password" name="confirm_password" placeholder="Confirm Password">
+            </div>
+            
+
+            <!-- 6. Theme / Mode -->
+            <div class="card full">
+                <h4>Display Mode</h4>
+                <select name="theme">
+                    <option value="light" {% if user.theme == 'light' %}selected{% endif %}>Light Mode</option>
+                    <option value="dark" {% if user.theme == 'dark' %}selected{% endif %}>Dark Mode</option>
+                </select>
+            </div>
+
+        </div>
+
+        <button type="submit">Save Changes</button>
+
+    </form>
+
+</div>
+
+<script>
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(alert => {
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        });
+    }, 3000);
+</script>
+
+</body>
+</html>

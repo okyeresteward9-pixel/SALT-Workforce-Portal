@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Employee</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body class="bg-gray-100 flex">
+
+  <!-- Sidebar -->
+  <div class="w-64 bg-blue-900 text-white min-h-screen flex flex-col">
+      <div class="text-center py-6">
+          <img src="{{ url_for('static', filename='salt-logo.png') }}" class="w-24 mx-auto mb-2">
+          <p class="text-sm opacity-80">Workforce Portal</p>
+      </div>
+      <ul class="flex-1">
+          <li class="px-6 py-3 hover:bg-blue-800"><a href="/dashboard"><i class="fas fa-home mr-2"></i><span>Dashboard</span></a></li>
+          <li class="px-6 py-3 bg-blue-700"><a href="/admin/employees"><i class="fas fa-users mr-2"></i><span>Employees</span></a></li>
+          <li class="px-6 py-3 hover:bg-blue-800"><a href="/admin/tasks"><i class="fas fa-table mr-2"></i><span>Task Board</span></a></li>
+          <li class="px-6 py-3 hover:bg-blue-800"><a href="/admin/assign_task"><i class="fas fa-plus mr-2"></i><span>Assign Task</span></a></li>
+          <li class="px-6 py-3 hover:bg-blue-800"><a href="/admin/announcements"><i class="fas fa-bullhorn mr-2"></i><span>Announcements</span></a></li>
+          <li class="px-6 py-3 hover:bg-blue-800"><a href="/logout"><i class="fas fa-sign-out-alt mr-2"></i><span>Logout</span></a></li>
+      </ul>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 p-8">
+      <!-- Topbar -->
+      <div class="flex justify-between items-center mb-8">
+          <h1 class="text-2xl font-semibold text-gray-800">Add Employee</h1>
+          <a href="/admin/employees" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+              <i class="fas fa-arrow-left mr-2"></i>Back to List
+          </a>
+      </div>
+
+      <!-- Form Card -->
+      <div class="bg-white rounded-xl shadow-lg p-8 max-w-md mx-auto border border-gray-200">
+          <form method="POST" class="space-y-6">
+              <div>
+                  <label class="block text-gray-700 font-medium mb-1">Name</label>
+                  <input type="text" name="name" required
+                         class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+              </div>
+
+              <div>
+                  <label class="block text-gray-700 font-medium mb-1">Email</label>
+                  <input type="email" name="email" required
+                         class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+              </div>
+
+              <div>
+                  <label class="block text-gray-700 font-medium mb-1">Password</label>
+                  <input type="password" name="password" required
+                         class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+              </div>
+
+              <div>
+                  <label class="block text-gray-700 font-medium mb-1">Role</label>
+                  <select name="role"
+                          class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+                      <option value="staff">Staff</option>
+                      <option value="admin">Admin</option>
+                  </select>
+              </div>
+
+              <button type="submit"
+                      class="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition flex justify-center items-center">
+                  <i class="fas fa-user-plus mr-2"></i> Create Employee
+              </button>
+          </form>
+      </div>
+  </div>
+
+</body>
+</html>

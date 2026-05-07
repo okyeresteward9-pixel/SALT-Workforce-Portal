@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance History</title>
+
+  <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<div class="wrapper">
+
+  <!-- ✅ SIDEBAR (YOUR SYSTEM) -->
+  <div class="sidebar">
+
+    <div class="logo">
+      <img src="{{ url_for('static', filename='salt-logo.png') }}">
+      <div class="portal-name">SALT Workforce</div>
+    </div>
+
+    <ul>
+      <li><a href="/dashboard">🏠 <span>Dashboard</span></a></li>
+
+      <li class="active">
+        <a href="/attendance">📊 <span>Attendance</span></a>
+      </li>
+    </ul>
+
+    <!-- Bottom -->
+    <div class="sidebar-bottom">
+      <a href="/logout"> <span>Logout</span></a>
+    </div>
+
+  </div>
+
+
+  <!-- ✅ MAIN -->
+  <div class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <h2>Attendance</h2>
+
+      <div class="topbar-right">
+        <a href="/export/attendance" class="btn green">
+          📥 Export Excel
+        </a>
+      </div>
+    </div>
+
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- STATS -->
+      <div class="stats">
+
+        <div class="card">
+          <small>Total Records</small>
+          <p>{{ records|length }}</p>
+        </div>
+
+        <div class="card">
+          <small>Last Clock In</small>
+          {% if records and records[0].clock_in_time %}
+            <p>{{ records[0].clock_in_time }}</p>
+            <small>{{ records[0].clock_in_date }}</small>
+          {% else %}
+            <p>--</p>
+          {% endif %}
+        </div>
+
+        <div class="card">
+          <small>Last Clock Out</small>
+          {% if records and records[0].clock_out_time and not records[0].is_active %}
+            <p style="color:red;">{{ records[0].clock_out_time }}</p>
+            <small>{{ records[0].clock_out_date }}</small>
+          {% else %}
+            <p style="color:orange;">On duty</p>
+          {% endif %}
+        </div>
+
+      </div>
+
+
+      <!-- TABLE -->
+      <div class="working-section">
+
+        <h3 style="margin-bottom:15px;">Attendance History</h3>
+
+        {% if records %}
+        <table>
+
+          <thead>
+            <tr>
+              {% if role == 'admin' %}
+                <th>Employee</th>
+              {% endif %}
+              <th>Clock In</th>
+              <th>Clock Out</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            {% for record in records %}
+            <tr>
+
+              {% if role == 'admin' %}
+              <td>{{ record.name }}</td>
+              {% endif %}
+
+              <td>
+                <strong>{{ record.clock_in_time or '--' }}</strong><br>
+                <small>{{ record.clock_in_date }}</small>
+              </td>
+
+              <td>
+                {% if not record.is_active %}
+                  <strong>{{ record.clock_out_time }}</strong><br>
+                  <small>{{ record.clock_out_date }}</small>
+                {% else %}
+                  <span style="color:orange;">On duty</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if record.is_active %}
+                  <span class="badge active">Active</span>
+                {% else %}
+                  <span class="badge completed">Completed</span>
+                {% endif %}
+              </td>
+
+            </tr>
+            {% endfor %}
+
+          </tbody>
+
+        </table>
+
+        {% else %}
+          <p style="text-align:center; color:#777;">No attendance records available</p>
+        {% endif %}
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>
