@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SALTY Chat</title>
+
+    <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            font-family: ui-sans-serif, system-ui;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+
+    </style>
+</head>
+
+<div id="emoji-picker"
+     class="hidden absolute bottom-24 right-10 bg-white/95 backdrop-blur-lg border border-gray-200 rounded-3xl shadow-2xl p-4 w-72">
+
+    <div class="grid grid-cols-6 gap-3 text-2xl">
+
+        <span class="emoji cursor-pointer hover:scale-125 transition">😀</span>
+        <span class="emoji cursor-pointer">😂</span>
+        <span class="emoji cursor-pointer">😍</span>
+        <span class="emoji cursor-pointer">🔥</span>
+        <span class="emoji cursor-pointer">👍</span>
+        <span class="emoji cursor-pointer">🙏</span>
+        <span class="emoji cursor-pointer">🎉</span>
+        <span class="emoji cursor-pointer">❤️</span>
+        <span class="emoji cursor-pointer">😎</span>
+        <span class="emoji cursor-pointer">😭</span>
+        <span class="emoji cursor-pointer">😅</span>
+        <span class="emoji cursor-pointer">💯</span>
+
+    </div>
+
+</div>
+
+<body class="bg-[#f4f7fb]">
+
+    <div class="flex h-screen overflow-hidden">
+    
+        <!-- SIDEBAR -->
+        <aside class="w-80 bg-white/90 backdrop-blur-lg border-r border-gray-200 flex flex-col shadow-xl">
+    
+            <!-- HEADER -->
+            <div class="p-6 border-b border-gray-100">
+    
+                <div class="flex items-center gap-3">
+    
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg">
+                        <span class="text-white font-bold text-lg">S</span>
+                    </div>
+    
+                    <div>
+                        <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">
+                            SALTY Chat
+                        </h1>
+    
+                        <p class="text-sm text-gray-400">
+                            Team Communication Hub
+                        </p>
+                    </div>
+    
+                </div>
+    
+                <!-- BACK BUTTON -->
+                <a href="/dashboard"
+                   class="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 transition">
+    
+                    <span class="text-lg">←</span>
+                    Back to Dashboard
+    
+                </a>
+    
+            </div>
+    
+            <!-- SEARCH -->
+            <div class="px-4 pt-4">
+    
+                <div class="relative">
+    
+                    <input
+                        type="text"
+                        id="search-users"
+                        placeholder="Search users..."
+                        class="w-full bg-gray-100 border border-transparent focus:border-blue-400 focus:ring-4 focus:ring-blue-100 rounded-2xl px-4 py-3 text-sm outline-none transition"
+                    >
+    
+                </div>
+    
+            </div>
+    
+            <!-- USERS -->
+            <div id="users-list"
+                 class="overflow-y-auto flex-1 px-3 py-4 space-y-2">
+    
+                {% for user in users %}
+    
+                <a href="/messages/{{ user.id }}"
+                   class="user-item group flex items-center gap-4 p-4 rounded-2xl hover:bg-blue-50 transition-all duration-200">
+
+    
+                    <!-- AVATAR -->
+                    <div class="relative">
+    
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md">
+                            {{ user.name[0] }}
+                        </div>
+    
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+    
+                    </div>
+    
+                    <!-- INFO -->
+                    <div class="flex-1 min-w-0">
+    
+                        <div class="flex items-center justify-between">
+    
+                            <p class="font-semibold text-gray-800 truncate">
+                                {{ user.name }}
+                            </p>
+    
+                            <span class="text-xs text-gray-300">
+                                now
+                            </span>
+    
+                        </div>
+    
+                        <p class="text-sm text-gray-400 truncate mt-1">
+                            Start conversation...
+                        </p>
+    
+                    </div>
+    
+                </a>
+    
+                {% endfor %}
+    
+            </div>
+    
+        </aside>
+    
+        <!-- CHAT AREA -->
+        <main class="flex-1 flex flex-col bg-gradient-to-b from-gray-50 to-white">
+    
+            {% if receiver %}
+    
+            <!-- CHAT HEADER -->
+            <div class="bg-white/80 backdrop-blur-md border-b border-gray-200 px-8 py-5 flex items-center justify-between shadow-sm">
+    
+                <div class="flex items-center gap-4">
+    
+                    <div class="relative">
+    
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center font-bold shadow-md">
+                            {{ receiver.name[0] }}
+                        </div>
+    
+                        <div class="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-green-500 border-2 border-white"></div>
+    
+                    </div>
+    
+                    <div>
+    
+                        <h2 class="font-bold text-gray-800 text-lg">
+                            {{ receiver.name }}
+                        </h2>
+    
+                        <p class="text-sm text-green-500 font-medium">
+                            Active now
+                        </p>
+    
+                    </div>
+    
+                </div>
+    
+                <div class="hidden md:flex items-center gap-3 text-gray-400 text-sm">
+    
+                    <div class="w-2 h-2 rounded-full bg-green-500"></div>
+    
+                    Secure Internal Chat
+    
+                </div>
+    
+            </div>
+    
+            <!-- CHAT BODY -->
+            <div id="chat-box"
+                 class="flex-1 overflow-y-auto px-8 py-6 space-y-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+    
+            </div>
+    
+            <!-- INPUT -->
+            <div class="bg-white border-t border-gray-200 px-6 py-5">
+    
+                <form id="chat-form"
+                      method="POST"
+                      class="flex items-center gap-3">
+    
+                    <!-- INPUT CONTAINER -->
+                    <div class="flex-1 flex items-center bg-gray-100 border border-gray-200 rounded-full px-4 py-2 focus-within:ring-4 focus-within:ring-blue-100 focus-within:border-blue-400 transition">
+    
+                        <button
+                            type="button"
+                            id="emoji-btn"
+                            class="text-2xl mr-2 hover:scale-110 transition">
+                            😊
+                        </button>
+    
+                        <input
+                            type="text"
+                            name="message"
+                            id="message-input"
+                            required
+                            autocomplete="off"
+                            placeholder="Type your message..."
+                            class="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400 px-2"
+                        >
+    
+                    </div>
+    
+                    <!-- SEND BUTTON -->
+                    <button
+                        type="submit"
+                        class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 hover:shadow-xl text-white px-7 py-3 rounded-full font-semibold transition-all duration-200">
+    
+                        Send
+    
+                    </button>
+    
+                </form>
+    
+            </div>
+    
+            {% else %}
+    
+            <!-- EMPTY STATE -->
+            <div class="flex-1 flex flex-col items-center justify-center text-center px-6">
+    
+                <div class="w-28 h-28 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-5xl shadow-2xl mb-6">
+                    💬
+                </div>
+    
+                <h2 class="text-4xl font-extrabold text-gray-700">
+                    Welcome to SALTY Chat
+                </h2>
+    
+                <p class="mt-4 text-gray-400 max-w-md leading-relaxed">
+                    Communicate with your team securely and efficiently in one centralized workspace.
+                </p>
+    
+            </div>
+    
+            {% endif %}
+    
+        </main>
+    
+    </div>
+{% if receiver %}
+
+<script>
+
+const chatBox = document.getElementById("chat-box");
+const form = document.getElementById("chat-form");
+const messageInput = document.getElementById("message-input");
+
+// -------------------------
+// LOAD MESSAGES
+// -------------------------
+function loadMessages() {
+
+    fetch("/get_messages/{{ receiver.id }}")
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        const wasAtBottom =
+            chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 100;
+
+        chatBox.innerHTML = "";
+
+        data.forEach(chat => {
+
+            const isMine =
+                chat.sender_id == {{ session['user_id'] }};
+
+            const wrapper = document.createElement("div");
+
+            wrapper.className = isMine
+                ? "flex justify-end"
+                : "flex justify-start";
+
+                wrapper.innerHTML = `
+
+                <div class="${
+                    isMine
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white ml-auto'
+                    : 'bg-white border border-gray-200 text-gray-800'
+                } px-5 py-3 rounded-3xl max-w-md shadow-sm">
+
+                    <div class="flex items-end gap-2">
+
+                        <span class="text-sm leading-relaxed break-words">
+                            ${chat.message}
+                        </span>
+
+                        ${
+                            isMine
+                            ? `
+                            <span class="text-[10px] opacity-70 whitespace-nowrap">
+                                ${chat.seen == 1 ? '✔✔' : '✔'}
+                            </span>
+                            `
+                            : ''
+                        }
+
+                    </div>
+
+                </div>
+
+                `;
+
+            chatBox.appendChild(wrapper);
+
+        });
+
+        // auto scroll
+        if (wasAtBottom) {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+    });
+
+}
+
+// -------------------------
+// SEND MESSAGE
+// -------------------------
+form.addEventListener("submit", function(e){
+
+    e.preventDefault();
+
+    const formData = new FormData(form);
+
+    fetch("", {
+        method: "POST",
+        body: formData
+    })
+
+    .then(() => {
+
+        messageInput.value = "";
+
+        loadMessages();
+
+    });
+
+});
+
+// -------------------------
+// INITIAL LOAD
+// -------------------------
+loadMessages();
+
+// -------------------------
+// AUTO REFRESH
+// -------------------------
+setInterval(loadMessages, 2000);
+
+</script>
+
+<script>
+
+    const emojiBtn = document.getElementById("emoji-btn");
+    const emojiPicker = document.getElementById("emoji-picker");
+    
+    emojiBtn.addEventListener("click", () => {
+        emojiPicker.classList.toggle("hidden");
+    });
+    
+    document.querySelectorAll(".emoji").forEach(emoji => {
+    
+        emoji.addEventListener("click", () => {
+    
+            messageInput.value += emoji.innerText;
+    
+            emojiPicker.classList.add("hidden");
+    
+            messageInput.focus();
+    
+        });
+    
+    });
+    
+</script>
+
+<script>
+
+    const searchInput = document.getElementById("search-users");
+    
+    searchInput.addEventListener("keyup", function () {
+    
+        const value = this.value.toLowerCase();
+    
+        const users = document.querySelectorAll(".user-item");
+    
+        users.forEach(user => {
+    
+            const text = user.innerText.toLowerCase();
+    
+            if (text.includes(value)) {
+                user.style.display = "flex";
+            } else {
+                user.style.display = "none";
+            }
+    
+        });
+    
+    });
+    
+</script>
+
+{% endif %}
+
+</body>
+</html>

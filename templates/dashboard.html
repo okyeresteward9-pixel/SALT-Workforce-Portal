@@ -236,12 +236,20 @@
             </li>
             <li>
                 <a href="/tasks">
-                    <i class="fas fa-tasks"></i> <span>My Tasks</span>
+                    <i class="fas fa-tasks"></i>
+                    <span>My Tasks</span>
+                </a>
+            </li>
+            
+            <li class="{% if request.path.startswith('/messages') %}active{% endif %}">
+                <a href="/messages">
+                    <i class="fas fa-comments"></i>
+                    <span>SALT Connect</span>
                 </a>
             </li>
             <li>
                 <a href="#">
-                    <i class="fas fa-calendar-alt"></i> <span>Leave</span>
+                    <i class="fas fa-calendar-alt"></i> <span>-----</span>
                 </a>
             </li>
             <li>
@@ -253,10 +261,11 @@
 
         <!-- 🔽 SETTINGS GOES HERE (BOTTOM FIXED AREA) -->
         <div class="sidebar-bottom">
-            <a href="/settings/profile" 
-                <i class="fas fa-cog"></i> <span>settings</span>
+            <a href="/settings/profile">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
             </a>
-        </div>  
+        </div>
 
     </div>
 
@@ -274,14 +283,68 @@
         
             <!-- RIGHT SIDE GROUP -->
             <div class="topbar-right">
-        
-                <div class="notification">
-                    <a href="/notifications">
-                        <i class="fas fa-bell"></i>
-                        {% if notification_count > 0 %}
-                        <span class="badge">{{ notification_count }}</span>
-                        {% endif %}
+                <div class="topbar-links">
+
+                    <!-- SALT Website -->
+                    <a href="https://saltuniversity.edu.gh" target="_blank" title="SALT Website">
+                        <i class="fas fa-globe"></i>
                     </a>
+                
+                    <!-- Webmail -->
+                    <a href="https://webmail.saltuniversity.edu.gh" target="_blank" title="Webmail">
+                        <i class="fas fa-envelope"></i>
+                    </a>
+                
+                    <!-- E-Campus -->
+                    <a href="https://saltuniversity.edu.gh/ecampus/" target="_blank" title="E-Campus">
+                        <i class="fas fa-graduation-cap"></i>
+                    </a>
+                
+                </div>
+                <!-- NOTIFICATION -->
+                <div class="notification-wrapper">
+
+                    <!-- Bell -->
+                    <button id="notificationBtn" class="notification-btn">
+
+                        <i class="fas fa-bell"></i>
+
+                        {% if notification_count > 0 %}
+                        <span id="notificationBadge" class="notification-badge">
+                            {{ notification_count }}
+                        </span>
+                        {% endif %}
+
+                    </button>
+
+                    <!-- DROPDOWN -->
+                    <div id="notificationDropdown" class="notification-dropdown hidden">
+
+                        <!-- HEADER -->
+                        <div class="notification-header">
+
+                            <div>
+                                <h3>Notifications</h3>
+                                <p>Latest updates</p>
+                            </div>
+
+                            <button id="markAllRead">
+                                Mark all read
+                            </button>
+
+                        </div>
+
+                        <!-- LIST -->
+                        <div id="notificationList" class="notification-list">
+
+                            <div class="empty-note">
+                                Loading...
+                            </div>
+
+                        </div>
+
+                    </div>
+
                 </div>
         
                 <div class="profile-avatar">
@@ -784,8 +847,166 @@ data: [{{ tasks_completed }}, {{ tasks_pending }}]
     }
     
     setInterval(updateDashboard, 5000);
-    </script>
+</script>
 
+<script>
+
+    document.addEventListener("DOMContentLoaded", () => {
+    
+        const notificationBtn =
+            document.getElementById("notificationBtn");
+    
+        const dropdown =
+            document.getElementById("notificationDropdown");
+    
+        const notificationList =
+            document.getElementById("notificationList");
+    
+        const markAllRead =
+            document.getElementById("markAllRead");
+    
+        const badge =
+            document.getElementById("notificationBadge");
+    
+        /* =========================
+           TOGGLE DROPDOWN
+        ========================= */
+    
+        notificationBtn.addEventListener("click", async (e) => {
+    
+            e.stopPropagation();
+    
+            dropdown.classList.toggle("hidden");
+    
+            if (!dropdown.classList.contains("hidden")) {
+    
+                loadNotifications();
+            }
+        });
+    
+        /* =========================
+           LOAD NOTIFICATIONS
+        ========================= */
+    
+        async function loadNotifications(){
+    
+            notificationList.innerHTML = `
+                <div class="empty-note">
+                    Loading...
+                </div>
+            `;
+    
+            try{
+    
+                const response =
+                    await fetch("/api/notifications");
+    
+                const data =
+                    await response.json();
+    
+                if(data.length === 0){
+    
+                    notificationList.innerHTML = `
+                        <div class="empty-note">
+                            No notifications yet
+                        </div>
+                    `;
+    
+                    return;
+                }
+    
+                notificationList.innerHTML = "";
+    
+                data.forEach(note => {
+    
+                    notificationList.innerHTML += `
+    
+                        <div class="notification-item">
+    
+                            <div class="
+                                notification-dot
+                                ${note.is_read == 0 ? 'unread' : 'read'}
+                            "></div>
+    
+                            <div class="notification-content">
+    
+                                <div class="notification-message">
+                                    ${note.message}
+                                </div>
+    
+                                <div class="notification-time">
+                                    ${note.created_at}
+                                </div>
+    
+                            </div>
+    
+                        </div>
+    
+                    `;
+                });
+    
+            }catch(err){
+    
+                notificationList.innerHTML = `
+                    <div class="empty-note">
+                        Failed to load notifications
+                    </div>
+                `;
+            }
+        }
+    
+        /* =========================
+           MARK ALL READ
+        ========================= */
+    
+        markAllRead.addEventListener("click", async () => {
+    
+            try{
+    
+                await fetch(
+                    "/api/notifications/mark-read",
+                    {
+                        method: "POST"
+                    }
+                );
+    
+                /* REMOVE BADGE */
+                if(badge){
+                    badge.style.display = "none";
+                }
+    
+                /* UPDATE DOTS */
+                document
+                    .querySelectorAll(".notification-dot")
+                    .forEach(dot => {
+    
+                        dot.classList.remove("unread");
+                        dot.classList.add("read");
+                    });
+    
+            }catch(err){
+                console.log(err);
+            }
+        });
+    
+        /* =========================
+           CLOSE OUTSIDE CLICK
+        ========================= */
+    
+        document.addEventListener("click", (e) => {
+    
+            if(
+                !notificationBtn.contains(e.target)
+                &&
+                !dropdown.contains(e.target)
+            ){
+                dropdown.classList.add("hidden");
+            }
+        });
+    
+    });
+    
+</script>
 
 </body>
 </html>

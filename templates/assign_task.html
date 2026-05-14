@@ -1,53 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assign Task</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Assign Task</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-  <div class="w-full max-w-md bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-    <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Assign Task</h2>
+<body class="bg-gray-100">
 
-    <form method="POST" class="space-y-5">
+    <div class="flex min-h-screen">
 
-      <div>
-        <label class="block text-gray-700 font-medium mb-1">Task Title</label>
-        <input type="text" name="title" required
-               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
-      </div>
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-blue-900 text-white flex flex-col">
 
-      <div>
-        <label class="block text-gray-700 font-medium mb-1">Description</label>
-        <textarea name="description" rows="4"
-                  class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"></textarea>
-      </div>
+            <!-- LOGO -->
+            <div class="p-6 border-b border-blue-800">
+                <h2 class="text-2xl font-bold">SALT Portal</h2>
+                <p class="text-sm text-blue-200">Admin Panel</p>
+            </div>
 
-      <div>
-        <label class="block text-gray-700 font-medium mb-1">Assign To</label>
-        <select name="assigned_to"
-                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
-          {% for emp in employees %}
-          <option value="{{ emp[0] }}">{{ emp[1] }}</option>
-          {% endfor %}
-        </select>
-      </div>
+            <!-- MENU -->
+            <nav class="flex-1 p-4 space-y-2">
 
-      <div>
-        <label class="block text-gray-700 font-medium mb-1">Deadline</label>
-        <input type="date" name="deadline"
-               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
-      </div>
+                <a href="/dashboard"
+                   class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-800 transition">
+                    <i class="fas fa-home"></i>
+                    Dashboard
+                </a>
 
-      <button type="submit"
-              class="w-full py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition">
-        Create Task
-      </button>
+                <a href="/admin/tasks"
+                   class="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-700">
+                    <i class="fas fa-list-check"></i>
+                    Tasks
+                </a>
 
-    </form>
-  </div>
+            </nav>
+
+            <!-- LOGOUT -->
+            <div class="p-4 border-t border-blue-800">
+                <a href="/logout"
+                   class="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 p-8">
+
+            <!-- TOP -->
+            <div class="flex justify-between items-center mb-8">
+
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">
+                        Assign New Task
+                    </h1>
+
+                    <p class="text-gray-500 mt-1">
+                        Create and assign tasks to employees
+                    </p>
+                </div>
+
+                <a href="/admin/tasks"
+                   class="bg-gray-800 text-white px-5 py-3 rounded-xl hover:bg-black transition">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Back to Tasks
+                </a>
+
+            </div>
+
+            <!-- FORM CARD -->
+            <div class="bg-white rounded-2xl shadow-lg p-8 max-w-4xl">
+
+                <form method="POST" class="space-y-6">
+
+                    <!-- TITLE -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            Task Title
+                        </label>
+
+                        <input type="text"
+                               name="title"
+                               required
+                               placeholder="Enter task title"
+                               class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- DESCRIPTION -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            Description
+                        </label>
+
+                        <textarea name="description"
+                                  rows="5"
+                                  placeholder="Enter task description"
+                                  class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+
+                    <!-- COMMENT / NOTE -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            Comment / Note
+                        </label>
+
+                        <textarea name="note"
+                                  rows="3"
+                                  placeholder="Add instructions, comments or notes..."
+                                  class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+
+                    <!-- GRID -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        <!-- ASSIGN -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Assign To
+                            </label>
+
+                            <select name="assigned_to"
+                                    class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                                {% for emp in employees %}
+                                <option value="{{ emp[0] }}">
+                                    {{ emp[1] }}
+                                </option>
+                                {% endfor %}
+
+                            </select>
+                        </div>
+
+                        <!-- DEADLINE -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Deadline
+                            </label>
+
+                            <input type="date"
+                                   name="deadline"
+                                   class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                    </div>
+
+                    <!-- BUTTON -->
+                    <div class="pt-4">
+
+                        <button type="submit"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-xl transition shadow-md">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            Assign Task
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </main>
+
+    </div>
 
 </body>
 </html>
