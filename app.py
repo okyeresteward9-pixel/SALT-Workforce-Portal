@@ -85,6 +85,15 @@ def init_db():
         created_at TEXT
     )''')
 
+    c.execute('''CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER,
+        receiver_id INTEGER,
+        message TEXT,
+        created_at TEXT,
+        is_read INTEGER DEFAULT 0
+    )''')
+
     # -------------------------
     # AUTO-FIX MISSING COLUMNS
     # -------------------------
@@ -121,6 +130,46 @@ def init_db():
         c.execute("UPDATE tasks SET status='Pending' WHERE status IS NULL")
     except:
         pass
+
+    try:
+        c.execute("ALTER TABLE messages ADD COLUMN seen INTEGER DEFAULT 0")
+    except:
+        pass
+
+    try:
+        c. execute("ALTER TABLE tasks ADD COLUMN created_at TEXT;")
+    except:
+        pass
+
+    try:
+        c. execute("ALTER TABLE tasks ADD COLUMN completed_at TEXT;")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE tasks ADD COLUMN carried_forward INTEGER DEFAULT 0;")
+    except:
+        pass
+    try:
+        c. execute("ALTER TABLE tasks ADD COLUMN original_deadline TEXT;")
+    except:
+        pass
+    # Add note and reply columns safely
+    try:
+        c.execute("ALTER TABLE tasks ADD COLUMN note TEXT")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE tasks ADD COLUMN reply TEXT")
+    except:
+        pass
+    
+    try:
+        c.execute("ALTER TABLE tasks ADD COLUMN admin_reply TEXT")
+    except:
+        pass
+    
     conn.commit()
     conn.close()
 
@@ -563,6 +612,56 @@ def get_notification_count(user_id):
     conn.close()
     return count
 
+# -------------------------
+# Get notifications (AJAX)
+# -------------------------
+@app.route('/api/notifications')
+def api_notifications():
+
+    if 'user_id' not in session:
+        return jsonify([])
+
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("""
+    SELECT id, message, created_at, is_read
+    FROM notifications
+    WHERE user_id=?
+    ORDER BY created_at DESC
+    LIMIT 10
+    """, (session['user_id'],))
+
+    notes = c.fetchall()
+
+    conn.close()
+
+    return jsonify([dict(n) for n in notes])
+
+
+# -------------------------
+# Mark all notifications read
+# -------------------------
+@app.route('/api/notifications/mark-read', methods=['POST'])
+def mark_notifications_read():
+
+    if 'user_id' not in session:
+        return jsonify({"success": False})
+
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("""
+    UPDATE notifications
+    SET is_read=1
+    WHERE user_id=?
+    """, (session['user_id'],))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True})
+
 @app.route('/attendance')
 def attendance():
     if 'user_id' not in session:
@@ -697,10 +796,14 @@ def admin_tasks():
             tasks.id,
             tasks.title,
             tasks.description,
+            tasks.note,
+            tasks.reply,
+            tasks.admin_reply,
             tasks.deadline,
             tasks.status,
             tasks.created_by,
             tasks.assigned_to,
+            tasks.carried_forward,
             employees.name as employee_name
         FROM tasks
         LEFT JOIN employees ON tasks.assigned_to = employees.id
@@ -713,10 +816,14 @@ def admin_tasks():
             tasks.id,
             tasks.title,
             tasks.description,
+            tasks.note,
+            tasks.reply,
+            tasks.admin_reply,
             tasks.deadline,
             tasks.status,
             tasks.created_by,
             tasks.assigned_to,
+            tasks.carried_forward,
             employees.name as employee_name
         FROM tasks
         LEFT JOIN employees ON tasks.assigned_to = employees.id
@@ -748,6 +855,44 @@ def admin_tasks():
         today=today
     )
 
+@app.route('/admin/reply_task/<int:id>', methods=['POST'])
+def admin_reply_task(id):
+
+    if 'role' not in session or session['role'] != 'admin':
+        return "Access Denied"
+
+    admin_reply = request.form['admin_reply']
+
+    conn = sqlite3.connect("database.db")
+    c = conn.cursor()
+
+    c.execute("""
+    UPDATE tasks
+    SET admin_reply=?
+    WHERE id=?
+    """, (admin_reply, id))
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/admin/tasks')
+
+@app.route('/delete_task/<int:task_id>')
+def delete_task_route(task_id):
+
+    if 'role' not in session or session['role'] != 'admin':
+        return "Access Denied"
+
+    conn = sqlite3.connect("database.db")
+    c = conn.cursor()
+
+    c.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/admin/tasks')
+
 @app.route('/admin/assign_task', methods=['GET','POST'])
 def assign_task():
     if 'role' not in session or session['role'] != 'admin':
@@ -757,22 +902,41 @@ def assign_task():
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
+    # Add note/comment column if not already existing
+    try:
+        c.execute("ALTER TABLE tasks ADD COLUMN note TEXT")
+    except:
+        pass
+
     if request.method == 'POST':
         title = request.form['title']
         description = request.form['description']
+        note = request.form['note']
         assigned_to = request.form['assigned_to']
         deadline = request.form['deadline']
 
         c.execute("""
-        INSERT INTO tasks (title,description,assigned_to,deadline,status)
-        VALUES (?,?,?,?,?)
-        """,(title,description,assigned_to,deadline,"Pending"))
+        INSERT INTO tasks 
+        (title, description, note, assigned_to, deadline, status)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            title,
+            description,
+            note,
+            assigned_to,
+            deadline,
+            "Pending"
+        ))
 
         # notification
         c.execute("""
         INSERT INTO notifications (user_id,message,created_at)
         VALUES (?,?,?)
-        """,(assigned_to,f"New Task: {title}",datetime.now().isoformat()))
+        """,(
+            assigned_to,
+            f"New Task Assigned: {title}",
+            datetime.now().isoformat()
+        ))
 
         conn.commit()
         conn.close()
@@ -881,35 +1045,159 @@ def delete_employee(id):
 
     return redirect('/admin/employees')
 
-@app.route('/notifications')
-def notifications():
+
+@app.route('/messages', methods=['GET', 'POST'])
+@app.route('/messages/<int:user_id>', methods=['GET', 'POST'])
+def messages(user_id=None):
+
     if 'user_id' not in session:
         return redirect('/')
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
+    conn = get_db()
+    c = conn.cursor()
+
+    # -------------------------
+    # Send message
+    # -------------------------
+    if request.method == 'POST' and user_id:
+
+        message = request.form['message']
+
+        c.execute("""
+            INSERT INTO messages (
+                sender_id,
+                receiver_id,
+                message,
+                created_at
+            )
+            VALUES (?,?,?,?)
+        """, (
+            session['user_id'],
+            user_id,
+            message,
+            datetime.now().isoformat()
+        ))
+
+        # notification
+        c.execute("""
+            INSERT INTO notifications (
+                user_id,
+                message,
+                created_at
+            )
+            VALUES (?,?,?)
+        """, (
+            user_id,
+            f"New message from {session['name']}",
+            datetime.now().isoformat()
+        ))
+
+        conn.commit()
+
+        return redirect(f'/messages/{user_id}')
+
+    # -------------------------
+    # Get all users
+    # -------------------------
+    c.execute("""
+        SELECT id, name
+        FROM employees
+        WHERE id != ?
+    """, (session['user_id'],))
+
+    users = c.fetchall()
+
+    chats = []
+    receiver = None
+
+    # -------------------------
+    # Load selected chat
+    # -------------------------
+    if user_id:
+
+        c.execute("""
+            SELECT *
+            FROM messages
+            WHERE
+            (sender_id=? AND receiver_id=?)
+            OR
+            (sender_id=? AND receiver_id=?)
+            ORDER BY created_at ASC
+        """, (
+            session['user_id'],
+            user_id,
+            user_id,
+            session['user_id']
+        ))
+
+        chats = c.fetchall()
+
+        c.execute("""
+            SELECT *
+            FROM employees
+            WHERE id=?
+        """, (user_id,))
+
+        receiver = c.fetchone()
+        # mark received messages as seen
+        c.execute("""
+            UPDATE messages
+            SET seen=1
+            WHERE receiver_id=? AND sender_id=?
+        """, (
+            session['user_id'],
+            user_id
+        ))
+
+        conn.commit()
+    conn.close()
+
+    return render_template(
+        "messages.html",
+        users=users,
+        chats=chats,
+        receiver=receiver
+    )
+
+
+@app.route('/get_messages/<int:user_id>')
+def get_messages(user_id):
+
+    if 'user_id' not in session:
+        return jsonify([])
+
+    conn = get_db()
     c = conn.cursor()
 
     c.execute("""
-    SELECT id,message,created_at,is_read
-    FROM notifications
-    WHERE user_id=?
-    ORDER BY created_at DESC
-    """,(session['user_id'],))
+        SELECT *
+        FROM messages
+        WHERE
+        (sender_id=? AND receiver_id=?)
+        OR
+        (sender_id=? AND receiver_id=?)
+        ORDER BY created_at ASC
+    """, (
+        session['user_id'],
+        user_id,
+        user_id,
+        session['user_id']
+    ))
 
-    notes = c.fetchall()
+    chats = c.fetchall()
 
-    # mark as read
-    c.execute("""
-    UPDATE notifications
-    SET is_read=1
-    WHERE user_id=?
-    """,(session['user_id'],))
+    messages = []
 
-    conn.commit()
+    for chat in chats:
+        messages.append({
+            "message": chat["message"],
+            "sender_id": chat["sender_id"],
+            "seen": chat["seen"]
+        })
+
     conn.close()
 
-    return render_template("notifications.html", notes=notes)
+    return jsonify(messages)
 
 @app.route('/admin/announcements', methods=['GET', 'POST'])
 def admin_announcements():
@@ -1039,6 +1327,7 @@ def delete_announcement(id):
 
 @app.route('/tasks')
 def tasks():
+
     if 'user_id' not in session:
         return redirect('/')
 
@@ -1046,16 +1335,302 @@ def tasks():
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
+    today = datetime.now().date()
+
+    # -------------------------
+    # AUTO MOVE OVERDUE TASKS
+    # -------------------------
     c.execute("""
-    SELECT id, title, description, deadline, status, created_by, assigned_to
+    SELECT id, deadline, status
     FROM tasks
     WHERE assigned_to=?
+    AND status != 'Completed'
+    """, (session['user_id'],))
+
+    pending_tasks = c.fetchall()
+
+    for task in pending_tasks:
+
+        if task['deadline']:
+
+            try:
+
+                deadline = datetime.strptime(
+                    task['deadline'],
+                    "%Y-%m-%d"
+                ).date()
+
+                # overdue
+                if deadline < today:
+
+                    new_deadline = deadline + timedelta(days=7)
+
+                    c.execute("""
+                    UPDATE tasks
+                    SET deadline=?,
+                        carried_forward=1
+                    WHERE id=?
+                    """, (
+                        new_deadline.strftime("%Y-%m-%d"),
+                        task['id']
+                    ))
+
+            except Exception as e:
+                print("Deadline error:", e)
+
+    conn.commit()
+
+    # -------------------------
+    # LOAD ACTIVE TASKS
+    # -------------------------
+    c.execute("""
+    SELECT
+        id,
+        title,
+        description,
+        note,
+        reply,
+        deadline,
+        status,
+        created_by,
+        assigned_to,
+        carried_forward,
+        completed_at,
+        created_at
+    FROM tasks
+    WHERE assigned_to=?
+    AND status != 'Completed'
+    ORDER BY id DESC
     """, (session['user_id'],))
 
     tasks = [dict(t) for t in c.fetchall()]
+
     conn.close()
 
-    return render_template("tasks.html", tasks=tasks)
+    return render_template(
+        "tasks.html",
+        tasks=tasks,
+        name=session['name'],
+        role=session['role']
+    )
+
+@app.route('/reply_task/<int:id>', methods=['POST'])
+def reply_task(id):
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    reply = request.form['reply']
+
+    conn = sqlite3.connect("database.db")
+    c = conn.cursor()
+
+    c.execute("""
+    UPDATE tasks
+    SET reply=?
+    WHERE id=?
+    """, (reply, id))
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/tasks')
+
+@app.route('/task-history')
+def task_history():
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    filter_type = request.args.get('filter', 'all')
+    search = request.args.get('search', '')
+
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+
+    query = """
+    SELECT *
+    FROM tasks
+    WHERE assigned_to=?
+    AND status='Completed'
+    """
+
+    params = [session['user_id']]
+
+    # SEARCH
+    if search:
+
+        query += """
+        AND (
+            title LIKE ?
+            OR description LIKE ?
+        )
+        """
+
+        params.extend([
+            f"%{search}%",
+            f"%{search}%"
+        ])
+
+    # FILTERS
+    if filter_type == "this_week":
+
+        query += """
+        AND date(completed_at)
+        >= date('now','weekday 1','-7 days')
+        """
+
+    elif filter_type == "last_week":
+
+        query += """
+        AND date(completed_at)
+        BETWEEN date('now','weekday 1','-14 days')
+        AND date('now','weekday 1','-7 days')
+        """
+
+    elif filter_type == "this_month":
+
+        query += """
+        AND strftime('%m', completed_at)
+        = strftime('%m','now')
+        """
+
+    elif filter_type == "last_month":
+
+        query += """
+        AND strftime('%m', completed_at)
+        = strftime('%m','now','-1 month')
+        """
+
+    query += " ORDER BY completed_at DESC"
+
+    c.execute(query, params)
+
+    tasks = c.fetchall()
+
+    conn.close()
+
+    return render_template(
+        "task_history.html",
+        tasks=tasks,
+        current_filter=filter_type,
+        search=search
+    )
+
+from io import BytesIO
+from openpyxl import Workbook
+from flask import send_file
+
+@app.route('/export-task-history')
+def export_task_history():
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    export_type = request.args.get('type', 'all')
+
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+
+    query = """
+    SELECT
+        id,
+        title,
+        description,
+        deadline,
+        status,
+        completed_at,
+        carried_forward
+    FROM tasks
+    WHERE assigned_to=?
+    AND status='Completed'
+    """
+
+    params = [session['user_id']]
+
+    # EXPORT TYPES
+    if export_type == "my":
+
+        query += """
+        AND created_by = assigned_to
+        """
+
+    elif export_type == "assigned":
+
+        query += """
+        AND created_by != assigned_to
+        """
+
+    query += " ORDER BY completed_at DESC"
+
+    c.execute(query, params)
+
+    rows = c.fetchall()
+
+    conn.close()
+
+    # CREATE WORKBOOK
+    wb = Workbook()
+    ws = wb.active
+
+    ws.title = "Task History"
+
+    # HEADERS
+    ws.append([
+        "ID",
+        "Title",
+        "Description",
+        "Deadline",
+        "Status",
+        "Completed At",
+        "Carried Forward"
+    ])
+
+    # DATA
+    for row in rows:
+
+        ws.append([
+            row['id'],
+            row['title'],
+            row['description'],
+            row['deadline'],
+            row['status'],
+            row['completed_at'],
+            "Yes" if row['carried_forward'] == 1 else "No"
+        ])
+
+    # COLUMN WIDTHS
+    ws.column_dimensions['A'].width = 10
+    ws.column_dimensions['B'].width = 30
+    ws.column_dimensions['C'].width = 45
+    ws.column_dimensions['D'].width = 18
+    ws.column_dimensions['E'].width = 15
+    ws.column_dimensions['F'].width = 25
+    ws.column_dimensions['G'].width = 18
+
+    # MEMORY EXPORT
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # FILE NAME
+    if export_type == "my":
+        filename = "my_tasks.xlsx"
+
+    elif export_type == "assigned":
+        filename = "assigned_tasks.xlsx"
+
+    else:
+        filename = "all_tasks.xlsx"
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 @app.route('/complete_task/<int:id>')
 def complete_task(id):
@@ -1065,7 +1640,14 @@ def complete_task(id):
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
 
-    c.execute("UPDATE tasks SET status='Completed' WHERE id=?", (id,))
+    completed_at = datetime.now().isoformat()
+
+    c.execute("""
+    UPDATE tasks
+    SET status='Completed',
+        completed_at=?
+    WHERE id=?
+    """, (completed_at, id))
 
     conn.commit()
     conn.close()
@@ -1082,19 +1664,34 @@ def create_task():
     description = request.form['description']
     deadline = request.form['deadline']
 
+    created_at = datetime.now().isoformat()
+
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
 
     c.execute("""
-    INSERT INTO tasks (title, description, assigned_to, deadline, status, created_by)
-    VALUES (?,?,?,?,?,?)
+    INSERT INTO tasks (
+        title,
+        description,
+        assigned_to,
+        deadline,
+        status,
+        created_by,
+        created_at,
+        original_deadline,
+        carried_forward
+    )
+    VALUES (?,?,?,?,?,?,?,?,?)
     """, (
         title,
         description,
-        session['user_id'],  # assign to self
+        session['user_id'],
         deadline,
         "Pending",
-        session['user_id']   # created by self
+        session['user_id'],
+        created_at,
+        deadline,
+        0
     ))
 
     conn.commit()

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Tasks</title>
@@ -9,169 +10,364 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-100 py-10 flex justify-center">
+<body>
 
-<div class="w-full max-w-5xl bg-white shadow-lg rounded-xl border border-gray-200 p-6">
+  <div class="wrapper">
+  
+      <!-- =========================
+           SIDEBAR
+      ========================== -->
+      <div class="sidebar" id="sidebar">
+  
+          <!-- LOGO -->
+          <div class="logo py-5">
+              <img src="{{ url_for('static', filename='salt-logo.png') }}">
+              <div class="portal-name">SALT Workforce Portal</div>
+          </div>
+  
+          <!-- MENU -->
+          <ul>
+  
+              <li>
+                  <a href="/dashboard">
+                      <i class="fas fa-home"></i>
+                      <span>Dashboard</span>
+                  </a>
+              </li>
+  
+              <li class="active">
+                  <a href="/tasks">
+                      <i class="fas fa-tasks"></i>
+                      <span>My Tasks</span>
+                  </a>
+              </li>
+  
+              <li>
+                <a href="/task-history">
+                    <i class="fas fa-history"></i>
+                    <span>Task History</span>
+                </a>
+            </li>
 
-  <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">My Tasks</h2>
+          </ul>
+  
+      </div>
+  
+  
+      <!-- =========================
+           MAIN AREA
+      ========================== -->
+      <div class="main" id="main">
+  
+          <!-- TOPBAR -->
+          <div class="topbar">
+  
+              <button id="toggle-btn" class="bg-white px-3 py-2 rounded-lg shadow">
+                  <i class="fas fa-bars"></i>
+              </button>
+  
+              <h3 class="font-semibold text-lg">
+                  My Tasks
+              </h3>
+  
+          </div>
+  
+  
+          <!-- =========================
+               CONTENT
+          ========================== -->
+          <div class="content">
+  
+              <!-- TASK CONTAINER -->
+              <div class="bg-white shadow-lg rounded-2xl border border-gray-200 p-6">
+  
+                  <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                      My Tasks
+                  </h2>
+  
+                  <!-- CREATE TASK -->
+                  <div class="mb-6 border-b pb-4">
+  
+                      <h3 class="text-lg font-semibold mb-3 text-gray-700">
+                          ➕ Create My Task
+                      </h3>
+  
+                      <form method="POST"
+                            action="/tasks/create"
+                            class="grid grid-cols-1 md:grid-cols-3 gap-3">
+  
+                          <input type="text"
+                                 name="title"
+                                 placeholder="Task Title"
+                                 required
+                                 class="border rounded-xl px-3 py-3">
+  
+                          <input type="date"
+                                 name="deadline"
+                                 class="border rounded-xl px-3 py-3">
+  
+                          <button type="submit"
+                              class="bg-blue-600 text-white rounded-xl px-4 py-2 hover:bg-blue-700">
+                              Add Task
+                          </button>
+  
+                          <textarea name="description"
+                              placeholder="Task Description"
+                              class="md:col-span-3 border rounded-xl px-3 py-3"></textarea>
+  
+                      </form>
+  
+                  </div>
+  
+  
+                  <!-- TASK TABLE -->
+                  {% if tasks %}
+  
+                  <div class="overflow-x-auto">
+  
+                      <table class="min-w-full">
+  
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Description</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                                <th>Type</th>
+                                <th>Discussion</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+  
+                          <tbody>
+  
+                          {% for task in tasks %}
+                          <tr>
+  
+                              <td>{{ task.title }}</td>
+  
+                              <td>{{ task.description }}</td>
+  
+                              <!-- DEADLINE -->
+                                <td>
 
-  <!-- ✅ CREATE TASK FORM -->
-  <div class="mb-6 border-b pb-4">
-    <h3 class="text-lg font-semibold mb-3 text-gray-700">➕ Create My Task</h3>
+                                    {{ task.deadline }}
 
-    <form method="POST" action="/tasks/create" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    {% if task.carried_forward == 1 %}
+                                    <div class="mt-1">
+                                        <span class="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs">
+                                            Carried Forward
+                                        </span>
+                                    </div>
+                                    {% endif %}
 
-      <input type="text" name="title" placeholder="Task Title" required
-        class="border rounded-lg px-3 py-2">
+                                </td>
 
-      <input type="date" name="deadline"
-        class="border rounded-lg px-3 py-2">
+                                <!-- STATUS -->
+                                <td>
 
-      <button type="submit"
-        class="bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700">
-        Add Task
-      </button>
+                                {% if task.status == "Pending" %}
+                                    <span class="badge active">
+                                        Pending
+                                    </span>
 
-      <textarea name="description" placeholder="Task Description"
-        class="md:col-span-3 border rounded-lg px-3 py-2"></textarea>
+                                {% elif task.status == "In Progress" %}
 
-    </form>
+                                    <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
+                                        In Progress
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge completed">
+                                        Completed
+                                    </span>
+
+                                {% endif %}
+
+                                </td>
+
+
+                              <!-- TYPE -->
+                              <td>
+  
+                                  {% if task.created_by == task.assigned_to %}
+  
+                                  <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
+                                      Self
+                                  </span>
+  
+                                  {% else %}
+  
+                                  <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs">
+                                      Assigned
+                                  </span>
+  
+                                  {% endif %}
+  
+                              </td>
+  
+                                <!-- DISCUSSION -->
+                                <td style="min-width:280px;">
+
+                                    <!-- ORIGINAL COMMENT -->
+                                    {% if task.note %}
+                                    <div class="bg-blue-50 border-l-4 border-blue-600 p-2 rounded mb-2 text-sm">
+
+                                        {% if task.created_by == task.assigned_to %}
+                                            <strong>Task Note:</strong><br>
+                                        {% else %}
+                                            <strong>Admin Comment:</strong><br>
+                                        {% endif %}
+
+                                        {{ task.note }}
+
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- EMPLOYEE REPLY -->
+                                    {% if task.reply %}
+                                    <div class="bg-green-50 border-l-4 border-green-600 p-2 rounded mb-2 text-sm">
+                                
+                                        {% if task.created_by == task.assigned_to %}
+                                            <strong>Your Note:</strong><br>
+                                        {% else %}
+                                            <strong>Your Reply:</strong><br>
+                                        {% endif %}
+                                
+                                        {{ task.reply }}
+                                
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- ADMIN REPLY -->
+                                    {% if task.admin_reply %}
+                                    <div class="bg-purple-50 border-l-4 border-purple-600 p-2 rounded mb-2 text-sm">
+                                        <strong>Admin Reply:</strong><br>
+                                        {{ task.admin_reply }}
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- REPLY / NOTE FORM -->
+                                    <form method="POST" action="/reply_task/{{ task.id }}">
+
+                                        {% if task.created_by == task.assigned_to %}
+
+                                            <textarea
+                                                name="reply"
+                                                rows="2"
+                                                placeholder="Add personal note..."
+                                                class="w-full border rounded-lg p-2 text-sm resize-none"
+                                            >{{ task.reply if task.reply else '' }}</textarea>
+
+                                            <button
+                                                type="submit"
+                                                class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs"
+                                            >
+                                                Save Note
+                                            </button>
+
+                                        {% else %}
+
+                                            <textarea
+                                                name="reply"
+                                                rows="2"
+                                                placeholder="Reply to admin comment..."
+                                                class="w-full border rounded-lg p-2 text-sm resize-none"
+                                            ></textarea>
+
+                                            <button
+                                                type="submit"
+                                                class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs"
+                                            >
+                                                Send Reply
+                                            </button>
+
+                                        {% endif %}
+
+                                    </form>
+
+                              <!-- ACTION -->
+                              <td class="space-x-2">
+  
+                                  {% if task.status == "Pending" %}
+                                  <a href="/start_task/{{ task.id }}">
+                                      <button class="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs">
+                                          Start
+                                      </button>
+                                  </a>
+                                  {% endif %}
+  
+                                  {% if task.status != "Completed" %}
+                                  <a href="/complete_task/{{ task.id }}">
+                                      <button class="bg-green-600 text-white px-3 py-1 rounded-lg text-xs">
+                                          Complete
+                                      </button>
+                                  </a>
+                                  {% endif %}
+  
+                                  <button
+                                      onclick="openEdit('{{ task.id }}','{{ task.title }}','{{ task.description }}')"
+                                      class="bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs">
+                                      Edit
+                                  </button>
+  
+                                  <a href="/delete_task/{{ task.id }}"
+                                     onclick="return confirm('Delete this task?')">
+  
+                                      <button class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs">
+                                          Delete
+                                      </button>
+  
+                                  </a>
+  
+                              </td>
+  
+                          </tr>
+                          {% endfor %}
+  
+                          </tbody>
+  
+                      </table>
+  
+                  </div>
+  
+                  {% else %}
+  
+                  <p class="text-center text-gray-400 italic py-6">
+                      No tasks yet. Create your first task 🚀
+                  </p>
+  
+                  {% endif %}
+  
+              </div>
+  
+          </div>
+  
+      </div>
+  
   </div>
-
-  <!-- ✅ TASK TABLE -->
-  {% if tasks %}
-
-  <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200">
-
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-6 py-3 text-left text-sm">Task</th>
-          <th class="px-6 py-3 text-left text-sm">Description</th>
-          <th class="px-6 py-3 text-left text-sm">Deadline</th>
-          <th class="px-6 py-3 text-left text-sm">Status</th>
-          <th class="px-6 py-3 text-left text-sm">Type</th>
-          <th class="px-6 py-3 text-left text-sm">Action</th>
-        </tr>
-      </thead>
-
-      <tbody class="divide-y divide-gray-200">
-
-      {% for task in tasks %}
-      <tr>
-
-        <td class="px-6 py-4">{{ task.title }}</td>
-        <td class="px-6 py-4">{{ task.description }}</td>
-        <td class="px-6 py-4">{{ task.deadline }}</td>
-
-        <!-- STATUS -->
-        <td class="px-6 py-4">
-          {% if task.status == "Pending" %}
-            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Pending</span>
-          {% elif task.status == "In Progress" %}
-            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">In Progress</span>
-          {% else %}
-            <span class="bg-green-100 text-green-800 px-2 py-1 rounded">Completed</span>
-          {% endif %}
-        </td>
-
-        <!-- TYPE -->
-        <td class="px-6 py-4">
-          {% if task.created_by == task.assigned_to %}
-            <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded">Self</span>
-          {% else %}
-            <span class="bg-purple-100 text-purple-700 px-2 py-1 rounded">Assigned</span>
-          {% endif %}
-        </td>
-
-        <!-- ACTION -->
-        <td class="px-6 py-4 space-x-2">
-
-          {% if task.status == "Pending" %}
-            <a href="/start_task/{{ task.id }}">
-              <button class="bg-blue-500 text-white px-2 py-1 rounded text-xs">Start</button>
-            </a>
-          {% endif %}
-        
-          {% if task.status != "Completed" %}
-            <a href="/complete_task/{{ task.id }}">
-              <button class="bg-green-600 text-white px-2 py-1 rounded text-xs">Complete</button>
-            </a>
-          {% endif %}
-          
-          <a href="/delete_task/{{ task.id }}" onclick="return confirm('Delete this task?')">
-            <button class="bg-red-600 text-white px-2 py-1 rounded text-xs">Delete</button>
-          </a>
-
-          <button onclick="openEdit('{{ task.id }}','{{ task.title }}','{{ task.description }}')"
-          class="bg-yellow-500 text-white px-2 py-1 rounded text-xs">
-          Edit
-          </button>
-        </td>
-
-      </tr>
-      {% endfor %}
-
-      </tbody>
-    </table>
-  </div>
   
-  {% else %}
-    <p class="text-center text-gray-400 italic py-6">
-      No tasks yet. Create your first task 🚀
-    </p>
-  {% endif %}
-
-</div>
-
-<div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-
-  <div class="bg-white p-6 rounded-lg w-96">
-
-    <h3 class="mb-3 font-bold">Edit Task</h3>
-
-    <input type="hidden" id="edit-id">
-
-    <input id="edit-title" class="border w-full mb-2 p-2" placeholder="Title">
-    <textarea id="edit-desc" class="border w-full mb-2 p-2"></textarea>
-
-    <button onclick="saveEdit()" class="bg-blue-600 text-white px-3 py-1 rounded">
-      Save
-    </button>
-
-    <button onclick="closeModal()" class="ml-2 text-gray-500">
-      Cancel
-    </button>
-
-  </div>
-
-</div>
-
-<script>
-  function openEdit(id, title, desc){
-    document.getElementById('editModal').classList.remove('hidden');
-    document.getElementById('edit-id').value = id;
-    document.getElementById('edit-title').value = title;
-    document.getElementById('edit-desc').value = desc;
-  }
   
-  function closeModal(){
-    document.getElementById('editModal').classList.add('hidden');
-  }
+  <!-- FONT AWESOME -->
+  <link rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   
-  function saveEdit(){
-    const id = document.getElementById('edit-id').value;
-    const title = document.getElementById('edit-title').value;
-    const desc = document.getElementById('edit-desc').value;
   
-    fetch(`/edit_task/${id}`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({title, description: desc})
-    })
-    .then(()=> location.reload());
-  }
-</script>
+  <!-- SIDEBAR TOGGLE -->
+  <script>
+  
+  const sidebar = document.getElementById("sidebar");
+  const main = document.getElementById("main");
+  
+  document.getElementById("toggle-btn").onclick = () => {
+  
+      sidebar.classList.toggle("collapsed");
+      main.classList.toggle("expanded");
+  
+  };
+  
+  </script>
 
 </body>
 </html>

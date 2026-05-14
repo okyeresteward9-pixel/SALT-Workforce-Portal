@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Task History</title>
+
+    <link rel="icon"
+    href="{{ url_for('static', filename='salt-logo.png') }}">
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="wrapper">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+        <div class="logo py-5">
+            <img src="{{ url_for('static', filename='salt-logo.png') }}">
+            <div class="portal-name">
+                SALT Workforce Portal
+            </div>
+        </div>
+
+        <ul>
+
+            <li>
+                <a href="/dashboard">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="/tasks">
+                    <i class="fas fa-tasks"></i>
+                    <span>Tasks</span>
+                </a>
+            </li>
+
+            <li class="active">
+                <a href="/task-history">
+                    <i class="fas fa-history"></i>
+                    <span>Task History</span>
+                </a>
+            </li>
+
+        </ul>
+
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+
+            <h3 class="font-semibold text-lg">
+                Task History
+            </h3>
+
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+
+            <!-- SEARCH -->
+            <form method="GET"
+                action="/task-history"
+                class="mb-5 flex gap-3">
+
+                <input
+                    type="text"
+                    name="search"
+                    placeholder="Search tasks..."
+                    value="{{ search }}"
+                    class="border rounded-xl px-4 py-2 w-full max-w-md">
+
+                <input
+                    type="hidden"
+                    name="filter"
+                    value="{{ current_filter }}">
+
+                <button
+                    type="submit"
+                    class="bg-blue-600 text-white px-5 py-2 rounded-xl">
+
+                    Search
+
+                </button>
+
+            </form>
+
+            <!-- FILTERS + EXPORT -->
+            <div class="flex flex-wrap items-center gap-3 mb-5">
+
+                <!-- FILTER BUTTONS -->
+                <a href="/task-history?filter=all"
+                class="px-4 py-2 rounded-lg bg-blue-600 text-white">
+                    All
+                </a>
+
+                <a href="/task-history?filter=this_week"
+                class="px-4 py-2 rounded-lg bg-gray-600 text-white">
+                    This Week
+                </a>
+
+                <a href="/task-history?filter=last_week"
+                class="px-4 py-2 rounded-lg bg-gray-600 text-white">
+                    Last Week
+                </a>
+
+                <a href="/task-history?filter=this_month"
+                class="px-4 py-2 rounded-lg bg-gray-600 text-white">
+                    This Month
+                </a>
+
+                <a href="/task-history?filter=last_month"
+                class="px-4 py-2 rounded-lg bg-gray-600 text-white">
+                    Last Month
+                </a>
+
+            <!-- EXPORT DROPDOWN -->
+            <div class="relative inline-block ml-auto">
+
+                <!-- BUTTON -->
+                <button id="exportBtn"
+                onclick="toggleExportMenu()"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow">
+
+                    <i class="fas fa-file-excel"></i>
+
+                    Export Excel
+
+                    <i class="fas fa-chevron-down text-xs"></i>
+
+                </button>
+
+                <!-- MENU -->
+                <div id="exportMenu"
+                class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border z-50 overflow-hidden">
+
+                    <a href="/export-task-history?type=all"
+                    class="block px-4 py-3 hover:bg-gray-100">
+
+                        Export All Tasks
+
+                    </a>
+
+                    <a href="/export-task-history?type=my"
+                    class="block px-4 py-3 hover:bg-gray-100">
+
+                        Export My Tasks
+
+                    </a>
+
+                    <a href="/export-task-history?type=assigned"
+                    class="block px-4 py-3 hover:bg-gray-100">
+
+                        Export Assigned Tasks
+
+                    </a>
+
+                </div>
+
+            </div>
+
+            </div>
+
+            <!-- TABLE -->
+            <div class="bg-white rounded-2xl shadow overflow-x-auto">
+
+                <table class="min-w-full">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Task</th>
+                            <th>Description</th>
+                            <th>Deadline</th>
+                            <th>Completed</th>
+                            <th>Status</th>
+                            <th>Carry Forward</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                    {% for task in tasks %}
+
+                    <tr>
+
+                        <td>
+                            {{ task.title }}
+                        </td>
+
+                        <td>
+                            {{ task.description }}
+                        </td>
+
+                        <td>
+                            {{ task.deadline }}
+                        </td>
+
+                        <td>
+                            {{ task.completed_at }}
+                        </td>
+
+                        <td>
+
+                            <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
+                                Completed
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            {% if task.carried_forward == 1 %}
+
+                            <span class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs">
+                                Yes
+                            </span>
+
+                            {% else %}
+
+                            No
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+
+                        <td colspan="6"
+                        class="text-center text-gray-400 py-8">
+
+                            No task history found.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    function toggleExportMenu() {
+    
+        document
+            .getElementById("exportMenu")
+            .classList.toggle("hidden");
+    
+    }
+    
+    window.addEventListener("click", function(e){
+    
+        const button = document.getElementById("exportBtn");
+        const menu = document.getElementById("exportMenu");
+    
+        if(
+            !button.contains(e.target) &&
+            !menu.contains(e.target)
+        ){
+            menu.classList.add("hidden");
+        }
+    
+    });
+    
+    </script>
+
+</body>
+</html>
