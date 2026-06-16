@@ -1,15 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
     <title>SALTY Chat</title>
 
-    <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+    <link rel="icon"
+          href="{{ url_for('static', filename='salt-logo.png') }}">
 
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
 
-        html, body {
+        html,
+        body {
             height: 100%;
             margin: 0;
             overflow: hidden;
@@ -26,306 +35,549 @@
         }
 
     </style>
+
 </head>
-
-<div id="emoji-picker"
-     class="hidden absolute bottom-24 right-10 bg-white/95 backdrop-blur-lg border border-gray-200 rounded-3xl shadow-2xl p-4 w-72">
-
-    <div class="grid grid-cols-6 gap-3 text-2xl">
-
-        <span class="emoji cursor-pointer hover:scale-125 transition">😀</span>
-        <span class="emoji cursor-pointer">😂</span>
-        <span class="emoji cursor-pointer">😍</span>
-        <span class="emoji cursor-pointer">🔥</span>
-        <span class="emoji cursor-pointer">👍</span>
-        <span class="emoji cursor-pointer">🙏</span>
-        <span class="emoji cursor-pointer">🎉</span>
-        <span class="emoji cursor-pointer">❤️</span>
-        <span class="emoji cursor-pointer">😎</span>
-        <span class="emoji cursor-pointer">😭</span>
-        <span class="emoji cursor-pointer">😅</span>
-        <span class="emoji cursor-pointer">💯</span>
-
-    </div>
-
-</div>
 
 <body class="bg-[#f4f7fb]">
 
+    <!-- OVERLAY -->
+    <div id="overlay"
+         class="hidden fixed inset-0 bg-black/40 z-40 md:hidden">
+    </div>
+
+    <!-- EMOJI PICKER -->
+    <div id="emoji-picker"
+         class="hidden fixed bottom-24 right-5 md:right-10 bg-white/95 backdrop-blur-lg border border-gray-200 rounded-3xl shadow-2xl p-4 w-72 z-50">
+
+        <div class="grid grid-cols-6 gap-3 text-2xl">
+
+            <span class="emoji cursor-pointer hover:scale-125 transition">😀</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">😂</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">😍</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">🔥</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">👍</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">🙏</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">🎉</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">❤️</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">😎</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">😭</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">😅</span>
+            <span class="emoji cursor-pointer hover:scale-125 transition">💯</span>
+
+        </div>
+
+    </div>
+
+    <!-- MAIN -->
     <div class="flex h-screen overflow-hidden">
-    
+
         <!-- SIDEBAR -->
-        <aside class="w-80 bg-white/90 backdrop-blur-lg border-r border-gray-200 flex flex-col shadow-xl">
-    
+        <div id="sidebar"
+             class="fixed md:relative z-50 md:z-auto inset-y-0 left-0
+             w-80 bg-white border-r flex flex-col shadow-sm
+             transform -translate-x-full md:translate-x-0
+             transition-transform duration-300">
+
             <!-- HEADER -->
             <div class="p-6 border-b border-gray-100">
-    
+
                 <div class="flex items-center gap-3">
-    
+
                     <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg">
-                        <span class="text-white font-bold text-lg">S</span>
+
+                        <span class="text-white font-bold text-lg">
+                            S
+                        </span>
+
                     </div>
-    
+
                     <div>
+
                         <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">
                             SALTY Chat
                         </h1>
-    
+
                         <p class="text-sm text-gray-400">
                             Team Communication Hub
                         </p>
+
                     </div>
-    
+
                 </div>
-    
+
                 <!-- BACK BUTTON -->
                 <a href="/dashboard"
                    class="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 transition">
-    
+
                     <span class="text-lg">←</span>
+
                     Back to Dashboard
-    
+
                 </a>
-    
+
             </div>
-    
+
             <!-- SEARCH -->
             <div class="px-4 pt-4">
-    
-                <div class="relative">
-    
-                    <input
-                        type="text"
-                        id="search-users"
-                        placeholder="Search users..."
-                        class="w-full bg-gray-100 border border-transparent focus:border-blue-400 focus:ring-4 focus:ring-blue-100 rounded-2xl px-4 py-3 text-sm outline-none transition"
-                    >
-    
-                </div>
-    
+
+                <input
+                    type="text"
+                    id="search-users"
+                    placeholder="Search users..."
+                    class="w-full bg-gray-100 border border-transparent focus:border-blue-400 focus:ring-4 focus:ring-blue-100 rounded-2xl px-4 py-3 text-sm outline-none transition"
+                >
+
             </div>
-    
+
             <!-- USERS -->
             <div id="users-list"
                  class="overflow-y-auto flex-1 px-3 py-4 space-y-2">
-    
+
                 {% for user in users %}
-    
+
                 <a href="/messages/{{ user.id }}"
                    class="user-item group flex items-center gap-4 p-4 rounded-2xl hover:bg-blue-50 transition-all duration-200">
 
-    
                     <!-- AVATAR -->
                     <div class="relative">
-    
+
                         <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md">
+
                             {{ user.name[0] }}
+
                         </div>
-    
-                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-    
+
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full">
+                        </div>
+
                     </div>
-    
+
                     <!-- INFO -->
                     <div class="flex-1 min-w-0">
-    
+
                         <div class="flex items-center justify-between">
-    
+
                             <p class="font-semibold text-gray-800 truncate">
                                 {{ user.name }}
                             </p>
-    
+
                             <span class="text-xs text-gray-300">
                                 now
                             </span>
-    
+
                         </div>
-    
+
                         <p class="text-sm text-gray-400 truncate mt-1">
                             Start conversation...
                         </p>
-    
+
                     </div>
-    
+
                 </a>
-    
+
                 {% endfor %}
-    
+
             </div>
-    
-        </aside>
-    
+
+        </div>
+
         <!-- CHAT AREA -->
         <main class="flex-1 flex flex-col bg-gradient-to-b from-gray-50 to-white">
-    
+
             {% if receiver %}
-    
+
             <!-- CHAT HEADER -->
-            <div class="bg-white/80 backdrop-blur-md border-b border-gray-200 px-8 py-5 flex items-center justify-between shadow-sm">
-    
+            <div class="bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 md:px-8 py-5 flex items-center justify-between shadow-sm">
+
                 <div class="flex items-center gap-4">
-    
+
+                    <!-- MOBILE MENU -->
+                    <button id="menu-btn"
+                            class="md:hidden text-2xl text-gray-700">
+
+                        ☰
+
+                    </button>
+
+                    <!-- AVATAR -->
                     <div class="relative">
-    
+
                         <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center font-bold shadow-md">
+
                             {{ receiver.name[0] }}
+
                         </div>
-    
-                        <div class="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-green-500 border-2 border-white"></div>
-    
+
+                        <div class="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-green-500 border-2 border-white">
+                        </div>
+
                     </div>
-    
+
+                    <!-- INFO -->
                     <div>
-    
+
                         <h2 class="font-bold text-gray-800 text-lg">
                             {{ receiver.name }}
                         </h2>
-    
+
                         <p class="text-sm text-green-500 font-medium">
                             Active now
                         </p>
-    
+
                     </div>
-    
+
                 </div>
-    
+
                 <div class="hidden md:flex items-center gap-3 text-gray-400 text-sm">
-    
-                    <div class="w-2 h-2 rounded-full bg-green-500"></div>
-    
+
+                    <div class="w-2 h-2 rounded-full bg-green-500">
+                    </div>
+
                     Secure Internal Chat
-    
+
                 </div>
-    
+
             </div>
-    
+
             <!-- CHAT BODY -->
             <div id="chat-box"
-                 class="flex-1 overflow-y-auto px-8 py-6 space-y-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-    
+                 class="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+
             </div>
-    
+
             <!-- INPUT -->
-            <div class="bg-white border-t border-gray-200 px-6 py-5">
-    
+            <div class="bg-white border-t border-gray-200 px-4 md:px-6 py-5">
+
+                <div id="preview-container" class="hidden px-4 pb-3">
+
+                    <div class="relative inline-block">
+                
+                        <img id="preview-image"
+                             class="hidden max-w-[180px] rounded-2xl shadow border">
+                
+                        <div id="preview-file"
+                             class="hidden bg-gray-100 border rounded-xl px-4 py-3 text-sm text-gray-700">
+                        </div>
+                
+                        <button type="button"
+                                id="remove-preview"
+                                class="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 rounded-full shadow">
+                
+                            ✕
+                
+                        </button>
+                
+                    </div>
+                
+                </div>
+
                 <form id="chat-form"
                       method="POST"
+                      enctype="multipart/form-data"
                       class="flex items-center gap-3">
-    
+
                     <!-- INPUT CONTAINER -->
                     <div class="flex-1 flex items-center bg-gray-100 border border-gray-200 rounded-full px-4 py-2 focus-within:ring-4 focus-within:ring-blue-100 focus-within:border-blue-400 transition">
-    
+
+                        <!-- EMOJI -->
                         <button
                             type="button"
                             id="emoji-btn"
                             class="text-2xl mr-2 hover:scale-110 transition">
+
                             😊
+
                         </button>
-    
+
+                        <!-- INPUT -->
                         <input
                             type="text"
                             name="message"
                             id="message-input"
-                            required
                             autocomplete="off"
                             placeholder="Type your message..."
                             class="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400 px-2"
                         >
-    
+
                     </div>
-    
-                    <!-- SEND BUTTON -->
+
+                    <!-- FILE -->
+                    <label class="cursor-pointer text-2xl hover:scale-110 transition">
+
+                        📎
+
+                        <input
+                            type="file"
+                            id="file-input"
+                            name="file"
+                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.docx,.xlsx,.txt"
+                            class="hidden"
+                        >
+
+                    </label>
+
+                    <!-- SEND -->
                     <button
                         type="submit"
-                        class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 hover:shadow-xl text-white px-7 py-3 rounded-full font-semibold transition-all duration-200">
-    
+                        class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 hover:shadow-xl text-white px-6 py-3 rounded-full font-semibold transition-all duration-200">
+
                         Send
-    
+
                     </button>
-    
+
                 </form>
-    
+
             </div>
-    
+
             {% else %}
-    
+
             <!-- EMPTY STATE -->
             <div class="flex-1 flex flex-col items-center justify-center text-center px-6">
-    
+
                 <div class="w-28 h-28 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-5xl shadow-2xl mb-6">
+
                     💬
+
                 </div>
-    
+
                 <h2 class="text-4xl font-extrabold text-gray-700">
+
                     Welcome to SALTY Chat
+
                 </h2>
-    
+
                 <p class="mt-4 text-gray-400 max-w-md leading-relaxed">
+
                     Communicate with your team securely and efficiently in one centralized workspace.
+
                 </p>
-    
+
             </div>
-    
+
             {% endif %}
-    
+
         </main>
-    
+
     </div>
-{% if receiver %}
+
+    {% if receiver %}
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <script>
+    
+    document.addEventListener("DOMContentLoaded", function () {
+    
+        const RECEIVER_ID = {{ receiver.id | tojson }};
+        const CURRENT_USER = {{ session['user_id'] | tojson }};
+    
+        const chatBox = document.getElementById("chat-box");
+        const form = document.getElementById("chat-form");
+        const messageInput = document.getElementById("message-input");
+    
+        const emojiBtn = document.getElementById("emoji-btn");
+        const emojiPicker = document.getElementById("emoji-picker");
+    
+        const searchInput = document.getElementById("search-users");
+    
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("overlay");
+        const menuBtn = document.getElementById("menu-btn");
+    
+        const fileInput = document.getElementById("file-input");
+    
+        const previewContainer =
+            document.getElementById("preview-container");
+    
+        const previewImage =
+            document.getElementById("preview-image");
+    
+        const previewFile =
+            document.getElementById("preview-file");
+    
+        const removePreview =
+            document.getElementById("remove-preview");
+    
+        let firstLoad = true;
+        let loadingMessages = false;
+    
+        // =========================
+        // SOCKET.IO
+        // =========================
+    
+        const socket = io();
+    
+        socket.on("connect", function () {
+    
+            console.log("Connected:", socket.id);
+    
+        });
+    
+        socket.on("new_message", function () {
+    
+            loadMessages();
+    
+        });
+    
+        // =========================
+        // LOAD MESSAGES
+        // =========================
+    
+        function loadMessages() {
+    
+            if (loadingMessages) return;
+    
+            loadingMessages = true;
+    
+            fetch(`/get_messages/${RECEIVER_ID}`)
+    
+            .then(res => res.json())
+    
+            .then(data => {
+    
+                const wasAtBottom =
+                    chatBox.scrollHeight - chatBox.scrollTop
+                    <= chatBox.clientHeight + 150;
+    
+                chatBox.innerHTML = "";
+    
+                data.forEach(chat => {
 
-const chatBox = document.getElementById("chat-box");
-const form = document.getElementById("chat-form");
-const messageInput = document.getElementById("message-input");
+                const isMine =
+                    chat.sender_id == CURRENT_USER;
 
-// -------------------------
-// LOAD MESSAGES
-// -------------------------
-function loadMessages() {
+                const wrapper =
+                    document.createElement("div");
 
-    fetch("/get_messages/{{ receiver.id }}")
+                wrapper.className =
+                    isMine
+                    ? "flex justify-end"
+                    : "flex justify-start";
 
-    .then(response => response.json())
+                let fileHtml = "";
 
-    .then(data => {
+                if (chat.file_path) {
 
-        const wasAtBottom =
-            chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 100;
+                    const isImage =
+                        /\.(jpg|jpeg|png|gif|webp)$/i
+                        .test(chat.file_name || "");
 
-        chatBox.innerHTML = "";
+                    if (isImage) {
 
-        data.forEach(chat => {
+                        fileHtml = `
+                            <a href="/${chat.file_path}"
+                            target="_blank">
 
-            const isMine =
-                chat.sender_id == {{ session['user_id'] }};
+                                <img
+                                    src="/${chat.file_path}"
+                                    class="mt-3 rounded-2xl max-w-[220px] shadow hover:opacity-90 transition">
 
-            const wrapper = document.createElement("div");
+                            </a>
+                        `;
 
-            wrapper.className = isMine
-                ? "flex justify-end"
-                : "flex justify-start";
+                    } else {
 
+                        fileHtml = `
+                            <a href="/${chat.file_path}"
+                            target="_blank"
+                            class="block mt-3 underline text-sm font-medium">
+
+                                📎 ${chat.file_name}
+
+                            </a>
+                        `;
+
+                    }
+
+                }
+
+                let actions = "";
+
+                if (isMine && !chat.deleted) {
+
+                    const safeMessage =
+                        (chat.message || "")
+                        .replace(/'/g, "\\'")
+                        .replace(/"/g, "&quot;");
+
+                    actions = `
+                        <div class="absolute top-2 -left-12">
+
+                            <button
+                                onclick="toggleMenu(${chat.id})"
+                                class="w-8 h-8 rounded-full bg-white text-gray-700 shadow border hover:bg-gray-100">
+
+                                ⋮
+
+                            </button>
+
+                            <div
+                                id="menu-${chat.id}"
+                                class="hidden absolute top-10 left-0 bg-white border rounded-xl shadow-lg overflow-hidden z-50 min-w-[120px]">
+
+                                <button
+                                    onclick="editMessage(${chat.id}, '${safeMessage}')"
+                                    class="block w-full text-left px-4 py-2 hover:bg-gray-100">
+
+                                    ✏ Edit
+
+                                </button>
+
+                                <button
+                                    onclick="deleteMessage(${chat.id})"
+                                    class="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50">
+
+                                    🗑 Delete
+
+                                </button>
+
+                            </div>
+
+                        </div>
+                    `;
+                }
                 wrapper.innerHTML = `
 
-                <div class="${
-                    isMine
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white ml-auto'
-                    : 'bg-white border border-gray-200 text-gray-800'
-                } px-5 py-3 rounded-3xl max-w-md shadow-sm">
+                <div class="relative">
 
-                    <div class="flex items-end gap-2">
+                    ${actions}
 
-                        <span class="text-sm leading-relaxed break-words">
-                            ${chat.message}
-                        </span>
+                    <div class="${
+                        isMine
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                        : 'bg-white border border-gray-200 text-gray-800'
+                    } px-5 py-3 rounded-3xl max-w-md shadow-sm">
+
+                        <div class="text-sm break-words">
+
+                            ${
+                                chat.deleted
+                                ? "<i>This message was deleted</i>"
+                                : (chat.message || "")
+                            }
+
+                            ${
+                                chat.edited
+                                ? `
+                                <div class="text-[10px] opacity-60 mt-1">
+                                    edited
+                                </div>
+                                `
+                                : ""
+                            }
+
+                            ${fileHtml}
+
+                        </div>
 
                         ${
                             isMine
                             ? `
-                            <span class="text-[10px] opacity-70 whitespace-nowrap">
+                            <div class="text-right mt-1 text-[10px] opacity-70">
+
                                 ${chat.seen == 1 ? '✔✔' : '✔'}
-                            </span>
+
+                            </div>
                             `
                             : ''
                         }
@@ -335,107 +587,338 @@ function loadMessages() {
                 </div>
 
                 `;
+                chatBox.appendChild(wrapper);
 
-            chatBox.appendChild(wrapper);
+            });
+    
+                if (firstLoad) {
+    
+                    chatBox.scrollTop =
+                        chatBox.scrollHeight;
+    
+                    firstLoad = false;
+    
+                } else if (wasAtBottom) {
+    
+                    chatBox.scrollTop =
+                        chatBox.scrollHeight;
+    
+                }
+    
+            })
+    
+            .catch(console.error)
+    
+            .finally(() => {
+    
+                loadingMessages = false;
+    
+            });
+    
+        }
+    
+        // =========================
+        // DELETE MESSAGE
+        // =========================
 
-        });
+        window.deleteMessage = function(messageId){
 
-        // auto scroll
-        if (wasAtBottom) {
-            chatBox.scrollTop = chatBox.scrollHeight;
+        if (!confirm("Delete this message?")) {
+            return;
         }
 
-    });
+        fetch(`/delete_message/${messageId}`, {
 
-}
+            method: "POST"
 
-// -------------------------
-// SEND MESSAGE
-// -------------------------
-form.addEventListener("submit", function(e){
+        })
+        .then(() => {
 
-    e.preventDefault();
+            loadMessages();
 
-    const formData = new FormData(form);
+        });
 
-    fetch("", {
-        method: "POST",
-        body: formData
-    })
+        };
 
-    .then(() => {
 
-        messageInput.value = "";
+        // =========================
+        // EDIT MESSAGE
+        // =========================
 
-        loadMessages();
+        window.editMessage = function(messageId, oldMessage){
 
-    });
+        const newMessage =
+            prompt("Edit message:", oldMessage);
 
-});
+        if (
+            newMessage === null ||
+            newMessage.trim() === ""
+        ){
+            return;
+        }
 
-// -------------------------
-// INITIAL LOAD
-// -------------------------
-loadMessages();
+        const formData = new FormData();
 
-// -------------------------
-// AUTO REFRESH
-// -------------------------
-setInterval(loadMessages, 2000);
+        formData.append(
+            "message",
+            newMessage
+        );
 
-</script>
+        fetch(`/edit_message/${messageId}`, {
 
-<script>
+            method: "POST",
+            body: formData
 
-    const emojiBtn = document.getElementById("emoji-btn");
-    const emojiPicker = document.getElementById("emoji-picker");
+        })
+        .then(() => {
+
+            loadMessages();
+
+        });
+
+        };
+
+        // =========================
+        // SEND MESSAGE
+        // =========================
     
-    emojiBtn.addEventListener("click", () => {
-        emojiPicker.classList.toggle("hidden");
-    });
+        form.addEventListener("submit", function(e){
     
-    document.querySelectorAll(".emoji").forEach(emoji => {
+            e.preventDefault();
     
-        emoji.addEventListener("click", () => {
+            const formData =
+                new FormData(form);
     
-            messageInput.value += emoji.innerText;
+            fetch(window.location.href, {
     
-            emojiPicker.classList.add("hidden");
+                method: "POST",
+                body: formData
     
-            messageInput.focus();
+            })
+    
+            .then(() => {
+    
+                messageInput.value = "";
+    
+                form.reset();
+    
+                previewContainer.classList.add("hidden");
+    
+                previewImage.classList.add("hidden");
+    
+                previewFile.classList.add("hidden");
+    
+                previewImage.src = "";
+    
+                previewFile.innerHTML = "";
+    
+                socket.emit("message_sent");
+    
+                loadMessages();
+    
+            });
     
         });
     
-    });
+        // =========================
+        // ENTER TO SEND
+        // =========================
     
-</script>
-
-<script>
-
-    const searchInput = document.getElementById("search-users");
+        messageInput.addEventListener("keydown", function(e){
     
-    searchInput.addEventListener("keyup", function () {
+            if (e.key === "Enter" && !e.shiftKey) {
     
-        const value = this.value.toLowerCase();
+                e.preventDefault();
     
-        const users = document.querySelectorAll(".user-item");
+                form.requestSubmit();
     
-        users.forEach(user => {
-    
-            const text = user.innerText.toLowerCase();
-    
-            if (text.includes(value)) {
-                user.style.display = "flex";
-            } else {
-                user.style.display = "none";
             }
     
         });
     
+        // =========================
+        // EMOJI PICKER
+        // =========================
+    
+        emojiBtn.addEventListener("click", function(){
+    
+            emojiPicker.classList.toggle("hidden");
+    
+        });
+    
+        document.querySelectorAll(".emoji").forEach(emoji => {
+    
+            emoji.addEventListener("click", () => {
+    
+                messageInput.value += emoji.innerText;
+    
+                emojiPicker.classList.add("hidden");
+    
+                messageInput.focus();
+    
+            });
+    
+        });
+    
+        document.addEventListener("click", function(e){
+    
+            if (
+                !emojiPicker.contains(e.target)
+                &&
+                e.target !== emojiBtn
+            ) {
+    
+                emojiPicker.classList.add("hidden");
+    
+            }
+    
+        });
+    
+        // =========================
+        // SEARCH USERS
+        // =========================
+    
+        searchInput.addEventListener("keyup", function(){
+    
+            const value =
+                this.value.toLowerCase();
+    
+            document
+                .querySelectorAll(".user-item")
+                .forEach(user => {
+    
+                    user.style.display =
+                        user.innerText
+                            .toLowerCase()
+                            .includes(value)
+                        ? "flex"
+                        : "none";
+    
+                });
+    
+        });
+    
+        window.toggleMenu = function(id) {
+
+        document
+            .querySelectorAll("[id^='menu-']")
+            .forEach(menu => {
+
+                if (menu.id !== `menu-${id}`) {
+                    menu.classList.add("hidden");
+                }
+
+            });
+
+        document
+            .getElementById(`menu-${id}`)
+            .classList.toggle("hidden");
+        };
+
+        // =========================
+        // SIDEBAR
+        // =========================
+    
+        menuBtn?.addEventListener("click", () => {
+    
+            sidebar.classList.remove("-translate-x-full");
+    
+            overlay.classList.remove("hidden");
+    
+        });
+    
+        overlay?.addEventListener("click", () => {
+    
+            sidebar.classList.add("-translate-x-full");
+    
+            overlay.classList.add("hidden");
+    
+        });
+    
+        document.querySelectorAll(".user-item")
+        .forEach(user => {
+    
+            user.addEventListener("click", () => {
+    
+                sidebar.classList.add("-translate-x-full");
+    
+                overlay.classList.add("hidden");
+    
+            });
+    
+        });
+    
+        // =========================
+        // FILE PREVIEW
+        // =========================
+    
+        fileInput.addEventListener("change", function(){
+    
+            const file = this.files[0];
+    
+            if (!file) return;
+    
+            previewContainer.classList.remove("hidden");
+    
+            if (file.type.startsWith("image/")) {
+    
+                previewImage.classList.remove("hidden");
+    
+                previewFile.classList.add("hidden");
+    
+                const reader =
+                    new FileReader();
+    
+                reader.onload = function(e){
+    
+                    previewImage.src =
+                        e.target.result;
+    
+                };
+    
+                reader.readAsDataURL(file);
+    
+            } else {
+    
+                previewImage.classList.add("hidden");
+    
+                previewFile.classList.remove("hidden");
+    
+                previewFile.innerHTML = `
+                    📎 <strong>${file.name}</strong>
+                    <br>
+                    ${(file.size / 1024).toFixed(1)} KB
+                `;
+    
+            }
+    
+        });
+    
+        removePreview.addEventListener("click", () => {
+    
+            fileInput.value = "";
+    
+            previewContainer.classList.add("hidden");
+    
+            previewImage.classList.add("hidden");
+    
+            previewFile.classList.add("hidden");
+    
+            previewImage.src = "";
+    
+            previewFile.innerHTML = "";
+    
+        });
+    
+        // =========================
+        // INITIAL LOAD
+        // =========================
+    
+        loadMessages();
+    
     });
     
-</script>
-
+    </script>
 {% endif %}
 
 </body>

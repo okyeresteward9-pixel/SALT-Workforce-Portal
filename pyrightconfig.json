@@ -1,5 +1,6 @@
 {
-  "venvPath": ".",
+  "venvPath": "c:/salt_portal",
   "venv": "venv",
-  "pythonVersion": "3.11"
+  "pythonVersion": "3.11",
+  "reportMissingModuleSource": "none"
 }

@@ -2,19 +2,27 @@ from flask import Flask, render_template, request, redirect, session, jsonify, f
 import sqlite3
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
-import os  # still needed (for env or future use)
+from flask_socketio import SocketIO, emit, join_room  # pyright: ignore[reportMissingModuleSource]
+from werkzeug.utils import secure_filename
+import os
 import time
 from flask import send_from_directory
 from datetime import date
-from openpyxl import Workbook  # pyright: ignore[reportMissingModuleSource]
+from openpyxl import Workbook
 from flask import send_file
 import io
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
 
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "fallback-secret")
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_EXTENSIONS = {
+    'png', 'jpg', 'jpeg', 'gif', 'webp',
+    'pdf', 'docx', 'xlsx', 'txt'
+}
 
 def get_db():
     conn = sqlite3.connect("database.db")
@@ -27,6 +35,33 @@ def format_datetime(value):
         return {"date": "", "time": ""}
     dt = datetime.fromisoformat(value)
     return {"date": dt.strftime("%Y-%m-%d"), "time": dt.strftime("%H:%M")}
+
+def build_comment_tree(comments):
+    comment_map = {}
+    tree = []
+
+    for c in comments:
+        c["children"] = []
+        comment_map[c["id"]] = c
+
+    for c in comments:
+        parent_id = c["parent_comment_id"]
+
+        if parent_id:
+            parent = comment_map.get(parent_id)
+            if parent:
+                parent["children"].append(c)
+        else:
+            tree.append(c)
+
+    return tree
+
+def allowed_file(filename):
+    return (
+        '.' in filename and
+        filename.rsplit('.', 1)[1].lower()
+        in ALLOWED_EXTENSIONS
+    )
 
 # -------------------------
 # Initialize database
@@ -92,6 +127,20 @@ def init_db():
         message TEXT,
         created_at TEXT,
         is_read INTEGER DEFAULT 0
+    )''')
+
+    # -------------------------
+    # TASK COMMENTS TABLE
+    # -------------------------
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS task_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER,
+        sender_id INTEGER,
+        sender_role TEXT,
+        message TEXT,
+        parent_comment_id INTEGER,
+        created_at TEXT
     )''')
 
     # -------------------------
@@ -170,6 +219,47 @@ def init_db():
     except:
         pass
     
+    try:
+        c.execute("ALTER TABLE tasks ADD COLUMN task_scope TEXT DEFAULT 'personal'")
+    except:
+        pass
+
+    try:
+        c.execute("""
+            ALTER TABLE task_comments
+            ADD COLUMN visibility TEXT DEFAULT 'public'
+        """)
+    except:
+        pass
+    
+    try:
+        c.execute("""
+            ALTER TABLE task_comments
+            ADD COLUMN comment_type TEXT DEFAULT 'reply'
+        """)
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE messages ADD COLUMN file_name TEXT")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE messages ADD COLUMN file_path TEXT")
+    except:
+        pass    
+
+    try:
+        c.execute("ALTER TABLE messages ADD COLUMN deleted INTEGER DEFAULT 0")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0")
+    except:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -786,12 +876,9 @@ def admin_tasks():
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
-    # ✅ GET FILTER FROM URL
     status = request.args.get("status")
 
-    # ✅ FETCH TASKS (WITH OR WITHOUT FILTER)
-    if status:
-        c.execute("""
+    base_query = """
         SELECT 
             tasks.id,
             tasks.title,
@@ -807,32 +894,39 @@ def admin_tasks():
             employees.name as employee_name
         FROM tasks
         LEFT JOIN employees ON tasks.assigned_to = employees.id
-        WHERE tasks.status = ?
-        ORDER BY tasks.id DESC
-        """, (status,))
-    else:
-        c.execute("""
-        SELECT 
-            tasks.id,
-            tasks.title,
-            tasks.description,
-            tasks.note,
-            tasks.reply,
-            tasks.admin_reply,
-            tasks.deadline,
-            tasks.status,
-            tasks.created_by,
-            tasks.assigned_to,
-            tasks.carried_forward,
-            employees.name as employee_name
-        FROM tasks
-        LEFT JOIN employees ON tasks.assigned_to = employees.id
-        ORDER BY tasks.id DESC
-        """)
+    """
 
+    params = []
+
+    if status:
+        base_query += " WHERE tasks.status = ?"
+        params.append(status)
+
+    base_query += " ORDER BY tasks.id DESC"
+
+    c.execute(base_query, params)
     tasks = [dict(row) for row in c.fetchall()]
 
-    # ✅ STATS (VERY IMPORTANT)
+    # ----------------------------
+    # COMMENTS (FIXED LOGIC)
+    # ----------------------------
+    for task in tasks:
+        c.execute("""
+            SELECT *
+            FROM task_comments
+            WHERE task_id=?
+            ORDER BY created_at ASC
+        """, (task['id'],))
+
+        comments = [dict(x) for x in c.fetchall()]
+
+        # 👇 IMPORTANT FIX:
+        # Admin board sees ALL comments (no filtering)
+        task['comments'] = build_comment_tree(comments)
+
+    # ----------------------------
+    # STATS
+    # ----------------------------
     c.execute("SELECT COUNT(*) FROM tasks WHERE status='Pending'")
     pending_count = c.fetchone()[0]
 
@@ -861,16 +955,32 @@ def admin_reply_task(id):
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
 
-    admin_reply = request.form['admin_reply']
+    message = request.form['admin_reply']
+    parent_comment_id = request.form.get('parent_comment_id')
 
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
 
     c.execute("""
-    UPDATE tasks
-    SET admin_reply=?
-    WHERE id=?
-    """, (admin_reply, id))
+        INSERT INTO task_comments (
+            task_id,
+            sender_id,
+            sender_role,
+            message,
+            parent_comment_id,
+            visibility,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        id,
+        session['user_id'],
+        'admin',
+        message,
+        parent_comment_id,
+        'public',
+        datetime.now().isoformat()
+    ))
 
     conn.commit()
     conn.close()
@@ -886,7 +996,11 @@ def delete_task_route(task_id):
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
 
-    c.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+    # 🔥 only delete admin board tasks (prevents breaking personal tasks)
+    c.execute("""
+        DELETE FROM tasks 
+        WHERE id=? AND task_scope='admin_board'
+    """, (task_id,))
 
     conn.commit()
     conn.close()
@@ -902,7 +1016,6 @@ def assign_task():
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
-    # Add note/comment column if not already existing
     try:
         c.execute("ALTER TABLE tasks ADD COLUMN note TEXT")
     except:
@@ -915,24 +1028,30 @@ def assign_task():
         assigned_to = request.form['assigned_to']
         deadline = request.form['deadline']
 
+        # 🔥 IMPORTANT FIX
+        created_at = datetime.now().isoformat()
+
         c.execute("""
-        INSERT INTO tasks 
-        (title, description, note, assigned_to, deadline, status)
-        VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO tasks 
+            (title, description, note, assigned_to, deadline, status, created_by, task_scope, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             title,
             description,
             note,
             assigned_to,
             deadline,
-            "Pending"
+            "Pending",
+            session['user_id'],
+            "admin_board",
+            created_at
         ))
 
         # notification
         c.execute("""
-        INSERT INTO notifications (user_id,message,created_at)
-        VALUES (?,?,?)
-        """,(
+            INSERT INTO notifications (user_id, message, created_at)
+            VALUES (?,?,?)
+        """, (
             assigned_to,
             f"New Task Assigned: {title}",
             datetime.now().isoformat()
@@ -1061,21 +1180,59 @@ def messages(user_id=None):
     # -------------------------
     if request.method == 'POST' and user_id:
 
-        message = request.form['message']
+        message = request.form.get('message', '').strip()
 
+        # default file values
+        file_name = None
+        file_path = None
+
+        # uploaded file
+        file = request.files.get("file")
+
+        # save uploaded file
+        if file and file.filename != "" and allowed_file(file.filename):
+
+            from werkzeug.utils import secure_filename
+            import time
+
+            filename = secure_filename(file.filename)
+            filename = f"{int(time.time())}_{filename}"
+
+            save_path = os.path.join(UPLOAD_FOLDER, filename)
+
+            print("UPLOAD ACCEPTED")
+            print("SAVE PATH:", save_path)
+
+            file.save(save_path)
+
+            print("FILE SAVED")
+
+            file_name = file.filename
+            file_path = f"static/uploads/{filename}"
+
+        # stop empty messages
+        if not message and not file_name:
+            conn.close()
+            return redirect(f'/messages/{user_id}')
+
+        # save message
         c.execute("""
             INSERT INTO messages (
                 sender_id,
                 receiver_id,
                 message,
-                created_at
+                created_at,
+                file_name,
+                file_path
             )
-            VALUES (?,?,?,?)
+            VALUES (?,?,?,?,?,?)
         """, (
             session['user_id'],
             user_id,
             message,
-            datetime.now().isoformat()
+            datetime.now().isoformat(),
+            file_name,
+            file_path
         ))
 
         # notification
@@ -1093,6 +1250,25 @@ def messages(user_id=None):
         ))
 
         conn.commit()
+        room = "_".join(
+            map(
+                str,
+                sorted([session['user_id'], user_id])
+            )
+        )
+
+        socketio.emit(
+            'new_message',
+            {
+                'message': message,
+                'sender_id': session['user_id'],
+                'file_name': file_name,
+                'file_path': file_path,
+                'seen': 0
+            },
+            room=room
+        )
+
 
         return redirect(f'/messages/{user_id}')
 
@@ -1189,15 +1365,93 @@ def get_messages(user_id):
     messages = []
 
     for chat in chats:
+
         messages.append({
+            "id": chat["id"],
             "message": chat["message"],
             "sender_id": chat["sender_id"],
-            "seen": chat["seen"]
+            "seen": chat["seen"],
+            "file_name": chat["file_name"],
+            "file_path": chat["file_path"],
+            "deleted": chat["deleted"],
+            "edited": chat["edited"]
         })
 
     conn.close()
 
     return jsonify(messages)
+
+@app.route('/delete_message/<int:message_id>', methods=['POST'])
+def delete_message(message_id):
+
+    if 'user_id' not in session:
+        return '', 403
+
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("""
+    SELECT file_path
+    FROM messages
+    WHERE id=? AND sender_id=?
+    """, (
+        message_id,
+        session['user_id']
+    ))
+
+    msg = c.fetchone()
+
+    if msg:
+
+        if msg["file_path"] and os.path.exists(msg["file_path"]):
+            os.remove(msg["file_path"])
+
+        c.execute("""
+            UPDATE messages
+            SET
+                deleted = 1,
+                message = '',
+                file_name = NULL,
+                file_path = NULL
+            WHERE id=? AND sender_id=?
+        """, (
+            message_id,
+            session['user_id']
+        ))
+
+        conn.commit()
+
+    conn.close()
+
+    return '', 200
+
+@app.route('/edit_message/<int:message_id>', methods=['POST'])
+def edit_message(message_id):
+
+    if 'user_id' not in session:
+        return jsonify({"success": False})
+
+    new_message = request.form.get("message", "").strip()
+
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("""
+        UPDATE messages
+        SET message=?,
+            edited=1
+        WHERE id=?
+        AND sender_id=?
+    """, (
+        new_message,
+        message_id,
+        session['user_id']
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True})
 
 @app.route('/admin/announcements', methods=['GET', 'POST'])
 def admin_announcements():
@@ -1338,7 +1592,7 @@ def tasks():
     today = datetime.now().date()
 
     # -------------------------
-    # AUTO MOVE OVERDUE TASKS
+    # AUTO OVERDUE LOGIC
     # -------------------------
     c.execute("""
     SELECT id, deadline, status
@@ -1352,28 +1606,18 @@ def tasks():
     for task in pending_tasks:
 
         if task['deadline']:
-
             try:
+                deadline = datetime.strptime(task['deadline'], "%Y-%m-%d").date()
 
-                deadline = datetime.strptime(
-                    task['deadline'],
-                    "%Y-%m-%d"
-                ).date()
-
-                # overdue
                 if deadline < today:
-
                     new_deadline = deadline + timedelta(days=7)
 
                     c.execute("""
-                    UPDATE tasks
-                    SET deadline=?,
-                        carried_forward=1
-                    WHERE id=?
-                    """, (
-                        new_deadline.strftime("%Y-%m-%d"),
-                        task['id']
-                    ))
+                        UPDATE tasks
+                        SET deadline=?,
+                            carried_forward=1
+                        WHERE id=?
+                    """, (new_deadline.strftime("%Y-%m-%d"), task['id']))
 
             except Exception as e:
                 print("Deadline error:", e)
@@ -1381,7 +1625,7 @@ def tasks():
     conn.commit()
 
     # -------------------------
-    # LOAD ACTIVE TASKS
+    # PERSONAL TASKS ONLY
     # -------------------------
     c.execute("""
     SELECT
@@ -1390,6 +1634,7 @@ def tasks():
         description,
         note,
         reply,
+        admin_reply,
         deadline,
         status,
         created_by,
@@ -1403,13 +1648,32 @@ def tasks():
     ORDER BY id DESC
     """, (session['user_id'],))
 
-    tasks = [dict(t) for t in c.fetchall()]
+    tasks_list = [dict(t) for t in c.fetchall()]
+
+    # -------------------------
+    # COMMENTS (FIXED FILTER)
+    # -------------------------
+    for task in tasks_list:
+
+        c.execute("""
+            SELECT *
+            FROM task_comments
+            WHERE task_id=?
+            AND visibility='public'
+            ORDER BY created_at ASC
+        """, (task['id'],))
+
+        comments = [dict(x) for x in c.fetchall()]
+
+        # 👇 IMPORTANT DIFFERENCE:
+        # personal view = filter admin noise if needed later
+        task['comments'] = build_comment_tree(comments)
 
     conn.close()
 
     return render_template(
         "tasks.html",
-        tasks=tasks,
+        tasks=tasks_list,
         name=session['name'],
         role=session['role']
     )
@@ -1420,16 +1684,69 @@ def reply_task(id):
     if 'user_id' not in session:
         return redirect('/')
 
-    reply = request.form['reply']
+    message = request.form['reply']
+    parent_comment_id = request.form.get('parent_comment_id')
 
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
 
     c.execute("""
-    UPDATE tasks
-    SET reply=?
-    WHERE id=?
-    """, (reply, id))
+        INSERT INTO task_comments (
+            task_id,
+            sender_id,
+            sender_role,
+            message,
+            parent_comment_id,
+            visibility,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        id,
+        session['user_id'],
+        'employee',
+        message,
+        parent_comment_id,
+        'public',
+        datetime.now().isoformat()
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/tasks')
+
+@app.route('/task/add_note/<int:id>', methods=['POST'])
+def add_task_note(id):
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    note = request.form['note']
+
+    conn = sqlite3.connect("database.db")
+    c = conn.cursor()
+
+    c.execute("""
+        INSERT INTO task_comments (
+            task_id,
+            sender_id,
+            sender_role,
+            message,
+            visibility,
+            comment_type,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        id,
+        session['user_id'],
+        session['role'],
+        note,
+        'public',
+        'note',
+        datetime.now().isoformat()
+    ))
 
     conn.commit()
     conn.close()
@@ -1893,6 +2210,15 @@ def live_dashboard():
         "working": working
     })
 
+@socketio.on('join')
+def on_join(data):
+
+    room = data['room']
+
+    join_room(room)
+
+    print(f"Joined room {room}")
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -1904,4 +2230,9 @@ init_db()
 create_admin()
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    socketio.run(
+        app,
+        debug=True,
+        host="0.0.0.0",
+        port=5000
+    )

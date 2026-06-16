@@ -206,122 +206,227 @@
                                   {% endif %}
   
                               </td>
-  
-                                <!-- DISCUSSION -->
-                                <td style="min-width:280px;">
 
-                                    <!-- ORIGINAL COMMENT -->
-                                    {% if task.note %}
-                                    <div class="bg-blue-50 border-l-4 border-blue-600 p-2 rounded mb-2 text-sm">
 
-                                        {% if task.created_by == task.assigned_to %}
-                                            <strong>Task Note:</strong><br>
-                                        {% else %}
-                                            <strong>Admin Comment:</strong><br>
-                                        {% endif %}
+                            <!-- PROGRESS NOTES -->
+                            <div class="mb-4">
 
-                                        {{ task.note }}
+                                <h4 class="font-semibold text-blue-700 mb-3">
+                                    Progress Notes
+                                </h4>
 
-                                    </div>
-                                    {% endif %}
+                                <!-- ADD NOTE -->
+                                <form method="POST"
+                                    action="/task/add_note/{{ task.id }}"
+                                    class="mb-4">
 
-                                    <!-- EMPLOYEE REPLY -->
-                                    {% if task.reply %}
-                                    <div class="bg-green-50 border-l-4 border-green-600 p-2 rounded mb-2 text-sm">
-                                
-                                        {% if task.created_by == task.assigned_to %}
-                                            <strong>Your Note:</strong><br>
-                                        {% else %}
-                                            <strong>Your Reply:</strong><br>
-                                        {% endif %}
-                                
-                                        {{ task.reply }}
-                                
-                                    </div>
-                                    {% endif %}
+                                    <textarea
+                                        name="note"
+                                        rows="2"
+                                        required
+                                        placeholder="Write progress update..."
+                                        class="w-full border rounded-lg p-2 text-sm"></textarea>
 
-                                    <!-- ADMIN REPLY -->
-                                    {% if task.admin_reply %}
-                                    <div class="bg-purple-50 border-l-4 border-purple-600 p-2 rounded mb-2 text-sm">
-                                        <strong>Admin Reply:</strong><br>
-                                        {{ task.admin_reply }}
-                                    </div>
-                                    {% endif %}
+                                    <button
+                                        class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
 
-                                    <!-- REPLY / NOTE FORM -->
-                                    <form method="POST" action="/reply_task/{{ task.id }}">
+                                        Add Note
 
-                                        {% if task.created_by == task.assigned_to %}
+                                    </button>
 
-                                            <textarea
-                                                name="reply"
-                                                rows="2"
-                                                placeholder="Add personal note..."
-                                                class="w-full border rounded-lg p-2 text-sm resize-none"
-                                            >{{ task.reply if task.reply else '' }}</textarea>
+                                </form>
 
-                                            <button
-                                                type="submit"
-                                                class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs"
-                                            >
-                                                Save Note
-                                            </button>
+                                <!-- NOTES LIST -->
+                                <div class="space-y-2">
 
-                                        {% else %}
+                                    {% for comment in task.comments %}
 
-                                            <textarea
-                                                name="reply"
-                                                rows="2"
-                                                placeholder="Reply to admin comment..."
-                                                class="w-full border rounded-lg p-2 text-sm resize-none"
-                                            ></textarea>
+                                        {% if comment.comment_type == 'note' %}
 
-                                            <button
-                                                type="submit"
-                                                class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs"
-                                            >
-                                                Send Reply
-                                            </button>
+                                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3">
+
+                                            <div class="flex justify-between items-center">
+
+                                                <div class="font-semibold text-blue-700 text-sm">
+                                                    Progress Update
+                                                </div>
+
+                                                <div class="text-xs text-gray-400">
+                                                    {{ comment.created_at[:16] }}
+                                                </div>
+
+                                            </div>
+
+                                            <div class="text-gray-700 mt-2">
+                                                {{ comment.message }}
+                                            </div>
+
+                                        </div>
 
                                         {% endif %}
 
-                                    </form>
+                                    {% endfor %}
 
-                              <!-- ACTION -->
-                              <td class="space-x-2">
-  
-                                  {% if task.status == "Pending" %}
-                                  <a href="/start_task/{{ task.id }}">
-                                      <button class="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs">
-                                          Start
-                                      </button>
-                                  </a>
-                                  {% endif %}
-  
-                                  {% if task.status != "Completed" %}
-                                  <a href="/complete_task/{{ task.id }}">
-                                      <button class="bg-green-600 text-white px-3 py-1 rounded-lg text-xs">
-                                          Complete
-                                      </button>
-                                  </a>
-                                  {% endif %}
-  
-                                  <button
-                                      onclick="openEdit('{{ task.id }}','{{ task.title }}','{{ task.description }}')"
-                                      class="bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs">
-                                      Edit
-                                  </button>
-  
-                                  <a href="/delete_task/{{ task.id }}"
-                                     onclick="return confirm('Delete this task?')">
-  
-                                      <button class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs">
-                                          Delete
-                                      </button>
-  
-                                  </a>
-  
-                              </td>
+                                </div>
+
+                            </div>
+
+                            <!-- DISCUSSION -->
+                            <td class="min-w-[420px]">
+
+                                <div class="space-y-3">
+                            
+                                    {% macro render_comment(comment, level=0) %}
+
+                                        <div class="border rounded-xl p-3 bg-white shadow-sm ml-{{ level * 6 }}">
+                                    
+                                            <!-- HEADER -->
+                                            <div class="flex items-center justify-between">
+                                    
+                                                <div class="font-semibold
+                                                    {% if comment.sender_role == 'admin' %}
+                                                        text-purple-700
+                                                    {% else %}
+                                                        text-green-700
+                                                    {% endif %}
+                                                ">
+                                                    {{ comment.sender_role|capitalize }}
+                                                </div>
+                                    
+                                                <div class="text-xs text-gray-400">
+                                                    {{ comment.created_at[:16] }}
+                                                </div>
+                                    
+                                            </div>
+                                    
+                                            <!-- MESSAGE -->
+                                            {% if comment.comment_type == 'note' %}
+                                    
+                                                <div class="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg mt-2">
+                                    
+                                                    <div class="text-xs font-semibold mb-1">
+                                                        Progress Update
+                                                    </div>
+                                    
+                                                    {{ comment.message }}
+                                    
+                                                </div>
+                                    
+                                            {% else %}
+                                    
+                                                <div class="text-gray-700 mt-2">
+                                                    {{ comment.message }}
+                                                </div>
+                                    
+                                            {% endif %}
+                                    
+                                            <!-- SHOW REPLY FORM ONLY IF -->
+                                            <!-- ADMIN COMMENT -->
+                                            <!-- OR ADMIN ALREADY REPLIED -->
+                                            {% set show_reply = false %}
+                                    
+                                            {% if comment.sender_role == 'admin' %}
+                                                {% set show_reply = true %}
+                                            {% endif %}
+                                    
+                                            {% for child in comment.children %}
+                                                {% if child.sender_role == 'admin' %}
+                                                    {% set show_reply = true %}
+                                                {% endif %}
+                                            {% endfor %}
+                                    
+                                            {% if show_reply %}
+                                    
+                                            <form method="POST"
+                                                action="/reply_task/{{ task.id }}"
+                                                class="mt-3">
+                                    
+                                                <input type="hidden"
+                                                    name="parent_comment_id"
+                                                    value="{{ comment.id }}">
+                                    
+                                                <textarea name="reply"
+                                                        rows="1"
+                                                        class="w-full border rounded-lg p-2 text-sm"
+                                                        placeholder="Reply..."></textarea>
+                                    
+                                                <button class="mt-1 text-xs bg-gray-200 px-3 py-1 rounded-lg hover:bg-gray-300">
+                                                    Reply
+                                                </button>
+                                    
+                                            </form>
+                                    
+                                            {% endif %}
+                                    
+                                        </div>
+                            
+                                        <!-- CHILD COMMENTS -->
+                                        {% for child in comment.children %}
+                                            {{ render_comment(child, level + 1) }}
+                                        {% endfor %}
+                            
+                                    {% endmacro %}
+                            
+                                    <!-- ROOT COMMENTS -->
+                                    {% for comment in task.comments %}
+
+                                        {% if comment.visibility == 'public' %}
+                                    
+                                            {{ render_comment(comment) }}
+                                    
+                                        {% endif %}
+                                    
+                                    {% endfor %}
+                            
+                                    {% if task.comments|length == 0 %}
+                                        <div class="text-gray-400 text-sm">
+                                            No discussion yet
+                                        </div>
+                                    {% endif %}
+                            
+                                </div>
+                            
+                            </td>
+
+                            <!-- ACTION -->
+                            <td class="space-x-2">
+
+                                {% if task.status == "Pending" %}
+                                <a href="/start_task/{{ task.id }}">
+                                    <button class="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs">
+                                        Start
+                                    </button>
+                                </a>
+                                {% endif %}
+
+                                {% if task.status != "Completed" %}
+                                <a href="/complete_task/{{ task.id }}">
+                                    <button class="bg-green-600 text-white px-3 py-1 rounded-lg text-xs">
+                                        Complete
+                                    </button>
+                                </a>
+                                {% endif %}
+
+                                <button
+                                    onclick="openEdit('{{ task.id }}','{{ task.title }}','{{ task.description }}')"
+                                    class="bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs">
+
+                                    Edit
+
+                                </button>
+
+                                <a href="/delete_task/{{ task.id }}"
+                                    onclick="return confirm('Delete this task?')">
+
+                                    <button class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs">
+
+                                        Delete
+
+                                    </button>
+
+                                </a>
+
+                            </td>
   
                           </tr>
                           {% endfor %}
