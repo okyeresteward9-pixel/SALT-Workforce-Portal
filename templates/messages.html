@@ -190,7 +190,7 @@
         </div>
 
         <!-- CHAT AREA -->
-        <main class="flex-1 flex flex-col bg-gradient-to-b from-gray-50 to-white">
+        <main class="flex-1 min-w-0 flex flex-col bg-gradient-to-b from-gray-50 to-white">
 
             {% if receiver %}
 
@@ -501,7 +501,11 @@
 
                 let actions = "";
 
-                if (isMine && !chat.deleted) {
+                if(
+                    isMine &&
+                    !chat.deleted &&
+                    !chat.file_path
+                ){
 
                     const safeMessage =
                         (chat.message || "")
@@ -560,8 +564,11 @@
 
                             ${
                                 chat.deleted
-                                ? "<i>This message was deleted</i>"
-                                : (chat.message || "")
+                                ? "<i class='opacity-70'>This message was deleted</i>"
+                                : `
+                                    ${chat.message || ""}
+                                    ${fileHtml}
+                                `
                             }
 
                             ${
@@ -574,7 +581,7 @@
                                 : ""
                             }
 
-                            ${fileHtml}
+                            
 
                         </div>
 
@@ -822,6 +829,21 @@
             .getElementById(`menu-${id}`)
             .classList.toggle("hidden");
         };
+
+        // Close 3-dot menu when clicking anywhere else
+        document.addEventListener("click", function (e) {
+
+        // Don't close if the click is inside the menu
+        if (e.target.closest("[id^='menu-']")) return;
+
+        // Don't close if the click is on a 3-dot button
+        if (e.target.closest("button")) return;
+
+        document.querySelectorAll("[id^='menu-']").forEach(menu => {
+            menu.classList.add("hidden");
+        });
+
+        });
 
         // =========================
         // SIDEBAR
