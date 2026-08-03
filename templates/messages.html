@@ -42,8 +42,7 @@
 
     <!-- OVERLAY -->
     <div id="overlay"
-         class="hidden fixed inset-0 bg-black/40 z-40 md:hidden">
-    </div>
+    class="hidden fixed inset-0 bg-black/40 z-40 md:hidden"></div>
 
     <!-- EMOJI PICKER -->
     <div id="emoji-picker"
@@ -73,10 +72,19 @@
 
         <!-- SIDEBAR -->
         <div id="sidebar"
-             class="fixed md:relative z-50 md:z-auto inset-y-0 left-0
-             w-80 bg-white border-r flex flex-col shadow-sm
-             transform -translate-x-full md:translate-x-0
-             transition-transform duration-300">
+        class="fixed md:relative
+        inset-y-0 left-0
+        w-80
+        bg-white
+        border-r
+        flex flex-col
+        shadow-xl
+        z-50
+        transform
+        transition-transform
+        duration-300
+        -translate-x-full
+        md:translate-x-0">
 
             <!-- HEADER -->
             <div class="p-6 border-b border-gray-100">
@@ -193,7 +201,7 @@
 
                     <!-- MOBILE MENU -->
                     <button id="menu-btn"
-                            class="md:hidden text-2xl text-gray-700">
+                            class="md:hidden z-[100] text-3xl text-gray-700">
 
                         ☰
 
@@ -819,33 +827,34 @@
         // SIDEBAR
         // =========================
     
-        menuBtn?.addEventListener("click", () => {
-    
+        menuBtn.addEventListener("click", function () {
+
             sidebar.classList.remove("-translate-x-full");
-    
             overlay.classList.remove("hidden");
-    
+
         });
-    
-        overlay?.addEventListener("click", () => {
-    
+
+        overlay.addEventListener("click", function () {
+
             sidebar.classList.add("-translate-x-full");
-    
             overlay.classList.add("hidden");
-    
+
         });
-    
-        document.querySelectorAll(".user-item")
-        .forEach(user => {
-    
-            user.addEventListener("click", () => {
-    
-                sidebar.classList.add("-translate-x-full");
-    
-                overlay.classList.add("hidden");
-    
+
+            // Hide sidebar after selecting a user
+        document.querySelectorAll(".user-item").forEach(user => {
+
+            user.addEventListener("click", function(){
+
+                if (window.innerWidth < 768){
+
+                    sidebar.classList.add("-translate-x-full");
+                    overlay.classList.add("hidden");
+
+                }
+
             });
-    
+
         });
     
         // =========================
