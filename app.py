@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, jsonify, flash
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_socketio import SocketIO, emit, join_room  # pyright: ignore[reportMissingModuleSource]
@@ -25,16 +26,35 @@ ALLOWED_EXTENSIONS = {
 }
 
 def get_db():
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    return conn
+    return psycopg2.connect(
+        host="localhost",
+        database="salt_portal",
+        user="salt_user",
+        password="ChooseAStrongpassword",
+        cursor_factory=RealDictCursor
+    )
+
+try:
+    conn = get_db()
+    print("✅ PostgreSQL Connected Successfully!")
+    conn.close()
+except Exception as e:
+    print("❌ PostgreSQL Error:", e)
 
 def format_datetime(value):
-    """Turn stored ISO datetime (or None) into display date/time parts."""
+
     if not value:
-        return {"date": "", "time": ""}
-    dt = datetime.fromisoformat(value)
-    return {"date": dt.strftime("%Y-%m-%d"), "time": dt.strftime("%H:%M")}
+        return {
+            "date": "",
+            "time": ""
+        }
+
+    dt = value if isinstance(value, datetime) else datetime.fromisoformat(value)
+
+    return {
+        "date": dt.strftime("%Y-%m-%d"),
+        "time": dt.strftime("%H:%M")
+    }
 
 def build_comment_tree(comments):
     comment_map = {}
@@ -67,15 +87,14 @@ def allowed_file(filename):
 # Initialize database
 # -------------------------
 def init_db():
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
+    conn = get_db()
     c = conn.cursor()
 
     # -------------------------
     # CREATE TABLES
     # -------------------------
     c.execute('''CREATE TABLE IF NOT EXISTS employees (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT,
         email TEXT,
         password TEXT,
@@ -87,7 +106,7 @@ def init_db():
     )''')
 
     c.execute('''CREATE TABLE IF NOT EXISTS attendance (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         employee_id INTEGER,
         clock_in TEXT,
         clock_out TEXT,
@@ -96,7 +115,7 @@ def init_db():
     )''')
 
     c.execute('''CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         title TEXT,
         description TEXT,
         assigned_to INTEGER,
@@ -105,7 +124,7 @@ def init_db():
     )''')
 
     c.execute('''CREATE TABLE IF NOT EXISTS notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER,
         message TEXT,
         is_read INTEGER DEFAULT 0,
@@ -113,7 +132,7 @@ def init_db():
     )''')
 
     c.execute('''CREATE TABLE IF NOT EXISTS announcements (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         title TEXT,
         message TEXT,
         created_by INTEGER,
@@ -121,7 +140,7 @@ def init_db():
     )''')
 
     c.execute('''CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         sender_id INTEGER,
         receiver_id INTEGER,
         message TEXT,
@@ -134,7 +153,7 @@ def init_db():
     # -------------------------
     c.execute('''
     CREATE TABLE IF NOT EXISTS task_comments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         task_id INTEGER,
         sender_id INTEGER,
         sender_role TEXT,
@@ -267,24 +286,45 @@ def init_db():
 # Create admin if not exists
 # -------------------------
 def create_admin():
-    conn = sqlite3.connect("database.db")
+    conn = get_db()
     c = conn.cursor()
 
     hashed_password = generate_password_hash("Stgh2@&$%#3")
 
     # Check if admin exists
-    c.execute("SELECT * FROM employees WHERE email=?", ("admin@salt.com",))
+    c.execute(
+        "SELECT * FROM employees WHERE email=%s",
+        ("admin@salt.com",)
+    )
+
     existing_admin = c.fetchone()
 
     if existing_admin:
-        # ✅ FIX ROLE if wrong
-        c.execute("""UPDATE employees SET role='admin' WHERE email=?""", ("admin@salt.com",))
-        print("Admin role fixed!")
+        c.execute(
+            """
+            UPDATE employees
+            SET role=%s
+            WHERE email=%s
+            """,
+            ("admin", "admin@salt.com")
+        )
+        print("✅ Admin role verified.")
+
     else:
-        # ✅ CREATE ADMIN
-        c.execute("""INSERT INTO employees (name, email, password, role) VALUES (?,?,?,?)""",
-                  ("Admin", "admin@salt.com", hashed_password, "admin"))
-        print("Admin created!")
+        c.execute(
+            """
+            INSERT INTO employees
+            (name, email, password, role)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (
+                "Admin",
+                "admin@salt.com",
+                hashed_password,
+                "admin"
+            )
+        )
+        print("✅ Admin created.")
 
     conn.commit()
     conn.close()
@@ -293,37 +333,49 @@ def create_admin():
 # -------------------------
 # Routes
 # -------------------------
+
 @app.route('/')
 def home():
     return render_template("login.html")
+
 
 @app.route('/login', methods=['POST'])
 def login():
     email = request.form['email']
     password = request.form['password']
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
+    conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT * FROM employees WHERE email=?", (email,))
+
+    c.execute(
+        "SELECT * FROM employees WHERE email=%s",
+        (email,)
+    )
+
     user = c.fetchone()
-    conn.close()
+
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
     if user and check_password_hash(user['password'], password):
+
         session['user_id'] = user['id']
         session['name'] = user['name']
         session['role'] = user['role']
+
         return redirect('/dashboard')
+
     else:
         return "Invalid login"
 
 @app.route('/settings/profile', methods=['GET', 'POST'])
 def profile_settings():
+
     if 'user_id' not in session:
         return redirect('/')
 
     conn = get_db()
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
     if request.method == 'POST':
 
@@ -338,6 +390,7 @@ def profile_settings():
         confirm_password = request.form.get('confirm_password')
         current_password = request.form.get('current_password')
 
+
         # -------------------------
         # 🖼️ IMAGE UPLOAD
         # -------------------------
@@ -345,30 +398,62 @@ def profile_settings():
         profile_path = None
 
         if file and file.filename:
+
             ext = file.filename.rsplit('.', 1)[-1].lower()
 
             if ext not in ALLOWED_EXTENSIONS:
-                flash("Invalid file type. Only PNG, JPG, JPEG allowed.", "error")
+                flash(
+                    "Invalid file type. Only PNG, JPG, JPEG allowed.",
+                    "error"
+                )
                 return redirect('/settings/profile')
 
+
             base_dir = os.path.dirname(os.path.abspath(__file__))
-            upload_folder = os.path.join(base_dir, "static", "profiles")
+
+            upload_folder = os.path.join(
+                base_dir,
+                "static",
+                "profiles"
+            )
+
             os.makedirs(upload_folder, exist_ok=True)
 
+
             filename = f"{session['user_id']}_{int(time.time())}.{ext}"
-            file_path = os.path.join(upload_folder, filename)
+
+            file_path = os.path.join(
+                upload_folder,
+                filename
+            )
 
             file.save(file_path)
+
             profile_path = filename
+
+
 
         # -------------------------
         # 🏢 DEPARTMENT CONTROL
         # -------------------------
         if session.get("role") == "admin":
+
             department = request.form.get('department')
+
         else:
-            c.execute("SELECT department FROM employees WHERE id=?", (session['user_id'],))
+
+            c.execute(
+                """
+                SELECT department 
+                FROM employees 
+                WHERE id=%s
+                """,
+                (session['user_id'],)
+            )
+
             department = c.fetchone()['department']
+
+
 
         # -------------------------
         # 🔐 PASSWORD VALIDATION
@@ -376,47 +461,101 @@ def profile_settings():
         update_password = False
         hashed_password = None
 
+
         if new_password and new_password.strip() != "":
 
             if not current_password or current_password.strip() == "":
-                flash("Please enter your current password", "error")
+                flash(
+                    "Please enter your current password",
+                    "error"
+                )
                 return redirect('/settings/profile')
+
 
             if new_password != confirm_password:
-                flash("Passwords do not match", "error")
+
+                flash(
+                    "Passwords do not match",
+                    "error"
+                )
                 return redirect('/settings/profile')
 
-            c.execute("SELECT password FROM employees WHERE id=?", (session['user_id'],))
+
+            c.execute(
+                """
+                SELECT password 
+                FROM employees 
+                WHERE id=%s
+                """,
+                (session['user_id'],)
+            )
+
+
             stored_password = c.fetchone()['password']
 
-            if not check_password_hash(stored_password, current_password):
-                flash("Current password is incorrect", "error")
+
+            if not check_password_hash(
+                stored_password,
+                current_password
+            ):
+
+                flash(
+                    "Current password is incorrect",
+                    "error"
+                )
                 return redirect('/settings/profile')
 
+
             hashed_password = generate_password_hash(new_password)
+
             update_password = True
+
+
 
         # -------------------------
         # 🧠 BUILD UPDATE QUERY
         # -------------------------
         query = """
             UPDATE employees
-            SET name=?, phone=?, department=?, theme=?
+            SET name=%s,
+                phone=%s,
+                department=%s,
+                theme=%s
         """
-        params = [name, phone, department, theme]
+
+        params = [
+            name,
+            phone,
+            department,
+            theme
+        ]
+
 
         if update_password:
-            query += ", password=?"
+
+            query += ", password=%s"
             params.append(hashed_password)
 
+
+
         if profile_path:
-            query += ", profile_pic=?"
+
+            query += ", profile_pic=%s"
             params.append(profile_path)
 
-        query += " WHERE id=?"
+
+
+        query += " WHERE id=%s"
+
         params.append(session['user_id'])
 
-        c.execute(query, tuple(params))
+
+        c.execute(
+            query,
+            tuple(params)
+        )
+
+
 
         # -------------------------
         # 💾 SAVE
@@ -424,29 +563,68 @@ def profile_settings():
         conn.commit()
         conn.close()
 
+
         session['name'] = name
 
-        flash("Profile updated successfully!", "success")
+
+        flash(
+            "Profile updated successfully!",
+            "success"
+        )
+
         return redirect('/settings/profile')
+
+
 
     # -------------------------
     # 📤 GET USER DATA
     # -------------------------
-    c.execute("SELECT * FROM employees WHERE id=?", (session['user_id'],))
+    c.execute(
+        """
+        SELECT * 
+        FROM employees 
+        WHERE id=%s
+        """,
+        (session['user_id'],)
+    )
+
+
     user = c.fetchone()
+
+
     conn.close()
 
-    return render_template("settings.html", user=user, role=session.get("role"))
+
+    return render_template(
+        "settings.html",
+        user=user,
+        role=session.get("role")
+    )
 
 @app.context_processor
 def inject_user():
+
     if 'user_id' in session:
+
         conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT * FROM employees WHERE id=?", (session['user_id'],))
+
+        c = conn.cursor(cursor_factory=RealDictCursor)
+
+        c.execute(
+            """
+            SELECT * 
+            FROM employees 
+            WHERE id=%s
+            """,
+            (session['user_id'],)
+        )
+
         user = c.fetchone()
+
         conn.close()
+
         return dict(user=user)
+
     return dict(user=None)
 
 # -------------------------
@@ -458,178 +636,357 @@ def dashboard():
     if 'user_id' not in session:
         return redirect('/')
 
+
     role = session.get('role')
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
+
+    conn = get_db()
     c = conn.cursor()
+
+
 
     # -------------------------
     # Attendance logic
     # -------------------------
+
     today = datetime.now().date()
     today_str = today.strftime("%Y-%m-%d")
 
+
     c.execute("""
-    SELECT clock_in, clock_out 
-    FROM attendance
-    WHERE employee_id=? AND DATE(clock_in) = DATE(?)
-    ORDER BY id DESC LIMIT 1
-    """, (session['user_id'], today_str))
+        SELECT clock_in, clock_out
+        FROM attendance
+        WHERE employee_id=%s
+        AND DATE(clock_in)=DATE(%s)
+        ORDER BY id DESC
+        LIMIT 1
+    """,
+    (
+        session['user_id'],
+        today_str
+    ))
+
 
     attendance_record = c.fetchone()
+
 
     clocked_in = False
     clocked_out = False
 
+
     if attendance_record:
+
         clocked_in = True
-        if attendance_record[1] is not None:
+
+        if attendance_record['clock_out'] is not None:
             clocked_out = True
+
+
 
     # -------------------------
     # Dashboard stats
     # -------------------------
+
     total_employees = 0
     present_today = 0
     absent_today = 0
     clockins_today = 0
 
-    if role == 'admin':
-        c.execute("SELECT COUNT(*) FROM employees")
-        total_employees = c.fetchone()[0]
 
-        c.execute("SELECT COUNT(DISTINCT employee_id) FROM attendance WHERE DATE(clock_in)=?", (today_str,))
-        present_today = c.fetchone()[0]
+    if role == 'admin':
+
+        c.execute(
+            "SELECT COUNT(*) AS count FROM employees"
+        )
+
+        total_employees = c.fetchone()['count']
+
+
+        c.execute("""
+            SELECT COUNT(DISTINCT employee_id) AS count
+            FROM attendance
+            WHERE DATE(clock_in)=%s
+        """,
+        (today_str,))
+
+
+        present_today = c.fetchone()['count']
+
 
         absent_today = total_employees - present_today
 
-        c.execute("SELECT COUNT(*) FROM attendance WHERE DATE(clock_in)=?", (today_str,))
-        clockins_today = c.fetchone()[0]
+
+
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM attendance
+            WHERE DATE(clock_in)=%s
+        """,
+        (today_str,))
+
+
+        clockins_today = c.fetchone()['count']
+
+
     else:
-        c.execute("SELECT COUNT(*) FROM attendance WHERE employee_id=? AND DATE(clock_in)=?", (session['user_id'], today_str))
-        clockins_today = c.fetchone()[0]
+
+
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM attendance
+            WHERE employee_id=%s
+            AND DATE(clock_in)=%s
+        """,
+        (
+            session['user_id'],
+            today_str
+        ))
+
+
+        clockins_today = c.fetchone()['count']
+
+
 
     # -------------------------
     # Weekly chart data
     # -------------------------
+
     week_data = []
     labels = []
+
+
     for i in range(7):
-        day = today - timedelta(days=6 - i)
-        c.execute("SELECT COUNT(DISTINCT employee_id) FROM attendance WHERE DATE(clock_in)=?", (day.strftime("%Y-%m-%d"),))
-        week_data.append(c.fetchone()[0])
-        labels.append(day.strftime("%a"))
+
+        day = today - timedelta(days=6-i)
+
+        c.execute("""
+            SELECT COUNT(DISTINCT employee_id) AS count
+            FROM attendance
+            WHERE DATE(clock_in)=%s
+        """,
+        (
+            day.strftime("%Y-%m-%d"),
+        ))
+
+
+        week_data.append(
+            c.fetchone()['count']
+        )
+
+        labels.append(
+            day.strftime("%a")
+        )
+
+
 
     # -------------------------
-    # Working employees (admin only)
+    # Working employees
     # -------------------------
+
     if role == 'admin':
+
         c.execute("""
-        SELECT employees.name, attendance.clock_in, attendance.latitude, attendance.longitude
-        FROM attendance
-        JOIN employees ON attendance.employee_id = employees.id
-        WHERE DATE(clock_in) = ? AND clock_out IS NULL
-        """, (today_str,))
+            SELECT 
+                employees.name,
+                attendance.clock_in,
+                attendance.latitude,
+                attendance.longitude
+            FROM attendance
+
+            JOIN employees
+            ON attendance.employee_id = employees.id
+
+            WHERE DATE(clock_in)=%s
+            AND clock_out IS NULL
+        """,
+        (today_str,))
+
 
         working_employees = c.fetchall()
+
+
     else:
+
         working_employees = []
 
+
+
     # -------------------------
-    # Format clock-in time (HH:MM)
+    # Format clock-in time
     # -------------------------
+
     formatted_employees = []
 
+
     for emp in working_employees:
+
+
         emp = dict(emp)
 
+
         try:
-            dt = datetime.fromisoformat(emp['clock_in'])
+
+            dt = emp['clock_in']
+
+            if isinstance(dt, str):
+                dt = datetime.fromisoformat(dt)
+
+
             emp['clock_in'] = dt.strftime("%H:%M")
+
+
         except Exception:
             pass
 
+
         formatted_employees.append(emp)
 
+
+
     working_employees = formatted_employees
+
+
 
     # -------------------------
     # Task stats
     # -------------------------
+
     if role == 'admin':
-        c.execute("SELECT COUNT(*) FROM tasks WHERE status='Completed'")
-        tasks_completed = c.fetchone()[0]
 
-        c.execute("SELECT COUNT(*) FROM tasks WHERE status!='Completed'")
-        tasks_pending = c.fetchone()[0]
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM tasks
+            WHERE status='Completed'
+        """)
+
+        tasks_completed = c.fetchone()['count']
+
+
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM tasks
+            WHERE status!='Completed'
+        """)
+
+        tasks_pending = c.fetchone()['count']
+
+
     else:
-        c.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to=? AND status='Completed'", (session['user_id'],))
-        tasks_completed = c.fetchone()[0]
 
-        c.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to=? AND status!='Completed'", (session['user_id'],))
-        tasks_pending = c.fetchone()[0]
+
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM tasks
+            WHERE assigned_to=%s
+            AND status='Completed'
+        """,
+        (session['user_id'],))
+
+
+        tasks_completed = c.fetchone()['count']
+
+
+
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM tasks
+            WHERE assigned_to=%s
+            AND status!='Completed'
+        """,
+        (session['user_id'],))
+
+
+        tasks_pending = c.fetchone()['count']
+
+
 
     # -------------------------
     # Notifications
     # -------------------------
-    notification_count = get_notification_count(session['user_id'])
+
+    notification_count = get_notification_count(
+        session['user_id']
+    )
+
+
 
     # -------------------------
-    # Latest announcements
+    # Announcements
     # -------------------------
+
     c.execute("""
-    SELECT title, message, created_at,file_path 
-    FROM announcements
-    ORDER BY created_at DESC
-    LIMIT 5
+        SELECT title, message, created_at, file_path
+        FROM announcements
+        ORDER BY created_at DESC
+        LIMIT 5
     """)
+
+
     latest_announcements = c.fetchall()
 
+
+    c.close()
     conn.close()
 
+
+
     # -------------------------
-    # Employee Locations for Map
+    # Employee Locations
     # -------------------------
+
     employee_locations = []
 
+
     for emp in working_employees:
-        lat = emp['latitude']
-        lon = emp['longitude']
 
         try:
-            lat_f = float(lat)
-            lon_f = float(lon)
+
+            lat_f = float(emp['latitude'])
+            lon_f = float(emp['longitude'])
+
+
         except (TypeError, ValueError):
+
             continue
 
+
         employee_locations.append({
+
             "name": emp['name'],
             "time": emp['clock_in'],
             "lat": lat_f,
             "lon": lon_f
+
         })
 
-    # -------------------------
-    # Render
-    # -------------------------
+
+
     return render_template(
         "dashboard.html",
+
         name=session['name'],
         role=role,
+
         total_employees=total_employees,
         present_today=present_today,
         absent_today=absent_today,
         clockins_today=clockins_today,
+
         notification_count=notification_count,
+
         clocked_in=clocked_in,
         clocked_out=clocked_out,
+
         week_data=week_data,
         labels=labels,
+
         working_employees=working_employees,
+
         tasks_completed=tasks_completed,
         tasks_pending=tasks_pending,
+
         latest_announcements=latest_announcements,
+
         employee_locations=employee_locations
     )
 # -------------------------
@@ -637,50 +994,75 @@ def dashboard():
 # -------------------------
 @app.route('/clockin', methods=['POST'])
 def clockin():
+
     if 'user_id' not in session:
         return redirect('/')
+
 
     lat = request.form['latitude']
     lon = request.form['longitude']
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
+
+    conn = get_db()
     c = conn.cursor()
 
-    now = datetime.now().isoformat()
+
+    now = datetime.now()
+
 
     c.execute("""
-    INSERT INTO attendance (employee_id, clock_in, latitude, longitude)
-    VALUES (?,?,?,?)
-    """, (session['user_id'], now, lat, lon))
+        INSERT INTO attendance 
+        (
+            employee_id,
+            clock_in,
+            latitude,
+            longitude
+        )
+        VALUES (%s, %s, %s, %s)
+    """,
+    (
+        session['user_id'],
+        now,
+        lat,
+        lon
+    ))
+
 
     conn.commit()
     conn.close()
 
-    return redirect('/dashboard')
 
+    return redirect('/dashboard')
 # -------------------------
 # Clock-out
 # -------------------------
 @app.route('/clockout', methods=['POST'])
 def clockout():
+
     if 'user_id' not in session:
         return redirect('/')
 
-    conn = sqlite3.connect("database.db")
-    c = conn.cursor()
 
-    now = datetime.now().isoformat()
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
 
     c.execute("""
-    UPDATE attendance
-    SET clock_out = ?
-    WHERE employee_id=? AND DATE(clock_in) = ? AND clock_out IS NULL
-    """, (now, session['user_id'], today_str))
+        UPDATE attendance
+        SET clock_out=%s
+        WHERE employee_id=%s
+        AND DATE(clock_in)=CURRENT_DATE
+        AND clock_out IS NULL
+    """,
+    (
+        datetime.now(),
+        session['user_id']
+    ))
+
 
     conn.commit()
     conn.close()
+
 
     return redirect('/dashboard')
 
@@ -688,18 +1070,21 @@ def clockout():
 # Notifications helper
 # -------------------------
 def get_notification_count(user_id):
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
+
+    conn = get_db()
     c = conn.cursor()
 
     c.execute("""
-    SELECT COUNT(*) FROM notifications
-    WHERE user_id=? AND is_read=0
+    SELECT COUNT(*) AS total
+    FROM notifications
+    WHERE user_id=%s AND is_read=FALSE
     """, (user_id,))
 
-    count = c.fetchone()[0]
+    count = c.fetchone()["total"]
+
 
     conn.close()
+
     return count
 
 # -------------------------
@@ -711,22 +1096,29 @@ def api_notifications():
     if 'user_id' not in session:
         return jsonify([])
 
+
     conn = get_db()
+
     c = conn.cursor()
 
+
     c.execute("""
-    SELECT id, message, created_at, is_read
-    FROM notifications
-    WHERE user_id=?
-    ORDER BY created_at DESC
-    LIMIT 10
-    """, (session['user_id'],))
+        SELECT id, message, created_at, is_read
+        FROM notifications
+        WHERE user_id=%s
+        ORDER BY created_at DESC
+        LIMIT 10
+    """,
+    (session['user_id'],))
+
 
     notes = c.fetchall()
 
+
     conn.close()
 
-    return jsonify([dict(n) for n in notes])
+
+    return jsonify(notes)
 
 
 # -------------------------
@@ -738,127 +1130,264 @@ def mark_notifications_read():
     if 'user_id' not in session:
         return jsonify({"success": False})
 
+
     conn = get_db()
     c = conn.cursor()
 
+
     c.execute("""
-    UPDATE notifications
-    SET is_read=1
-    WHERE user_id=?
-    """, (session['user_id'],))
+        UPDATE notifications
+        SET is_read=TRUE
+        WHERE user_id=%s
+    """,
+    (session['user_id'],))
+
 
     conn.commit()
     conn.close()
+
 
     return jsonify({"success": True})
 
 @app.route('/attendance')
 def attendance():
+
     if 'user_id' not in session:
         return redirect('/')
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
+
+    conn = get_db()
+
     c = conn.cursor()
 
+
     role = session.get('role')
+
 
     # 👑 ADMIN → see all
     if role == 'admin':
+
         c.execute("""
-            SELECT employees.name, attendance.clock_in, attendance.clock_out
+            SELECT 
+                employees.name,
+                attendance.clock_in,
+                attendance.clock_out
+
             FROM attendance
-            JOIN employees ON attendance.employee_id = employees.id
+
+            JOIN employees 
+            ON attendance.employee_id = employees.id
+
             ORDER BY attendance.clock_in DESC
         """)
+
+
     else:
+
         # 👤 STAFF → see only theirs
+
         c.execute("""
-            SELECT NULL as name, clock_in, clock_out
+            SELECT 
+                NULL AS name,
+                clock_in,
+                clock_out
+
             FROM attendance
-            WHERE employee_id=?
+
+            WHERE employee_id=%s
+
             ORDER BY clock_in DESC
-        """, (session['user_id'],))
+        """,
+        (session['user_id'],))
+
 
     raw_records = c.fetchall()
+
+
     conn.close()
 
-    # ✅ Format data (your best practice)
+
+
+    # ✅ Format data
+
     records = []
 
+
     for r in raw_records:
-        clock_in = format_datetime(r["clock_in"])
-        clock_out = format_datetime(r["clock_out"])
+
+
+        clock_in = format_datetime(
+            r["clock_in"]
+        )
+
+        clock_out = format_datetime(
+            r["clock_out"]
+        )
+
 
         records.append({
+
             "name": r["name"] if role == 'admin' else None,
+
             "clock_in_date": clock_in["date"],
+
             "clock_in_time": clock_in["time"],
+
             "clock_out_date": clock_out["date"],
+
             "clock_out_time": clock_out["time"],
+
             "is_active": r["clock_out"] is None
+
         })
 
-    return render_template("attendance.html", records=records, role=role)
+
+    return render_template(
+        "attendance.html",
+        records=records,
+        role=role
+    )
 
 @app.route('/export/attendance')
 def export_attendance():
+
     if 'user_id' not in session:
         return redirect('/')
 
+
     role = session.get('role')
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
+
+    conn = get_db()
+
     c = conn.cursor()
 
-    # Admin → all records
+
+
+    # 👑 Admin → all records
     if role == 'admin':
+
         c.execute("""
-            SELECT employees.name, attendance.clock_in, attendance.clock_out
+            SELECT 
+                employees.name,
+                attendance.clock_in,
+                attendance.clock_out
+
             FROM attendance
-            JOIN employees ON attendance.employee_id = employees.id
+
+            JOIN employees 
+            ON attendance.employee_id = employees.id
+
             ORDER BY attendance.clock_in DESC
         """)
+
+
     else:
-        # Staff → only theirs
+
+        # 👤 Staff → only theirs
+
         c.execute("""
-            SELECT NULL as name, clock_in, clock_out
+            SELECT 
+                NULL AS name,
+                clock_in,
+                clock_out
+
             FROM attendance
-            WHERE employee_id=?
+
+            WHERE employee_id=%s
+
             ORDER BY clock_in DESC
-        """, (session['user_id'],))
+        """,
+        (session['user_id'],))
+
+
 
     records = c.fetchall()
+
+
     conn.close()
 
+
+
     # ✅ Create Excel file
+
     wb = Workbook()
+
     ws = wb.active
+
     ws.title = "Attendance"
 
+
+
     # Headers
+
     if role == 'admin':
-        ws.append(["Employee", "Clock In", "Clock Out", "Status"])
+
+        ws.append([
+            "Employee",
+            "Clock In",
+            "Clock Out",
+            "Status"
+        ])
+
     else:
-        ws.append(["Clock In", "Clock Out", "Status"])
+
+        ws.append([
+            "Clock In",
+            "Clock Out",
+            "Status"
+        ])
+
+
+
 
     # Fill data
+
     for r in records:
+
+
         clock_in = r["clock_in"]
+
         clock_out = r["clock_out"]
 
-        status = "Active" if clock_out is None else "Completed"
+
+        status = (
+            "Active"
+            if clock_out is None
+            else "Completed"
+        )
+
+
 
         if role == 'admin':
-            ws.append([r["name"], clock_in, clock_out or "Still working", status])
+
+            ws.append([
+                r["name"],
+                clock_in,
+                clock_out or "Still working",
+                status
+            ])
+
         else:
-            ws.append([clock_in, clock_out or "Still working", status])
+
+            ws.append([
+                clock_in,
+                clock_out or "Still working",
+                status
+            ])
+
+
+
 
     # Save to memory
+
     file_stream = io.BytesIO()
+
     wb.save(file_stream)
+
     file_stream.seek(0)
+
+
 
     return send_file(
         file_stream,
@@ -869,14 +1398,20 @@ def export_attendance():
 
 @app.route('/admin/tasks')
 def admin_tasks():
+
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+
+    conn = get_db()
+
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+
 
     status = request.args.get("status")
+
+
 
     base_query = """
         SELECT 
@@ -891,78 +1426,145 @@ def admin_tasks():
             tasks.created_by,
             tasks.assigned_to,
             tasks.carried_forward,
-            employees.name as employee_name
+            employees.name AS employee_name
+
         FROM tasks
-        LEFT JOIN employees ON tasks.assigned_to = employees.id
+
+        LEFT JOIN employees 
+        ON tasks.assigned_to = employees.id
     """
+
+
 
     params = []
 
+
+
     if status:
-        base_query += " WHERE tasks.status = ?"
+
+        base_query += """
+            WHERE tasks.status=%s
+        """
+
         params.append(status)
 
-    base_query += " ORDER BY tasks.id DESC"
 
-    c.execute(base_query, params)
-    tasks = [dict(row) for row in c.fetchall()]
+
+    base_query += """
+        ORDER BY tasks.id DESC
+    """
+
+
+
+    c.execute(
+        base_query,
+        params
+    )
+
+
+    tasks = c.fetchall()
+
+
 
     # ----------------------------
-    # COMMENTS (FIXED LOGIC)
+    # COMMENTS
     # ----------------------------
+
     for task in tasks:
+
+
         c.execute("""
             SELECT *
             FROM task_comments
-            WHERE task_id=?
+            WHERE task_id=%s
             ORDER BY created_at ASC
-        """, (task['id'],))
+        """,
+        (task['id'],))
 
-        comments = [dict(x) for x in c.fetchall()]
 
-        # 👇 IMPORTANT FIX:
-        # Admin board sees ALL comments (no filtering)
+        comments = c.fetchall()
+
+
         task['comments'] = build_comment_tree(comments)
+
+
 
     # ----------------------------
     # STATS
     # ----------------------------
-    c.execute("SELECT COUNT(*) FROM tasks WHERE status='Pending'")
-    pending_count = c.fetchone()[0]
 
-    c.execute("SELECT COUNT(*) FROM tasks WHERE status='In Progress'")
-    progress_count = c.fetchone()[0]
+    c.execute("""
+        SELECT COUNT(*) AS count
+        FROM tasks
+        WHERE status='Pending'
+    """)
 
-    c.execute("SELECT COUNT(*) FROM tasks WHERE status='Completed'")
-    completed_count = c.fetchone()[0]
+    pending_count = c.fetchone()['count']
+
+
+
+    c.execute("""
+        SELECT COUNT(*) AS count
+        FROM tasks
+        WHERE status='In Progress'
+    """)
+
+    progress_count = c.fetchone()['count']
+
+
+
+    c.execute("""
+        SELECT COUNT(*) AS count
+        FROM tasks
+        WHERE status='Completed'
+    """)
+
+    completed_count = c.fetchone()['count']
+
+
 
     conn.close()
 
+
+
     today = date.today().isoformat()
+
+
 
     return render_template(
         "admin_tasks.html",
+
         tasks=tasks,
+
         pending_count=pending_count,
+
         progress_count=progress_count,
+
         completed_count=completed_count,
+
         today=today
     )
-
 @app.route('/admin/reply_task/<int:id>', methods=['POST'])
 def admin_reply_task(id):
 
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
 
+
     message = request.form['admin_reply']
+
     parent_comment_id = request.form.get('parent_comment_id')
 
-    conn = sqlite3.connect("database.db")
+
+    conn = get_db()
+
     c = conn.cursor()
 
+
+
     c.execute("""
-        INSERT INTO task_comments (
+        INSERT INTO task_comments
+        (
             task_id,
             sender_id,
             sender_role,
@@ -971,19 +1573,36 @@ def admin_reply_task(id):
             visibility,
             created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
+
+        VALUES
+        (
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+        )
+
+    """,
+    (
         id,
         session['user_id'],
         'admin',
         message,
         parent_comment_id,
         'public',
-        datetime.now().isoformat()
+        datetime.now()
     ))
 
+
+
     conn.commit()
+
     conn.close()
+
+
 
     return redirect('/admin/tasks')
 
@@ -993,49 +1612,87 @@ def delete_task_route(task_id):
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
 
-    conn = sqlite3.connect("database.db")
+
+    conn = get_db()
     c = conn.cursor()
 
-    # 🔥 only delete admin board tasks (prevents breaking personal tasks)
+
+    # 🔥 only delete admin board tasks
     c.execute("""
-        DELETE FROM tasks 
-        WHERE id=? AND task_scope='admin_board'
-    """, (task_id,))
+        DELETE FROM tasks
+        WHERE id=%s
+        AND task_scope='admin_board'
+    """,
+    (task_id,))
+
 
     conn.commit()
+
     conn.close()
+
 
     return redirect('/admin/tasks')
 
 @app.route('/admin/assign_task', methods=['GET','POST'])
 def assign_task():
+
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
 
-    try:
-        c.execute("ALTER TABLE tasks ADD COLUMN note TEXT")
-    except:
-        pass
+    conn = get_db()
+
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+
 
     if request.method == 'POST':
+
         title = request.form['title']
+
         description = request.form['description']
+
         note = request.form['note']
+
         assigned_to = request.form['assigned_to']
+
         deadline = request.form['deadline']
 
-        # 🔥 IMPORTANT FIX
-        created_at = datetime.now().isoformat()
+
+
+        created_at = datetime.now()
+
+
 
         c.execute("""
-            INSERT INTO tasks 
-            (title, description, note, assigned_to, deadline, status, created_by, task_scope, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+            INSERT INTO tasks
+            (
+                title,
+                description,
+                note,
+                assigned_to,
+                deadline,
+                status,
+                created_by,
+                task_scope,
+                created_at
+            )
+
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )
+
+        """,
+        (
             title,
             description,
             note,
@@ -1047,73 +1704,174 @@ def assign_task():
             created_at
         ))
 
-        # notification
+
+
+        # 🔔 Notification
+
         c.execute("""
-            INSERT INTO notifications (user_id, message, created_at)
-            VALUES (?,?,?)
-        """, (
+            INSERT INTO notifications
+            (
+                user_id,
+                message,
+                created_at
+            )
+
+            VALUES
+            (
+                %s,
+                %s,
+                %s
+            )
+
+        """,
+        (
             assigned_to,
             f"New Task Assigned: {title}",
-            datetime.now().isoformat()
+            datetime.now()
         ))
 
+
+
         conn.commit()
+
         conn.close()
+
 
         return redirect('/admin/tasks')
 
-    c.execute("SELECT id,name FROM employees")
+
+
+    # Load employees
+
+    c.execute("""
+        SELECT id, name
+        FROM employees
+        ORDER BY name ASC
+    """)
+
+
     employees = c.fetchall()
+
+
     conn.close()
 
-    return render_template("assign_task.html", employees=employees)
+
+    return render_template(
+        "assign_task.html",
+        employees=employees
+    )
 
 @app.route('/admin/employees')
 def admin_employees():
+
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
 
-    c.execute("SELECT id, name, email, role FROM employees")
+    conn = get_db()
+
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+
+    c.execute("""
+        SELECT id, name, email, role
+        FROM employees
+        ORDER BY id DESC
+    """)
+
+
     employees = c.fetchall()
+
 
     conn.close()
 
-    return render_template("employees.html", employees=employees)
+
+    return render_template(
+        "employees.html",
+        employees=employees
+    )
 
 @app.route("/admin/add_employee", methods=["GET", "POST"])
 def add_employee():
+
+
+    if 'role' not in session or session['role'] != 'admin':
+        return "Access Denied"
+
+
+
     if request.method == "POST":
+
+
         # Get form data
+
         name = request.form.get("name")
+
         email = request.form.get("email")
+
         password = request.form.get("password")
+
         role = request.form.get("role", "staff")
 
-        # Simple validation (optional)
+
+
+        # Validation
+
         if not name or not email or not password:
+
             return "Please fill all fields", 400
+
+
 
         hashed_password = generate_password_hash(password)
 
-        # Insert into DB
-        conn = sqlite3.connect("database.db")
+
+
+        conn = get_db()
+
         c = conn.cursor()
-        c.execute(
-            "INSERT INTO employees (name, email, password, role) VALUES (?,?,?,?)",
-            (name, email, hashed_password, role)
-        )
+
+
+
+        c.execute("""
+            INSERT INTO employees
+            (
+                name,
+                email,
+                password,
+                role
+            )
+
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s
+            )
+        """,
+        (
+            name,
+            email,
+            hashed_password,
+            role
+        ))
+
+
+
         conn.commit()
+
         conn.close()
 
-        # Redirect to employee list
-        return redirect("/admin/employees")  # <--- must return something!
 
-    # GET request → render the form
-    return render_template("add_employee.html")
+
+        return redirect("/admin/employees")
+
+
+
+    return render_template(
+        "add_employee.html"
+    )
 
 @app.route('/admin/edit_employee/<int:id>', methods=['GET','POST'])
 def edit_employee(id):
@@ -1121,32 +1879,73 @@ def edit_employee(id):
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+
+    conn = get_db()
+
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+
 
     if request.method == 'POST':
+
         name = request.form['name']
+
         email = request.form['email']
+
         role = request.form['role']
 
+
+
         c.execute("""
-        UPDATE employees
-        SET name=?, email=?, role=?
-        WHERE id=?
-        """,(name,email,role,id))
+            UPDATE employees
+
+            SET 
+                name=%s,
+                email=%s,
+                role=%s
+
+            WHERE id=%s
+
+        """,
+        (
+            name,
+            email,
+            role,
+            id
+        ))
+
+
 
         conn.commit()
+
         conn.close()
+
+
 
         return redirect('/admin/employees')
 
-    c.execute("SELECT * FROM employees WHERE id=?", (id,))
+
+
+    c.execute("""
+        SELECT *
+        FROM employees
+        WHERE id=%s
+    """,
+    (id,))
+
+
     employee = c.fetchone()
+
+
 
     conn.close()
 
-    return render_template("edit_employee.html", employee=employee)
+
+
+    return render_template(
+        "edit_employee.html",
+        employee=employee
+    )
 
 @app.route('/admin/delete_employee/<int:id>')
 def delete_employee(id):
@@ -1154,13 +1953,27 @@ def delete_employee(id):
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
 
-    conn = sqlite3.connect("database.db")
+
+
+    conn = get_db()
+
     c = conn.cursor()
 
-    c.execute("DELETE FROM employees WHERE id=?", (id,))
+
+
+    c.execute("""
+        DELETE FROM employees
+        WHERE id=%s
+    """,
+    (id,))
+
+
 
     conn.commit()
+
     conn.close()
+
+
 
     return redirect('/admin/employees')
 
@@ -1172,90 +1985,154 @@ def messages(user_id=None):
     if 'user_id' not in session:
         return redirect('/')
 
-    conn = get_db()
-    c = conn.cursor()
 
-    # -------------------------
-    # Send message
-    # -------------------------
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+
+    # =========================
+    # SEND MESSAGE
+    # =========================
+
     if request.method == 'POST' and user_id:
+
 
         message = request.form.get('message', '').strip()
 
-        # default file values
+
         file_name = None
         file_path = None
 
-        # uploaded file
+
         file = request.files.get("file")
 
-        # save uploaded file
+
         if file and file.filename != "" and allowed_file(file.filename):
 
             from werkzeug.utils import secure_filename
             import time
 
+
             filename = secure_filename(file.filename)
+
             filename = f"{int(time.time())}_{filename}"
 
-            save_path = os.path.join(UPLOAD_FOLDER, filename)
 
-            print("UPLOAD ACCEPTED")
-            print("SAVE PATH:", save_path)
+            save_path = os.path.join(
+                UPLOAD_FOLDER,
+                filename
+            )
+
 
             file.save(save_path)
 
-            print("FILE SAVED")
 
             file_name = file.filename
+
             file_path = f"static/uploads/{filename}"
 
-        # stop empty messages
+
+
+        # prevent empty message
+
         if not message and not file_name:
+
             conn.close()
-            return redirect(f'/messages/{user_id}')
+
+            return redirect(
+                f'/messages/{user_id}'
+            )
+
+
 
         # save message
+
         c.execute("""
-            INSERT INTO messages (
+            INSERT INTO messages
+            (
                 sender_id,
                 receiver_id,
                 message,
                 created_at,
                 file_name,
-                file_path
+                file_path,
+                seen,
+                deleted,
+                edited
             )
-            VALUES (?,?,?,?,?,?)
-        """, (
+
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                FALSE,
+                FALSE,
+                FALSE
+            )
+
+        """,
+        (
             session['user_id'],
             user_id,
             message,
-            datetime.now().isoformat(),
+            datetime.now(),
             file_name,
             file_path
         ))
 
+
+
         # notification
+
         c.execute("""
-            INSERT INTO notifications (
+            INSERT INTO notifications
+            (
                 user_id,
                 message,
-                created_at
+                created_at,
+                is_read
             )
-            VALUES (?,?,?)
-        """, (
+
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                FALSE
+            )
+
+        """,
+        (
             user_id,
             f"New message from {session['name']}",
-            datetime.now().isoformat()
+            datetime.now()
         ))
 
+
+
         conn.commit()
+
+
+
+        # Socket room
+
         room = "_".join(
             map(
                 str,
-                sorted([session['user_id'], user_id])
+                sorted(
+                    [
+                        session['user_id'],
+                        user_id
+                    ]
+                )
             )
         )
+
+
 
         socketio.emit(
             'new_message',
@@ -1264,69 +2141,126 @@ def messages(user_id=None):
                 'sender_id': session['user_id'],
                 'file_name': file_name,
                 'file_path': file_path,
-                'seen': 0
+                'seen': False
             },
             room=room
         )
 
 
-        return redirect(f'/messages/{user_id}')
 
-    # -------------------------
-    # Get all users
-    # -------------------------
+        conn.close()
+
+
+        return redirect(
+            f'/messages/{user_id}'
+        )
+
+
+
+    # =========================
+    # GET USERS
+    # =========================
+
+
     c.execute("""
         SELECT id, name
         FROM employees
-        WHERE id != ?
-    """, (session['user_id'],))
+        WHERE id != %s
+        ORDER BY name ASC
+    """,
+    (
+        session['user_id'],
+    ))
+
 
     users = c.fetchall()
 
+
+
     chats = []
+
     receiver = None
 
-    # -------------------------
-    # Load selected chat
-    # -------------------------
+
+
+    # =========================
+    # LOAD CHAT
+    # =========================
+
     if user_id:
+
 
         c.execute("""
             SELECT *
             FROM messages
+
             WHERE
-            (sender_id=? AND receiver_id=?)
+            (
+                sender_id=%s
+                AND receiver_id=%s
+            )
+
             OR
-            (sender_id=? AND receiver_id=?)
+
+            (
+                sender_id=%s
+                AND receiver_id=%s
+            )
+
             ORDER BY created_at ASC
-        """, (
+
+        """,
+        (
             session['user_id'],
             user_id,
             user_id,
             session['user_id']
         ))
 
+
         chats = c.fetchall()
+
+
 
         c.execute("""
             SELECT *
             FROM employees
-            WHERE id=?
-        """, (user_id,))
+            WHERE id=%s
+        """,
+        (
+            user_id,
+        ))
+
 
         receiver = c.fetchone()
+
+
+
         # mark received messages as seen
+
         c.execute("""
             UPDATE messages
-            SET seen=1
-            WHERE receiver_id=? AND sender_id=?
-        """, (
+
+            SET seen=TRUE
+
+            WHERE receiver_id=%s
+            AND sender_id=%s
+
+        """,
+        (
             session['user_id'],
             user_id
         ))
 
+
+
         conn.commit()
+
+
+
     conn.close()
+
+
 
     return render_template(
         "messages.html",
@@ -1342,44 +2276,53 @@ def get_messages(user_id):
     if 'user_id' not in session:
         return jsonify([])
 
+
+
     conn = get_db()
-    c = conn.cursor()
+
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
+
+
 
     c.execute("""
         SELECT *
         FROM messages
+
         WHERE
-        (sender_id=? AND receiver_id=?)
+        (
+            sender_id=%s
+            AND receiver_id=%s
+        )
+
         OR
-        (sender_id=? AND receiver_id=?)
+
+        (
+            sender_id=%s
+            AND receiver_id=%s
+        )
+
         ORDER BY created_at ASC
-    """, (
+
+    """,
+    (
         session['user_id'],
         user_id,
         user_id,
         session['user_id']
     ))
 
+
+
     chats = c.fetchall()
 
-    messages = []
-
-    for chat in chats:
-
-        messages.append({
-            "id": chat["id"],
-            "message": chat["message"],
-            "sender_id": chat["sender_id"],
-            "seen": chat["seen"],
-            "file_name": chat["file_name"],
-            "file_path": chat["file_path"],
-            "deleted": chat["deleted"],
-            "edited": chat["edited"]
-        })
 
     conn.close()
 
-    return jsonify(messages)
+
+
+    return jsonify(chats)
 
 @app.route('/delete_message/<int:message_id>', methods=['POST'])
 def delete_message(message_id):
@@ -1387,71 +2330,130 @@ def delete_message(message_id):
     if 'user_id' not in session:
         return '', 403
 
+
+
     conn = get_db()
-    c = conn.cursor()
+
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
+
+
 
     c.execute("""
-    SELECT file_path
-    FROM messages
-    WHERE id=? AND sender_id=?
-    """, (
+        SELECT file_path
+        FROM messages
+
+        WHERE id=%s
+        AND sender_id=%s
+
+    """,
+    (
         message_id,
         session['user_id']
     ))
 
+
     msg = c.fetchone()
+
+
 
     if msg:
 
-        if msg["file_path"] and os.path.exists(msg["file_path"]):
-            os.remove(msg["file_path"])
+
+        if msg['file_path']:
+
+            full_path = os.path.join(
+                app.root_path,
+                msg['file_path']
+            )
+
+
+            if os.path.exists(full_path):
+                os.remove(full_path)
+
+
 
         c.execute("""
             UPDATE messages
+
             SET
-                deleted = 1,
-                message = '',
-                file_name = NULL,
-                file_path = NULL
-            WHERE id=? AND sender_id=?
-        """, (
+            deleted=TRUE,
+            message='',
+            file_name=NULL,
+            file_path=NULL
+
+            WHERE id=%s
+            AND sender_id=%s
+
+        """,
+        (
             message_id,
             session['user_id']
         ))
 
+
+
         conn.commit()
+
+
 
     conn.close()
 
-    return '', 200
+
+    return '',200
 
 @app.route('/edit_message/<int:message_id>', methods=['POST'])
 def edit_message(message_id):
 
     if 'user_id' not in session:
-        return jsonify({"success": False})
+        return jsonify({
+            "success":False
+        })
 
-    new_message = request.form.get("message", "").strip()
+
+
+    new_message = request.form.get(
+        "message",
+        ""
+    ).strip()
+
+
 
     conn = get_db()
+
     c = conn.cursor()
+
+
 
     c.execute("""
         UPDATE messages
-        SET message=?,
-            edited=1
-        WHERE id=?
-        AND sender_id=?
-    """, (
+
+        SET
+        message=%s,
+        edited=TRUE
+
+        WHERE id=%s
+        AND sender_id=%s
+
+    """,
+    (
         new_message,
         message_id,
         session['user_id']
     ))
 
+
+
     conn.commit()
+
     conn.close()
 
-    return jsonify({"success": True})
+
+
+    return jsonify({
+        "success":True
+    })
 
 @app.route('/admin/announcements', methods=['GET', 'POST'])
 def admin_announcements():
@@ -1459,223 +2461,451 @@ def admin_announcements():
     if 'user_id' not in session:
         return redirect('/')
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+
+    if session.get('role') != 'admin':
+        return "Access Denied"
+
+
+
+    conn = get_db()
+
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
+
+
+
+    # =========================
+    # CREATE ANNOUNCEMENT
+    # =========================
 
     if request.method == 'POST':
 
         title = request.form['title']
+
         message = request.form['message']
 
-        file = request.files.get('file')   # ✅ MOVE THIS UP
+
+
+        file = request.files.get('file')
+
         file_path = None
+
+
 
         if file and file.filename != "":
 
-            import os, time
+
             from werkzeug.utils import secure_filename
+            import time
 
-            upload_folder = os.path.join(app.root_path, "static", "announcements")
-            os.makedirs(upload_folder, exist_ok=True)
 
-            original = secure_filename(file.filename)
-            unique_name = f"{int(time.time())}_{original}"
+            upload_folder = os.path.join(
+                app.root_path,
+                "static",
+                "announcements"
+            )
 
-            full_save_path = os.path.join(upload_folder, unique_name)
 
-            file.save(full_save_path)
+            os.makedirs(
+                upload_folder,
+                exist_ok=True
+            )
 
-            print("SAVED TO:", full_save_path)  # DEBUG
 
-            file_path = unique_name   # ✅ this is what you store in DB
+
+            original = secure_filename(
+                file.filename
+            )
+
+
+            unique_name = (
+                f"{int(time.time())}_{original}"
+            )
+
+
+
+            full_path = os.path.join(
+                upload_folder,
+                unique_name
+            )
+
+
+
+            file.save(full_path)
+
+
+
+            file_path = unique_name
+
+
 
         c.execute("""
-            INSERT INTO announcements (title, message, created_by, created_at, file_path)
-            VALUES (?, ?, ?, ?, ?)
-        """, (title, message, session['user_id'], datetime.now().isoformat(), file_path))
+            INSERT INTO announcements
+            (
+                title,
+                message,
+                created_by,
+                created_at,
+                file_path
+            )
+
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )
+
+        """,
+        (
+            title,
+            message,
+            session['user_id'],
+            datetime.now(),
+            file_path
+        ))
+
+
 
         conn.commit()
-        return redirect('/admin/announcements')
 
-    # GET ONLY
+        conn.close()
+
+
+
+        return redirect(
+            '/admin/announcements'
+        )
+
+
+
+    # =========================
+    # GET ANNOUNCEMENTS
+    # =========================
+
+
     c.execute("""
-    SELECT 
-        announcements.*,
-        COALESCE(employees.name, 'Unknown') AS name
-    FROM announcements
-    LEFT JOIN employees 
+        SELECT
+
+            announcements.*,
+
+            COALESCE(
+                employees.name,
+                'Unknown'
+            ) AS name
+
+
+        FROM announcements
+
+
+        LEFT JOIN employees
+
         ON announcements.created_by = employees.id
-    ORDER BY announcements.created_at DESC
+
+
+        ORDER BY created_at DESC
+
     """)
+
+
+
     announcements = c.fetchall()
+
+
 
     conn.close()
 
-    return render_template("admin_announcements.html", announcements=announcements)
+
+
+    return render_template(
+        "admin_announcements.html",
+        announcements=announcements
+    )
 
 @app.route('/admin/announcement/file/<filename>')
 def download_announcement_file(filename):
 
-    import os
 
-    folder = os.path.join(app.root_path, "static", "announcements")
-    full_path = os.path.join(folder, filename)
+    folder = os.path.join(
+        app.root_path,
+        "static",
+        "announcements"
+    )
 
-    print("REQUESTED FILE:", filename)
-    print("FULL PATH:", full_path)
-    print("EXISTS?", os.path.exists(full_path))
 
-    return send_from_directory(folder, filename, as_attachment=True)
+    return send_from_directory(
+        folder,
+        filename,
+        as_attachment=True
+    )
 
 @app.route('/admin/update_announcement/<int:id>', methods=['POST'])
 def update_announcement(id):
 
+
     if 'role' not in session or session['role'] != 'admin':
-        return jsonify({"status": "error"}), 403
+        return jsonify({
+            "status":"error"
+        }),403
+
+
 
     data = request.get_json()
+
+
+
     title = data.get("title")
+
     message = data.get("message")
 
-    conn = sqlite3.connect("database.db")
+
+
+    conn = get_db()
+
     c = conn.cursor()
 
+
+
     c.execute("""
-    UPDATE announcements
-    SET title=?, message=?
-    WHERE id=?
-    """, (title, message, id))
+        UPDATE announcements
+
+        SET
+        title=%s,
+        message=%s
+
+        WHERE id=%s
+
+    """,
+    (
+        title,
+        message,
+        id
+    ))
+
+
 
     conn.commit()
+
     conn.close()
 
-    return jsonify({"status": "success"})
+
+
+    return jsonify({
+        "status":"success"
+    })
 
 @app.route('/admin/delete_announcement/<int:id>', methods=['POST'])
 def delete_announcement(id):
 
+
     if 'role' not in session or session['role'] != 'admin':
-        return jsonify({"status": "error"}), 403
+        return jsonify({
+            "status":"error"
+        }),403
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
 
-    # 🔹 Get file first (so we delete from disk)
-    c.execute("SELECT file_path FROM announcements WHERE id=?", (id,))
-    ann = c.fetchone()
 
-    if ann and ann["file_path"]:
-        file_path = os.path.join(app.root_path, "static", "announcements", ann["file_path"])
+    conn = get_db()
+
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
+
+
+
+    # Get file first
+
+    c.execute("""
+        SELECT file_path
+
+        FROM announcements
+
+        WHERE id=%s
+
+    """,
+    (
+        id,
+    ))
+
+
+
+    announcement = c.fetchone()
+
+
+
+    if announcement and announcement['file_path']:
+
+
+        file_path = os.path.join(
+            app.root_path,
+            "static",
+            "announcements",
+            announcement['file_path']
+        )
+
 
         if os.path.exists(file_path):
+
             os.remove(file_path)
 
-    # 🔹 Delete from DB
-    c.execute("DELETE FROM announcements WHERE id=?", (id,))
+
+
+
+    # Delete database record
+
+    c.execute("""
+        DELETE FROM announcements
+
+        WHERE id=%s
+
+    """,
+    (
+        id,
+    ))
+
+
+
     conn.commit()
+
     conn.close()
 
-    return jsonify({"status": "success"})
 
+
+    return jsonify({
+        "status":"success"
+    })
 @app.route('/tasks')
 def tasks():
 
     if 'user_id' not in session:
         return redirect('/')
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
     today = datetime.now().date()
 
-    # -------------------------
-    # AUTO OVERDUE LOGIC
-    # -------------------------
+    # ======================================
+    # AUTO CARRY FORWARD OVERDUE TASKS
+    # ======================================
+
     c.execute("""
-    SELECT id, deadline, status
-    FROM tasks
-    WHERE assigned_to=?
-    AND status != 'Completed'
+        SELECT
+            id,
+            deadline,
+            status
+        FROM tasks
+        WHERE assigned_to=%s
+        AND status <> 'Completed'
     """, (session['user_id'],))
 
     pending_tasks = c.fetchall()
 
     for task in pending_tasks:
 
-        if task['deadline']:
-            try:
-                deadline = datetime.strptime(task['deadline'], "%Y-%m-%d").date()
+        if task["deadline"]:
 
-                if deadline < today:
-                    new_deadline = deadline + timedelta(days=7)
+            deadline = task["deadline"]
 
-                    c.execute("""
-                        UPDATE tasks
-                        SET deadline=?,
-                            carried_forward=1
-                        WHERE id=?
-                    """, (new_deadline.strftime("%Y-%m-%d"), task['id']))
+            if isinstance(deadline, datetime):
+                deadline = deadline.date()
 
-            except Exception as e:
-                print("Deadline error:", e)
+            elif isinstance(deadline, str):
+                deadline = datetime.strptime(
+                    deadline,
+                    "%Y-%m-%d"
+                ).date()
+
+            if deadline < today:
+
+                new_deadline = deadline + timedelta(days=7)
+
+                c.execute("""
+                    UPDATE tasks
+
+                    SET
+                        deadline=%s,
+                        carried_forward=TRUE
+
+                    WHERE id=%s
+                """,
+                (
+                    new_deadline,
+                    task["id"]
+                ))
 
     conn.commit()
 
-    # -------------------------
-    # PERSONAL TASKS ONLY
-    # -------------------------
+    # ======================================
+    # LOAD TASKS
+    # ======================================
+
     c.execute("""
-    SELECT
-        id,
-        title,
-        description,
-        note,
-        reply,
-        admin_reply,
-        deadline,
-        status,
-        created_by,
-        assigned_to,
-        carried_forward,
-        completed_at,
-        created_at
-    FROM tasks
-    WHERE assigned_to=?
-    AND status != 'Completed'
-    ORDER BY id DESC
-    """, (session['user_id'],))
+        SELECT
 
-    tasks_list = [dict(t) for t in c.fetchall()]
+            id,
+            title,
+            description,
+            note,
+            reply,
+            admin_reply,
+            deadline,
+            status,
+            created_by,
+            assigned_to,
+            carried_forward,
+            completed_at,
+            created_at
 
-    # -------------------------
-    # COMMENTS (FIXED FILTER)
-    # -------------------------
+        FROM tasks
+
+        WHERE assigned_to=%s
+
+        AND status <> 'Completed'
+
+        ORDER BY id DESC
+    """,
+    (
+        session['user_id'],
+    ))
+
+    tasks_list = c.fetchall()
+
+    # ======================================
+    # COMMENTS
+    # ======================================
+
     for task in tasks_list:
 
         c.execute("""
             SELECT *
+
             FROM task_comments
-            WHERE task_id=?
+
+            WHERE task_id=%s
+
             AND visibility='public'
+
             ORDER BY created_at ASC
-        """, (task['id'],))
+        """,
+        (
+            task["id"],
+        ))
 
-        comments = [dict(x) for x in c.fetchall()]
+        comments = c.fetchall()
 
-        # 👇 IMPORTANT DIFFERENCE:
-        # personal view = filter admin noise if needed later
-        task['comments'] = build_comment_tree(comments)
+        task["comments"] = build_comment_tree(comments)
 
     conn.close()
 
     return render_template(
         "tasks.html",
         tasks=tasks_list,
-        name=session['name'],
-        role=session['role']
+        name=session["name"],
+        role=session["role"]
     )
 
 @app.route('/reply_task/<int:id>', methods=['POST'])
@@ -1684,14 +2914,20 @@ def reply_task(id):
     if 'user_id' not in session:
         return redirect('/')
 
-    message = request.form['reply']
-    parent_comment_id = request.form.get('parent_comment_id')
+    message = request.form["reply"]
 
-    conn = sqlite3.connect("database.db")
+    parent_comment_id = request.form.get(
+        "parent_comment_id"
+    )
+
+    conn = get_db()
+
     c = conn.cursor()
 
     c.execute("""
-        INSERT INTO task_comments (
+
+        INSERT INTO task_comments
+        (
             task_id,
             sender_id,
             sender_role,
@@ -1700,21 +2936,34 @@ def reply_task(id):
             visibility,
             created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
+
+        VALUES
+        (
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+        )
+
+    """,
+    (
         id,
-        session['user_id'],
-        'employee',
+        session["user_id"],
+        "employee",
         message,
         parent_comment_id,
-        'public',
-        datetime.now().isoformat()
+        "public",
+        datetime.now()
     ))
 
     conn.commit()
+
     conn.close()
 
-    return redirect('/tasks')
+    return redirect("/tasks")
 
 @app.route('/task/add_note/<int:id>', methods=['POST'])
 def add_task_note(id):
@@ -1722,13 +2971,16 @@ def add_task_note(id):
     if 'user_id' not in session:
         return redirect('/')
 
-    note = request.form['note']
+    note = request.form["note"]
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db()
+
     c = conn.cursor()
 
     c.execute("""
-        INSERT INTO task_comments (
+
+        INSERT INTO task_comments
+        (
             task_id,
             sender_id,
             sender_role,
@@ -1737,21 +2989,34 @@ def add_task_note(id):
             comment_type,
             created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
+
+        VALUES
+        (
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+        )
+
+    """,
+    (
         id,
-        session['user_id'],
-        session['role'],
+        session["user_id"],
+        session["role"],
         note,
-        'public',
-        'note',
-        datetime.now().isoformat()
+        "public",
+        "note",
+        datetime.now()
     ))
 
     conn.commit()
+
     conn.close()
 
-    return redirect('/tasks')
+    return redirect("/tasks")
 
 @app.route('/task-history')
 def task_history():
@@ -1759,30 +3024,40 @@ def task_history():
     if 'user_id' not in session:
         return redirect('/')
 
-    filter_type = request.args.get('filter', 'all')
-    search = request.args.get('search', '')
+    filter_type = request.args.get("filter", "all")
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+    search = request.args.get("search", "")
+
+    conn = get_db()
+
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
     query = """
-    SELECT *
-    FROM tasks
-    WHERE assigned_to=?
-    AND status='Completed'
+        SELECT *
+
+        FROM tasks
+
+        WHERE assigned_to=%s
+
+        AND status='Completed'
     """
 
-    params = [session['user_id']]
+    params = [session["user_id"]]
 
+    # ==========================
     # SEARCH
+    # ==========================
+
     if search:
 
         query += """
-        AND (
-            title LIKE ?
-            OR description LIKE ?
-        )
+
+            AND
+            (
+                title ILIKE %s
+                OR description ILIKE %s
+            )
+
         """
 
         params.extend([
@@ -1790,37 +3065,81 @@ def task_history():
             f"%{search}%"
         ])
 
+    # ==========================
     # FILTERS
+    # ==========================
+
     if filter_type == "this_week":
 
         query += """
-        AND date(completed_at)
-        >= date('now','weekday 1','-7 days')
+            AND completed_at >=
+            date_trunc('week', CURRENT_DATE)
         """
 
     elif filter_type == "last_week":
 
         query += """
-        AND date(completed_at)
-        BETWEEN date('now','weekday 1','-14 days')
-        AND date('now','weekday 1','-7 days')
+            AND completed_at >=
+                date_trunc('week', CURRENT_DATE)
+                - interval '1 week'
+
+            AND completed_at <
+                date_trunc('week', CURRENT_DATE)
         """
 
     elif filter_type == "this_month":
 
         query += """
-        AND strftime('%m', completed_at)
-        = strftime('%m','now')
+            AND date_part(
+                'month',
+                completed_at
+            )
+            =
+            date_part(
+                'month',
+                CURRENT_DATE
+            )
+
+            AND date_part(
+                'year',
+                completed_at
+            )
+            =
+            date_part(
+                'year',
+                CURRENT_DATE
+            )
         """
 
     elif filter_type == "last_month":
 
         query += """
-        AND strftime('%m', completed_at)
-        = strftime('%m','now','-1 month')
+            AND date_part(
+                'month',
+                completed_at
+            )
+            =
+            date_part(
+                'month',
+                CURRENT_DATE - interval '1 month'
+            )
+
+            AND date_part(
+                'year',
+                completed_at
+            )
+            =
+            date_part(
+                'year',
+                CURRENT_DATE - interval '1 month'
+            )
         """
 
-    query += " ORDER BY completed_at DESC"
+    query += """
+
+        ORDER BY completed_at DESC
+
+    """
 
     c.execute(query, params)
 
@@ -1835,10 +3154,6 @@ def task_history():
         search=search
     )
 
-from io import BytesIO
-from openpyxl import Workbook
-from flask import send_file
-
 @app.route('/export-task-history')
 def export_task_history():
 
@@ -1847,40 +3162,40 @@ def export_task_history():
 
     export_type = request.args.get('type', 'all')
 
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
     query = """
-    SELECT
-        id,
-        title,
-        description,
-        deadline,
-        status,
-        completed_at,
-        carried_forward
-    FROM tasks
-    WHERE assigned_to=?
-    AND status='Completed'
+        SELECT
+            id,
+            title,
+            description,
+            deadline,
+            status,
+            completed_at,
+            carried_forward
+        FROM tasks
+        WHERE assigned_to=%s
+        AND status='Completed'
     """
 
     params = [session['user_id']]
 
-    # EXPORT TYPES
     if export_type == "my":
 
         query += """
-        AND created_by = assigned_to
+            AND created_by = assigned_to
         """
 
     elif export_type == "assigned":
 
         query += """
-        AND created_by != assigned_to
+            AND created_by <> assigned_to
         """
 
-    query += " ORDER BY completed_at DESC"
+    query += """
+        ORDER BY completed_at DESC
+    """
 
     c.execute(query, params)
 
@@ -1888,13 +3203,10 @@ def export_task_history():
 
     conn.close()
 
-    # CREATE WORKBOOK
     wb = Workbook()
     ws = wb.active
-
     ws.title = "Task History"
 
-    # HEADERS
     ws.append([
         "ID",
         "Title",
@@ -1905,34 +3217,32 @@ def export_task_history():
         "Carried Forward"
     ])
 
-    # DATA
     for row in rows:
 
         ws.append([
-            row['id'],
-            row['title'],
-            row['description'],
-            row['deadline'],
-            row['status'],
-            row['completed_at'],
-            "Yes" if row['carried_forward'] == 1 else "No"
+            row["id"],
+            row["title"],
+            row["description"],
+            row["deadline"],
+            row["status"],
+            row["completed_at"],
+            "Yes" if row["carried_forward"] else "No"
         ])
 
-    # COLUMN WIDTHS
-    ws.column_dimensions['A'].width = 10
-    ws.column_dimensions['B'].width = 30
-    ws.column_dimensions['C'].width = 45
-    ws.column_dimensions['D'].width = 18
-    ws.column_dimensions['E'].width = 15
-    ws.column_dimensions['F'].width = 25
-    ws.column_dimensions['G'].width = 18
+    ws.column_dimensions["A"].width = 10
+    ws.column_dimensions["B"].width = 30
+    ws.column_dimensions["C"].width = 45
+    ws.column_dimensions["D"].width = 18
+    ws.column_dimensions["E"].width = 15
+    ws.column_dimensions["F"].width = 25
+    ws.column_dimensions["G"].width = 18
 
-    # MEMORY EXPORT
     output = BytesIO()
+
     wb.save(output)
+
     output.seek(0)
 
-    # FILE NAME
     if export_type == "my":
         filename = "my_tasks.xlsx"
 
@@ -1950,23 +3260,31 @@ def export_task_history():
     )
 
 @app.route('/complete_task/<int:id>')
-def complete_task(id):
+def complete_task():
+
     if 'user_id' not in session:
         return redirect('/')
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db()
+
     c = conn.cursor()
 
-    completed_at = datetime.now().isoformat()
-
     c.execute("""
-    UPDATE tasks
-    SET status='Completed',
-        completed_at=?
-    WHERE id=?
-    """, (completed_at, id))
+        UPDATE tasks
+
+        SET
+            status='Completed',
+            completed_at=%s
+
+        WHERE id=%s
+    """,
+    (
+        datetime.now(),
+        id
+    ))
 
     conn.commit()
+
     conn.close()
 
     return redirect('/tasks')
@@ -1977,84 +3295,159 @@ def create_task():
     if 'user_id' not in session:
         return redirect('/')
 
-    title = request.form['title']
-    description = request.form['description']
-    deadline = request.form['deadline']
+    title = request.form["title"]
 
-    created_at = datetime.now().isoformat()
+    description = request.form["description"]
 
-    conn = sqlite3.connect("database.db")
+    deadline = request.form["deadline"]
+
+    conn = get_db()
+
     c = conn.cursor()
 
     c.execute("""
-    INSERT INTO tasks (
+
+        INSERT INTO tasks
+        (
+            title,
+            description,
+            assigned_to,
+            deadline,
+            status,
+            created_by,
+            created_at,
+            original_deadline,
+            carried_forward
+        )
+
+        VALUES
+        (
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+        )
+
+    """,
+    (
         title,
         description,
-        assigned_to,
-        deadline,
-        status,
-        created_by,
-        created_at,
-        original_deadline,
-        carried_forward
-    )
-    VALUES (?,?,?,?,?,?,?,?,?)
-    """, (
-        title,
-        description,
-        session['user_id'],
+        session["user_id"],
         deadline,
         "Pending",
-        session['user_id'],
-        created_at,
+        session["user_id"],
+        datetime.now(),
         deadline,
-        0
+        False
     ))
 
     conn.commit()
+
     conn.close()
 
-    return redirect('/tasks')
+    return redirect("/tasks")
 
 @app.route('/start_task/<int:id>')
 def start_task(id):
-    conn = sqlite3.connect("database.db")
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    conn = get_db()
+
     c = conn.cursor()
 
-    c.execute("UPDATE tasks SET status='In Progress' WHERE id=?", (id,))
+    c.execute("""
+
+        UPDATE tasks
+
+        SET status='In Progress'
+
+        WHERE id=%s
+
+    """,
+    (
+        id,
+    ))
+
     conn.commit()
+
     conn.close()
 
     return redirect('/tasks')
 
 @app.route('/delete_task/<int:id>')
 def delete_task(id):
-    conn = sqlite3.connect("database.db")
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    conn = get_db()
+
     c = conn.cursor()
 
-    c.execute("DELETE FROM tasks WHERE id=?", (id,))
+    c.execute("""
+
+        DELETE FROM tasks
+
+        WHERE id=%s
+
+    """,
+    (
+        id,
+    ))
+
     conn.commit()
+
     conn.close()
 
     return redirect('/tasks')
 
 @app.route('/edit_task/<int:id>', methods=['POST'])
 def edit_task(id):
+
+    if 'user_id' not in session:
+        return jsonify({
+            "status":"unauthorized"
+        }),403
+
     data = request.get_json()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db()
+
     c = conn.cursor()
 
     c.execute("""
-        UPDATE tasks 
-        SET title=?, description=? 
-        WHERE id=?
-    """, (data['title'], data['description'], id))
+
+        UPDATE tasks
+
+        SET
+
+            title=%s,
+
+            description=%s
+
+        WHERE id=%s
+
+    """,
+    (
+        data["title"],
+        data["description"],
+        id
+    ))
 
     conn.commit()
+
     conn.close()
 
-    return jsonify({"status":"success"})
+    return jsonify({
+        "status":"success"
+    })
 
 # SALTY AI API (FIXED + OPTIMIZED)
 @app.route('/api/salty', methods=['POST'])
@@ -2063,42 +3456,48 @@ def salty_ai():
     if 'user_id' not in session:
         return jsonify({"reply": "Unauthorized"}), 403
 
-    data = request.get_json()
+    data = request.get_json() or {}
     msg = data.get("message", "").lower().strip()
 
     conn = get_db()
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now().date()
 
     # -------------------------
-    # 📊 CORE DATA
+    # CORE DATA
     # -------------------------
-    c.execute("SELECT COUNT(*) FROM employees")
-    total = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) AS total FROM employees")
+    total = c.fetchone()["total"]
 
     c.execute("""
-        SELECT COUNT(DISTINCT employee_id)
+        SELECT COUNT(DISTINCT employee_id) AS present
         FROM attendance
-        WHERE DATE(clock_in)=?
+        WHERE DATE(clock_in)=%s
     """, (today,))
-    present = c.fetchone()[0]
+
+    present = c.fetchone()["present"]
 
     absent = total - present
 
     c.execute("""
         SELECT e.name
         FROM employees e
-        JOIN attendance a ON e.id = a.employee_id
-        WHERE DATE(a.clock_in)=? AND a.clock_out IS NULL
+        JOIN attendance a
+            ON e.id = a.employee_id
+        WHERE DATE(a.clock_in)=%s
+        AND a.clock_out IS NULL
     """, (today,))
-    working = [r[0] for r in c.fetchall()]
+
+    working = [row["name"] for row in c.fetchall()]
 
     conn.close()
 
     # -------------------------
-    # 🧠 CLEAN NAVIGATION MAP (STRICT MATCH)
+    # Navigation
     # -------------------------
+
     nav_commands = {
         "open dashboard": "/dashboard",
         "dashboard": "/dashboard",
@@ -2112,7 +3511,9 @@ def salty_ai():
     }
 
     for cmd, route in nav_commands.items():
+
         if cmd in msg:
+
             return jsonify({
                 "reply": f"Opening {cmd.replace('open ', '')}...",
                 "action": route,
@@ -2120,100 +3521,133 @@ def salty_ai():
             })
 
     # -------------------------
-    # 📊 INTELLIGENT QUERIES
+    # Questions
     # -------------------------
 
     if "who is working" in msg:
+
         return jsonify({
             "reply": ", ".join(working) if working else "No one is currently working.",
             "type": "info"
         })
 
     if msg in ["working", "currently working"]:
+
         return jsonify({
-            "reply": ", ".join(working) if working else "No active workers right now.",
+            "reply": ", ".join(working) if working else "No active workers.",
             "type": "info"
         })
 
-    if "absent" in msg:
-        return jsonify({
-            "reply": f"{absent} employees are absent today.",
-            "type": "stats"
-        })
-
     if "present" in msg:
+
         return jsonify({
             "reply": f"{present} employees are present today.",
             "type": "stats"
         })
 
+    if "absent" in msg:
+
+        return jsonify({
+            "reply": f"{absent} employees are absent today.",
+            "type": "stats"
+        })
+
     if "attendance" in msg:
+
         return jsonify({
             "reply": f"{present} present, {absent} absent today.",
             "type": "stats"
         })
 
-    # -------------------------
-    # 🧠 SYSTEM HELP
-    # -------------------------
     if "help" in msg:
+
         return jsonify({
             "reply": "Try: open dashboard, attendance, who is working, present, absent, open tasks",
             "type": "help"
         })
 
-    # -------------------------
-    # 🤖 FALLBACK INTELLIGENCE
-    # -------------------------
     return jsonify({
-        "reply": "I can control dashboard navigation, attendance, employees, and tasks. Try 'open dashboard' or 'who is working'.",
+        "reply": "I can help with dashboard navigation, attendance, employees and tasks.",
         "type": "fallback"
     })
 
 
 @app.route('/api/live-dashboard')
 def live_dashboard():
+
     if 'user_id' not in session:
-        return jsonify({"error": "unauthorized"}), 403
+        return jsonify({
+            "error":"unauthorized"
+        }),403
 
     conn = get_db()
-    c = conn.cursor()
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
-    c.execute("SELECT COUNT(*) FROM employees")
-    total_employees = c.fetchone()[0]
+    today = datetime.now().date()
 
     c.execute("""
-        SELECT COUNT(DISTINCT employee_id)
-        FROM attendance
-        WHERE DATE(clock_in)=?
-    """, (today,))
-    present_today = c.fetchone()[0]
+        SELECT COUNT(*) AS total
+        FROM employees
+    """)
 
-    absent_today = total_employees - present_today
+    total = c.fetchone()["total"]
+
+    c.execute("""
+        SELECT COUNT(DISTINCT employee_id) AS present
+        FROM attendance
+        WHERE DATE(clock_in)=%s
+    """,
+    (
+        today,
+    ))
+
+    present = c.fetchone()["present"]
+
+    absent = total - present
 
     c.execute("""
         SELECT e.name
+
         FROM employees e
-        JOIN attendance a ON e.id = a.employee_id
-        WHERE DATE(a.clock_in)=? AND a.clock_out IS NULL
-    """, (today,))
-    working = [r[0] for r in c.fetchall()]
+
+        JOIN attendance a
+
+            ON e.id=a.employee_id
+
+        WHERE DATE(a.clock_in)=%s
+
+        AND a.clock_out IS NULL
+
+        ORDER BY e.name
+    """,
+    (
+        today,
+    ))
+
+    working = [
+        row["name"]
+        for row in c.fetchall()
+    ]
 
     conn.close()
 
     return jsonify({
-        "total": total_employees,
-        "present": present_today,
-        "absent": absent_today,
-        "working": working
+
+        "total":total,
+
+        "present":present,
+
+        "absent":absent,
+
+        "working":working
+
     })
 
-@socketio.on('join')
+@socketio.on("join")
 def on_join(data):
 
-    room = data['room']
+    room = data["room"]
 
     join_room(room)
 
@@ -2226,13 +3660,33 @@ def logout():
 # -------------------------
 # Initialize app
 # -------------------------
-init_db()
-create_admin()
+try:
+    init_db()
+    create_admin()
+except psycopg2.errors.InsufficientPrivilege:
+    print("\nPostgreSQL permission error: salt_user cannot create tables.")
+    print("Run once:  python setup_postgres.py")
+    print("Or in pgAdmin (as postgres), on database salt_portal, run:")
+    print("  GRANT ALL ON SCHEMA public TO salt_user;")
+    print("  GRANT CREATE ON SCHEMA public TO salt_user;")
+    raise SystemExit(1)
 
 if __name__ == "__main__":
+
+    try:
+        init_db()
+        create_admin()
+
+    except psycopg2.Error as e:
+        print("\n==============================")
+        print(" PostgreSQL Startup Error")
+        print("==============================")
+        print(e)
+        raise SystemExit(1)
+
     socketio.run(
         app,
-        debug=True,
         host="0.0.0.0",
-        port=5000
+        port=5000,
+        debug=True
     )
