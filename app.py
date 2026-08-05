@@ -27,10 +27,11 @@ ALLOWED_EXTENSIONS = {
 
 def get_db():
     return psycopg2.connect(
-        host="localhost",
-        database="salt_portal",
-        user="salt_user",
-        password="ChooseAStrongpassword",
+        host=os.environ.get("DB_HOST"),
+        database=os.environ.get("DB_NAME"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASSWORD"),
+        port=os.environ.get("DB_PORT", "5432"),
         cursor_factory=RealDictCursor
     )
 
