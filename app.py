@@ -3,7 +3,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_socketio import SocketIO, emit, join_room  # pyright: ignore[reportMissingModuleSource]
+from flask_socketio import SocketIO, join_room  # pyright: ignore[reportMissingModuleSource]
 from werkzeug.utils import secure_filename
 import os
 import time
@@ -22,6 +22,48 @@ socketio = SocketIO(
     async_mode="gevent"
 )
 
+# ==========================
+# SOCKET EVENTS
+# ==========================
+
+@socketio.on("connect")
+def handle_connect():
+
+    if "user_id" in session:
+
+        print(f"{session['name']} connected")
+
+
+@socketio.on("join_chat")
+def handle_join_chat(data):
+
+    if "user_id" not in session:
+        return
+
+    other_user = int(data["user_id"])
+
+    room = "_".join(
+        map(
+            str,
+            sorted([
+                session["user_id"],
+                other_user
+            ])
+        )
+    )
+
+    join_room(room)
+
+    print(f"{session['name']} joined {room}")
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+
+    if "user_id" in session:
+
+        print(f"{session['name']} disconnected")
+
 UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {
@@ -29,9 +71,26 @@ ALLOWED_EXTENSIONS = {
     'pdf', 'docx', 'xlsx', 'txt'
 }
 
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 def get_db():
+    database_url = os.environ.get("DATABASE_URL")
+
+    if database_url:
+        # Render PostgreSQL
+        return psycopg2.connect(
+            database_url,
+            cursor_factory=RealDictCursor
+        )
+
+    # Local PostgreSQL
     return psycopg2.connect(
-        os.environ["DATABASE_URL"],
+        host="localhost",
+        database="salt_portal",
+        user="salt_user",
+        password="ChooseAStrongpassword",
         cursor_factory=RealDictCursor
     )
 
@@ -290,44 +349,43 @@ def create_admin():
     conn = get_db()
     c = conn.cursor()
 
+    # Show which database we're connected to
+    c.execute("""
+        SELECT current_database() AS db,
+               current_user AS usr;
+    """)
+    print("CONNECTED TO:", c.fetchone())
+
+    admin_email = "admin@salt.com"
     hashed_password = generate_password_hash("Stgh2@&$%#3")
 
-    # Check if admin exists
     c.execute(
         "SELECT * FROM employees WHERE email=%s",
-        ("admin@salt.com",)
+        (admin_email,)
     )
 
-    existing_admin = c.fetchone()
+    admin = c.fetchone()
 
-    if existing_admin:
-        c.execute(
-            """
-            UPDATE employees
-            SET role=%s
-            WHERE email=%s
-            """,
-            ("admin", "admin@salt.com")
-        )
-        print("✅ Admin role verified.")
+    print("ADMIN RECORD:", admin)
 
+    if admin:
+        print("✅ Admin already exists.")
     else:
-        c.execute(
-            """
+        c.execute("""
             INSERT INTO employees
-            (name, email, password, role)
-            VALUES (%s, %s, %s, %s)
-            """,
-            (
-                "Admin",
-                "admin@salt.com",
-                hashed_password,
-                "admin"
-            )
-        )
+            (name, email, password, role, theme)
+            VALUES (%s,%s,%s,%s,%s)
+        """, (
+            "System Administrator",
+            admin_email,
+            hashed_password,
+            "admin",
+            "light"
+        ))
+
+        conn.commit()
         print("✅ Admin created.")
 
-    conn.commit()
     conn.close()
 
 
@@ -354,20 +412,15 @@ def login():
     )
 
     user = c.fetchone()
-
-    conn = get_db()
-    c = conn.cursor(cursor_factory=RealDictCursor)
+    conn.close()
 
     if user and check_password_hash(user['password'], password):
-
         session['user_id'] = user['id']
         session['name'] = user['name']
         session['role'] = user['role']
-
         return redirect('/dashboard')
 
-    else:
-        return "Invalid login"
+    return "Invalid login"
 
 @app.route('/settings/profile', methods=['GET', 'POST'])
 def profile_settings():
@@ -1979,6 +2032,7 @@ def delete_employee(id):
     return redirect('/admin/employees')
 
 
+
 @app.route('/messages', methods=['GET', 'POST'])
 @app.route('/messages/<int:user_id>', methods=['GET', 'POST'])
 def messages(user_id=None):
@@ -2040,9 +2094,10 @@ def messages(user_id=None):
 
             conn.close()
 
-            return redirect(
-                f'/messages/{user_id}'
-            )
+            return jsonify({
+                "success": False,
+                "error": "Please enter a message or upload a file"
+            })
 
 
 
@@ -2136,13 +2191,15 @@ def messages(user_id=None):
 
 
         socketio.emit(
-            'new_message',
+            "new_message",
             {
-                'message': message,
-                'sender_id': session['user_id'],
-                'file_name': file_name,
-                'file_path': file_path,
-                'seen': False
+                "message": message,
+                "sender_id": session["user_id"],
+                "receiver_id": user_id,
+                "file_name": file_name,
+                "file_path": file_path,
+                "seen": False,
+                "created_at": str(datetime.now())
             },
             room=room
         )
@@ -3661,19 +3718,20 @@ def logout():
 # -------------------------
 # Initialize app
 # -------------------------
+try:
+    init_db()
+    create_admin()
+    print("✅ Database initialized successfully.")
+
+except Exception as e:
+    print("\n==============================")
+    print(" Application Startup Error")
+    print("==============================")
+    print(e)
+    raise SystemExit(1)
+
+
 if __name__ == "__main__":
-
-    try:
-        init_db()
-        create_admin()
-
-    except psycopg2.Error as e:
-        print("\n==============================")
-        print(" PostgreSQL Startup Error")
-        print("==============================")
-        print(e)
-        raise SystemExit(1)
-
     socketio.run(
         app,
         host="0.0.0.0",
