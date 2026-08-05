@@ -16,7 +16,11 @@ import io
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "fallback-secret")
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="gevent"
+)
 
 UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -27,11 +31,7 @@ ALLOWED_EXTENSIONS = {
 
 def get_db():
     return psycopg2.connect(
-        host=os.environ.get("DB_HOST"),
-        database=os.environ.get("DB_NAME"),
-        user=os.environ.get("DB_USER"),
-        password=os.environ.get("DB_PASSWORD"),
-        port=os.environ.get("DB_PORT", "5432"),
+        os.environ["DATABASE_URL"],
         cursor_factory=RealDictCursor
     )
 
