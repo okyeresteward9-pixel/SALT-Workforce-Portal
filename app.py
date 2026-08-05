@@ -3661,17 +3661,6 @@ def logout():
 # -------------------------
 # Initialize app
 # -------------------------
-try:
-    init_db()
-    create_admin()
-except psycopg2.errors.InsufficientPrivilege:
-    print("\nPostgreSQL permission error: salt_user cannot create tables.")
-    print("Run once:  python setup_postgres.py")
-    print("Or in pgAdmin (as postgres), on database salt_portal, run:")
-    print("  GRANT ALL ON SCHEMA public TO salt_user;")
-    print("  GRANT CREATE ON SCHEMA public TO salt_user;")
-    raise SystemExit(1)
-
 if __name__ == "__main__":
 
     try:
