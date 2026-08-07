@@ -12,94 +12,23 @@ from datetime import date
 from openpyxl import Workbook
 from flask import send_file
 import io
-
+from database import get_db, allowed_file, UPLOAD_FOLDER, ALLOWED_EXTENSIONS
+from routes.chat import (
+    chat_bp,
+    register_chat_socketio
+)
 
 app = Flask(__name__)
+app.register_blueprint(chat_bp)
 app.secret_key = os.environ.get("SECRET_KEY", "fallback-secret")
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
     async_mode="gevent"
 )
-
-# ==========================
-# SOCKET EVENTS
-# ==========================
-
-@socketio.on("connect")
-def handle_connect():
-
-    if "user_id" in session:
-
-        print(f"{session['name']} connected")
+register_chat_socketio(socketio)
 
 
-@socketio.on("join_chat")
-def handle_join_chat(data):
-
-    if "user_id" not in session:
-        return
-
-    other_user = int(data["user_id"])
-
-    room = "_".join(
-        map(
-            str,
-            sorted([
-                session["user_id"],
-                other_user
-            ])
-        )
-    )
-
-    join_room(room)
-
-    print(f"{session['name']} joined {room}")
-
-
-@socketio.on("disconnect")
-def handle_disconnect():
-
-    if "user_id" in session:
-
-        print(f"{session['name']} disconnected")
-
-UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-ALLOWED_EXTENSIONS = {
-    'png', 'jpg', 'jpeg', 'gif', 'webp',
-    'pdf', 'docx', 'xlsx', 'txt'
-}
-
-import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
-
-def get_db():
-    database_url = os.environ.get("DATABASE_URL")
-
-    if database_url:
-        # Render PostgreSQL
-        return psycopg2.connect(
-            database_url,
-            cursor_factory=RealDictCursor
-        )
-
-    # Local PostgreSQL
-    return psycopg2.connect(
-        host="localhost",
-        database="salt_portal",
-        user="salt_user",
-        password="ChooseAStrongpassword",
-        cursor_factory=RealDictCursor
-    )
-
-try:
-    conn = get_db()
-    print("✅ PostgreSQL Connected Successfully!")
-    conn.close()
-except Exception as e:
-    print("❌ PostgreSQL Error:", e)
 
 def format_datetime(value):
 
@@ -136,12 +65,6 @@ def build_comment_tree(comments):
 
     return tree
 
-def allowed_file(filename):
-    return (
-        '.' in filename and
-        filename.rsplit('.', 1)[1].lower()
-        in ALLOWED_EXTENSIONS
-    )
 
 # -------------------------
 # Initialize database
@@ -207,6 +130,20 @@ def init_db():
         created_at TEXT,
         is_read INTEGER DEFAULT 0
     )''')
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS user_presence (
+
+        user_id INTEGER PRIMARY KEY
+            REFERENCES employees(id)
+            ON DELETE CASCADE,
+
+        online BOOLEAN DEFAULT FALSE,
+
+        last_seen TIMESTAMP
+
+    )
+    """)
 
     # -------------------------
     # TASK COMMENTS TABLE
@@ -349,28 +286,17 @@ def create_admin():
     conn = get_db()
     c = conn.cursor()
 
-    # Show which database we're connected to
-    c.execute("""
-        SELECT current_database() AS db,
-               current_user AS usr;
-    """)
-    print("CONNECTED TO:", c.fetchone())
-
     admin_email = "admin@salt.com"
     hashed_password = generate_password_hash("Stgh2@&$%#3")
 
     c.execute(
-        "SELECT * FROM employees WHERE email=%s",
+        "SELECT id FROM employees WHERE email=%s",
         (admin_email,)
     )
 
     admin = c.fetchone()
 
-    print("ADMIN RECORD:", admin)
-
-    if admin:
-        print("✅ Admin already exists.")
-    else:
+    if not admin:
         c.execute("""
             INSERT INTO employees
             (name, email, password, role, theme)
@@ -384,10 +310,8 @@ def create_admin():
         ))
 
         conn.commit()
-        print("✅ Admin created.")
 
     conn.close()
-
 
 # -------------------------
 # Routes
@@ -2032,486 +1956,6 @@ def delete_employee(id):
     return redirect('/admin/employees')
 
 
-
-@app.route('/messages', methods=['GET', 'POST'])
-@app.route('/messages/<int:user_id>', methods=['GET', 'POST'])
-def messages(user_id=None):
-
-    if 'user_id' not in session:
-        return redirect('/')
-
-
-    conn = get_db()
-    c = conn.cursor(cursor_factory=RealDictCursor)
-
-
-    # =========================
-    # SEND MESSAGE
-    # =========================
-
-    if request.method == 'POST' and user_id:
-
-
-        message = request.form.get('message', '').strip()
-
-
-        file_name = None
-        file_path = None
-
-
-        file = request.files.get("file")
-
-
-        if file and file.filename != "" and allowed_file(file.filename):
-
-            from werkzeug.utils import secure_filename
-            import time
-
-
-            filename = secure_filename(file.filename)
-
-            filename = f"{int(time.time())}_{filename}"
-
-
-            save_path = os.path.join(
-                UPLOAD_FOLDER,
-                filename
-            )
-
-
-            file.save(save_path)
-
-
-            file_name = file.filename
-
-            file_path = f"static/uploads/{filename}"
-
-
-
-        # prevent empty message
-
-        if not message and not file_name:
-
-            conn.close()
-
-            return jsonify({
-                "success": False,
-                "error": "Please enter a message or upload a file"
-            })
-
-
-
-        # save message
-
-        c.execute("""
-            INSERT INTO messages
-            (
-                sender_id,
-                receiver_id,
-                message,
-                created_at,
-                file_name,
-                file_path,
-                seen,
-                deleted,
-                edited
-            )
-
-            VALUES
-            (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                FALSE,
-                FALSE,
-                FALSE
-            )
-
-        """,
-        (
-            session['user_id'],
-            user_id,
-            message,
-            datetime.now(),
-            file_name,
-            file_path
-        ))
-
-
-
-        # notification
-
-        c.execute("""
-            INSERT INTO notifications
-            (
-                user_id,
-                message,
-                created_at,
-                is_read
-            )
-
-            VALUES
-            (
-                %s,
-                %s,
-                %s,
-                FALSE
-            )
-
-        """,
-        (
-            user_id,
-            f"New message from {session['name']}",
-            datetime.now()
-        ))
-
-
-
-        conn.commit()
-
-
-
-        # Socket room
-
-        room = "_".join(
-            map(
-                str,
-                sorted(
-                    [
-                        session['user_id'],
-                        user_id
-                    ]
-                )
-            )
-        )
-
-
-
-        socketio.emit(
-            "new_message",
-            {
-                "message": message,
-                "sender_id": session["user_id"],
-                "receiver_id": user_id,
-                "file_name": file_name,
-                "file_path": file_path,
-                "seen": False,
-                "created_at": str(datetime.now())
-            },
-            room=room
-        )
-
-
-
-        conn.close()
-
-
-        return redirect(
-            f'/messages/{user_id}'
-        )
-
-
-
-    # =========================
-    # GET USERS
-    # =========================
-
-
-    c.execute("""
-        SELECT id, name
-        FROM employees
-        WHERE id != %s
-        ORDER BY name ASC
-    """,
-    (
-        session['user_id'],
-    ))
-
-
-    users = c.fetchall()
-
-
-
-    chats = []
-
-    receiver = None
-
-
-
-    # =========================
-    # LOAD CHAT
-    # =========================
-
-    if user_id:
-
-
-        c.execute("""
-            SELECT *
-            FROM messages
-
-            WHERE
-            (
-                sender_id=%s
-                AND receiver_id=%s
-            )
-
-            OR
-
-            (
-                sender_id=%s
-                AND receiver_id=%s
-            )
-
-            ORDER BY created_at ASC
-
-        """,
-        (
-            session['user_id'],
-            user_id,
-            user_id,
-            session['user_id']
-        ))
-
-
-        chats = c.fetchall()
-
-
-
-        c.execute("""
-            SELECT *
-            FROM employees
-            WHERE id=%s
-        """,
-        (
-            user_id,
-        ))
-
-
-        receiver = c.fetchone()
-
-
-
-        # mark received messages as seen
-
-        c.execute("""
-            UPDATE messages
-
-            SET seen=TRUE
-
-            WHERE receiver_id=%s
-            AND sender_id=%s
-
-        """,
-        (
-            session['user_id'],
-            user_id
-        ))
-
-
-
-        conn.commit()
-
-
-
-    conn.close()
-
-
-
-    return render_template(
-        "messages.html",
-        users=users,
-        chats=chats,
-        receiver=receiver
-    )
-
-
-@app.route('/get_messages/<int:user_id>')
-def get_messages(user_id):
-
-    if 'user_id' not in session:
-        return jsonify([])
-
-
-
-    conn = get_db()
-
-    c = conn.cursor(
-        cursor_factory=RealDictCursor
-    )
-
-
-
-    c.execute("""
-        SELECT *
-        FROM messages
-
-        WHERE
-        (
-            sender_id=%s
-            AND receiver_id=%s
-        )
-
-        OR
-
-        (
-            sender_id=%s
-            AND receiver_id=%s
-        )
-
-        ORDER BY created_at ASC
-
-    """,
-    (
-        session['user_id'],
-        user_id,
-        user_id,
-        session['user_id']
-    ))
-
-
-
-    chats = c.fetchall()
-
-
-    conn.close()
-
-
-
-    return jsonify(chats)
-
-@app.route('/delete_message/<int:message_id>', methods=['POST'])
-def delete_message(message_id):
-
-    if 'user_id' not in session:
-        return '', 403
-
-
-
-    conn = get_db()
-
-    c = conn.cursor(
-        cursor_factory=RealDictCursor
-    )
-
-
-
-    c.execute("""
-        SELECT file_path
-        FROM messages
-
-        WHERE id=%s
-        AND sender_id=%s
-
-    """,
-    (
-        message_id,
-        session['user_id']
-    ))
-
-
-    msg = c.fetchone()
-
-
-
-    if msg:
-
-
-        if msg['file_path']:
-
-            full_path = os.path.join(
-                app.root_path,
-                msg['file_path']
-            )
-
-
-            if os.path.exists(full_path):
-                os.remove(full_path)
-
-
-
-        c.execute("""
-            UPDATE messages
-
-            SET
-            deleted=TRUE,
-            message='',
-            file_name=NULL,
-            file_path=NULL
-
-            WHERE id=%s
-            AND sender_id=%s
-
-        """,
-        (
-            message_id,
-            session['user_id']
-        ))
-
-
-
-        conn.commit()
-
-
-
-    conn.close()
-
-
-    return '',200
-
-@app.route('/edit_message/<int:message_id>', methods=['POST'])
-def edit_message(message_id):
-
-    if 'user_id' not in session:
-        return jsonify({
-            "success":False
-        })
-
-
-
-    new_message = request.form.get(
-        "message",
-        ""
-    ).strip()
-
-
-
-    conn = get_db()
-
-    c = conn.cursor()
-
-
-
-    c.execute("""
-        UPDATE messages
-
-        SET
-        message=%s,
-        edited=TRUE
-
-        WHERE id=%s
-        AND sender_id=%s
-
-    """,
-    (
-        new_message,
-        message_id,
-        session['user_id']
-    ))
-
-
-
-    conn.commit()
-
-    conn.close()
-
-
-
-    return jsonify({
-        "success":True
-    })
 
 @app.route('/admin/announcements', methods=['GET', 'POST'])
 def admin_announcements():

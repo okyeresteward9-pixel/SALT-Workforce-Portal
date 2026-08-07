@@ -228,8 +228,12 @@
                             {{ receiver.name }}
                         </h2>
 
-                        <p class="text-sm text-green-500 font-medium">
-                            Active now
+                        <p
+                            id="chat-status"
+                            class="text-sm text-green-500 font-medium">
+                        
+                            Active
+                    
                         </p>
 
                     </div>
@@ -249,10 +253,12 @@
 
             <!-- CHAT BODY -->
             <div id="chat-box"
-                 class="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+                class="flex-1 overflow-y-auto scroll-smooth px-4 md:px-8 py-6 space-y-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
 
             </div>
-
+            <div id="typing-indicator"
+                class="hidden px-6 py-2 text-sm text-gray-500 italic">
+            </div>
             <!-- INPUT -->
             <div class="bg-white border-t border-gray-200 px-4 md:px-6 py-5">
 
@@ -327,10 +333,10 @@
                     <!-- SEND -->
                     <button
                         type="submit"
-                        class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 hover:shadow-xl text-white px-6 py-3 rounded-full font-semibold transition-all duration-200">
-
-                        Send
-
+                        class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition">
+                    
+                        ➤
+                
                     </button>
 
                 </form>
@@ -370,586 +376,46 @@
 
     {% if receiver %}
 
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <div id="edit-modal"
+        class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
 
-<script>
-    
-    document.addEventListener("DOMContentLoaded", function () {
-    
-        const RECEIVER_ID = {{ receiver.id | tojson }};
-        const CURRENT_USER = {{ session['user_id'] | tojson }};
-    
-        const chatBox = document.getElementById("chat-box");
-        const form = document.getElementById("chat-form");
-        const messageInput = document.getElementById("message-input");
-    
-        const emojiBtn = document.getElementById("emoji-btn");
-        const emojiPicker = document.getElementById("emoji-picker");
-    
-        const searchInput = document.getElementById("search-users");
-    
-        const sidebar = document.getElementById("sidebar");
-        const overlay = document.getElementById("overlay");
-        const menuBtn = document.getElementById("menu-btn");
-    
-        const fileInput = document.getElementById("file-input");
-    
-        const previewContainer =
-            document.getElementById("preview-container");
-    
-        const previewImage =
-            document.getElementById("preview-image");
-    
-        const previewFile =
-            document.getElementById("preview-file");
-    
-        const removePreview =
-            document.getElementById("remove-preview");
-    
-        let firstLoad = true;
-        let loadingMessages = false;
-    
-        // =========================
-        // SOCKET.IO
-        // =========================
-    
-        const socket = io();
-    
-        socket.on("connect", function () {
-    
-            console.log("Connected:", socket.id);
-    
-        });
-    
-        socket.on("new_message", function () {
-    
-            loadMessages();
-    
-        });
-    
-        // =========================
-        // LOAD MESSAGES
-        // =========================
-    
-        function loadMessages() {
-    
-            if (loadingMessages) return;
-    
-            loadingMessages = true;
-    
-            fetch(`/get_messages/${RECEIVER_ID}`)
-    
-            .then(res => res.json())
-    
-            .then(data => {
-    
-                const wasAtBottom =
-                    chatBox.scrollHeight - chatBox.scrollTop
-                    <= chatBox.clientHeight + 150;
-    
-                chatBox.innerHTML = "";
-    
-                data.forEach(chat => {
+    <div class="bg-white rounded-2xl p-6 w-96 shadow-xl">
 
-                const isMine =
-                    chat.sender_id == CURRENT_USER;
+        <h3 class="font-bold text-lg mb-4">
+            Edit Message
+        </h3>
 
-                const wrapper =
-                    document.createElement("div");
+        <textarea id="edit-text"
+                    class="w-full border rounded-xl p-3 h-32"></textarea>
 
-                wrapper.className =
-                    isMine
-                    ? "flex justify-end"
-                    : "flex justify-start";
+        <div class="flex justify-end gap-3 mt-4">
 
-                let fileHtml = "";
+            <button id="cancel-edit"
+                    class="px-4 py-2 rounded-lg border">
+                Cancel
+            </button>
 
-                if (chat.file_path) {
+            <button id="save-edit"
+                    class="px-4 py-2 rounded-lg bg-blue-600 text-white">
+                Save
+            </button>
 
-                    const isImage =
-                        /\.(jpg|jpeg|png|gif|webp)$/i
-                        .test(chat.file_name || "");
+        </div>
 
-                    if (isImage) {
+    </div>
 
-                        fileHtml = `
-                            <a href="/${chat.file_path}"
-                            target="_blank">
+    </div>
 
-                                <img
-                                    src="/${chat.file_path}"
-                                    class="mt-3 rounded-2xl max-w-[220px] shadow hover:opacity-90 transition">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
 
-                            </a>
-                        `;
+        window.CURRENT_USER = {{ session["user_id"] | tojson }};
+        window.RECEIVER_ID = {{ receiver.id | tojson }};
+        
+        </script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 
-                    } else {
 
-                        fileHtml = `
-                            <a href="/${chat.file_path}"
-                            target="_blank"
-                            class="block mt-3 underline text-sm font-medium">
-
-                                📎 ${chat.file_name}
-
-                            </a>
-                        `;
-
-                    }
-
-                }
-
-                let actions = "";
-
-                if(
-                    isMine &&
-                    !chat.deleted &&
-                    !chat.file_path
-                ){
-
-                    const safeMessage =
-                        (chat.message || "")
-                        .replace(/'/g, "\\'")
-                        .replace(/"/g, "&quot;");
-
-                    actions = `
-                        <div class="absolute top-2 -left-12">
-
-                            <button
-                                onclick="toggleMenu(${chat.id})"
-                                class="w-8 h-8 rounded-full bg-white text-gray-700 shadow border hover:bg-gray-100">
-
-                                ⋮
-
-                            </button>
-
-                            <div
-                                id="menu-${chat.id}"
-                                class="hidden absolute top-10 left-0 bg-white border rounded-xl shadow-lg overflow-hidden z-50 min-w-[120px]">
-
-                                <button
-                                    onclick="editMessage(${chat.id}, '${safeMessage}')"
-                                    class="block w-full text-left px-4 py-2 hover:bg-gray-100">
-
-                                    ✏ Edit
-
-                                </button>
-
-                                <button
-                                    onclick="deleteMessage(${chat.id})"
-                                    class="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50">
-
-                                    🗑 Delete
-
-                                </button>
-
-                            </div>
-
-                        </div>
-                    `;
-                }
-                wrapper.innerHTML = `
-
-                <div class="relative">
-
-                    ${actions}
-
-                    <div class="${
-                        isMine
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                        : 'bg-white border border-gray-200 text-gray-800'
-                    } px-5 py-3 rounded-3xl max-w-md shadow-sm">
-
-                        <div class="text-sm break-words">
-
-                            ${
-                                chat.deleted
-                                ? "<i class='opacity-70'>This message was deleted</i>"
-                                : `
-                                    ${chat.message || ""}
-                                    ${fileHtml}
-                                `
-                            }
-
-                            ${
-                                chat.edited
-                                ? `
-                                <div class="text-[10px] opacity-60 mt-1">
-                                    edited
-                                </div>
-                                `
-                                : ""
-                            }
-
-                            
-
-                        </div>
-
-                        ${
-                            isMine
-                            ? `
-                            <div class="text-right mt-1 text-[10px] opacity-70">
-
-                                ${chat.seen == 1 ? '✔✔' : '✔'}
-
-                            </div>
-                            `
-                            : ''
-                        }
-
-                    </div>
-
-                </div>
-
-                `;
-                chatBox.appendChild(wrapper);
-
-            });
-    
-                if (firstLoad) {
-    
-                    chatBox.scrollTop =
-                        chatBox.scrollHeight;
-    
-                    firstLoad = false;
-    
-                } else if (wasAtBottom) {
-    
-                    chatBox.scrollTop =
-                        chatBox.scrollHeight;
-    
-                }
-    
-            })
-    
-            .catch(console.error)
-    
-            .finally(() => {
-    
-                loadingMessages = false;
-    
-            });
-    
-        }
-    
-        // =========================
-        // DELETE MESSAGE
-        // =========================
-
-        window.deleteMessage = function(messageId){
-
-        if (!confirm("Delete this message?")) {
-            return;
-        }
-
-        fetch(`/delete_message/${messageId}`, {
-
-            method: "POST"
-
-        })
-        .then(() => {
-
-            loadMessages();
-
-        });
-
-        };
-
-
-        // =========================
-        // EDIT MESSAGE
-        // =========================
-
-        window.editMessage = function(messageId, oldMessage){
-
-        const newMessage =
-            prompt("Edit message:", oldMessage);
-
-        if (
-            newMessage === null ||
-            newMessage.trim() === ""
-        ){
-            return;
-        }
-
-        const formData = new FormData();
-
-        formData.append(
-            "message",
-            newMessage
-        );
-
-        fetch(`/edit_message/${messageId}`, {
-
-            method: "POST",
-            body: formData
-
-        })
-        .then(() => {
-
-            loadMessages();
-
-        });
-
-        };
-
-        // =========================
-        // SEND MESSAGE
-        // =========================
-    
-        form.addEventListener("submit", function(e){
-    
-            e.preventDefault();
-    
-            const formData =
-                new FormData(form);
-    
-            fetch(window.location.href, {
-    
-                method: "POST",
-                body: formData
-    
-            })
-    
-            .then(() => {
-    
-                messageInput.value = "";
-    
-                form.reset();
-    
-                previewContainer.classList.add("hidden");
-    
-                previewImage.classList.add("hidden");
-    
-                previewFile.classList.add("hidden");
-    
-                previewImage.src = "";
-    
-                previewFile.innerHTML = "";
-    
-                socket.emit("message_sent");
-    
-                loadMessages();
-    
-            });
-    
-        });
-    
-        // =========================
-        // ENTER TO SEND
-        // =========================
-    
-        messageInput.addEventListener("keydown", function(e){
-    
-            if (e.key === "Enter" && !e.shiftKey) {
-    
-                e.preventDefault();
-    
-                form.requestSubmit();
-    
-            }
-    
-        });
-    
-        // =========================
-        // EMOJI PICKER
-        // =========================
-    
-        emojiBtn.addEventListener("click", function(){
-    
-            emojiPicker.classList.toggle("hidden");
-    
-        });
-    
-        document.querySelectorAll(".emoji").forEach(emoji => {
-    
-            emoji.addEventListener("click", () => {
-    
-                messageInput.value += emoji.innerText;
-    
-                emojiPicker.classList.add("hidden");
-    
-                messageInput.focus();
-    
-            });
-    
-        });
-    
-        document.addEventListener("click", function(e){
-    
-            if (
-                !emojiPicker.contains(e.target)
-                &&
-                e.target !== emojiBtn
-            ) {
-    
-                emojiPicker.classList.add("hidden");
-    
-            }
-    
-        });
-    
-        // =========================
-        // SEARCH USERS
-        // =========================
-    
-        searchInput.addEventListener("keyup", function(){
-    
-            const value =
-                this.value.toLowerCase();
-    
-            document
-                .querySelectorAll(".user-item")
-                .forEach(user => {
-    
-                    user.style.display =
-                        user.innerText
-                            .toLowerCase()
-                            .includes(value)
-                        ? "flex"
-                        : "none";
-    
-                });
-    
-        });
-    
-        window.toggleMenu = function(id) {
-
-        document
-            .querySelectorAll("[id^='menu-']")
-            .forEach(menu => {
-
-                if (menu.id !== `menu-${id}`) {
-                    menu.classList.add("hidden");
-                }
-
-            });
-
-        document
-            .getElementById(`menu-${id}`)
-            .classList.toggle("hidden");
-        };
-
-        // Close 3-dot menu when clicking anywhere else
-        document.addEventListener("click", function (e) {
-
-        // Don't close if the click is inside the menu
-        if (e.target.closest("[id^='menu-']")) return;
-
-        // Don't close if the click is on a 3-dot button
-        if (e.target.closest("button")) return;
-
-        document.querySelectorAll("[id^='menu-']").forEach(menu => {
-            menu.classList.add("hidden");
-        });
-
-        });
-
-        // =========================
-        // SIDEBAR
-        // =========================
-    
-        menuBtn.addEventListener("click", function () {
-
-            sidebar.classList.remove("-translate-x-full");
-            overlay.classList.remove("hidden");
-
-        });
-
-        overlay.addEventListener("click", function () {
-
-            sidebar.classList.add("-translate-x-full");
-            overlay.classList.add("hidden");
-
-        });
-
-            // Hide sidebar after selecting a user
-        document.querySelectorAll(".user-item").forEach(user => {
-
-            user.addEventListener("click", function(){
-
-                if (window.innerWidth < 768){
-
-                    sidebar.classList.add("-translate-x-full");
-                    overlay.classList.add("hidden");
-
-                }
-
-            });
-
-        });
-    
-        // =========================
-        // FILE PREVIEW
-        // =========================
-    
-        fileInput.addEventListener("change", function(){
-    
-            const file = this.files[0];
-    
-            if (!file) return;
-    
-            previewContainer.classList.remove("hidden");
-    
-            if (file.type.startsWith("image/")) {
-    
-                previewImage.classList.remove("hidden");
-    
-                previewFile.classList.add("hidden");
-    
-                const reader =
-                    new FileReader();
-    
-                reader.onload = function(e){
-    
-                    previewImage.src =
-                        e.target.result;
-    
-                };
-    
-                reader.readAsDataURL(file);
-    
-            } else {
-    
-                previewImage.classList.add("hidden");
-    
-                previewFile.classList.remove("hidden");
-    
-                previewFile.innerHTML = `
-                    📎 <strong>${file.name}</strong>
-                    <br>
-                    ${(file.size / 1024).toFixed(1)} KB
-                `;
-    
-            }
-    
-        });
-    
-        removePreview.addEventListener("click", () => {
-    
-            fileInput.value = "";
-    
-            previewContainer.classList.add("hidden");
-    
-            previewImage.classList.add("hidden");
-    
-            previewFile.classList.add("hidden");
-    
-            previewImage.src = "";
-    
-            previewFile.innerHTML = "";
-    
-        });
-    
-        // =========================
-        // INITIAL LOAD
-        // =========================
-    
-        loadMessages();
-    
-    });
-    
-    </script>
 {% endif %}
 
 </body>
