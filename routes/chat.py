@@ -141,37 +141,37 @@ def register_chat_socketio(socket):
 
     #     )
 
-        @socketio.on("disconnect")
-        def chat_disconnect():
+        # @socketio.on("disconnect")
+        # def chat_disconnect():
 
-            if "user_id" not in session:
-                return
+        #     if "user_id" not in session:
+        #         return
 
-            print(f"{session['name']} disconnected.")
+        #     print(f"{session['name']} disconnected.")
 
-            conn = get_db()
-            c = conn.cursor()
+        #     conn = get_db()
+        #     c = conn.cursor()
 
-            c.execute("""
-                UPDATE user_presence
-                SET
-                    online = FALSE,
-                    last_seen = NOW()
-                WHERE user_id = %s
-            """, (
-                session["user_id"],
-            ))
+        #     c.execute("""
+        #         UPDATE user_presence
+        #         SET
+        #             online = FALSE,
+        #             last_seen = NOW()
+        #         WHERE user_id = %s
+        #     """, (
+        #         session["user_id"],
+        #     ))
 
-            conn.commit()
-            conn.close()
+        #     conn.commit()
+        #     conn.close()
 
-            emit(
-                "user_offline",
-                {
-                    "user_id": session["user_id"]
-                },
-                broadcast=True
-            )
+        #     emit(
+        #         "user_offline",
+        #         {
+        #             "user_id": session["user_id"]
+        #         },
+        #         broadcast=True
+        #     )
 
 # ==========================================
 # HELPERS
@@ -242,8 +242,16 @@ def serialize_message(message):
 
     message = dict(message)
 
-    if message.get("created_at"):
-        message["created_at"] = message["created_at"].isoformat()
+    created_at = message.get("created_at")
+
+    if isinstance(created_at, datetime):
+        message["created_at"] = created_at.isoformat()
+
+    elif created_at is None:
+        message["created_at"] = ""
+
+    else:
+        message["created_at"] = str(created_at)
 
     return message
 
