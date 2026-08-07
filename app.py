@@ -207,7 +207,7 @@ def init_db():
         pass
 
     try:
-        c. execute("ALTER TABLE tasks ADD COLUMN completed_at TEXT;")
+        c.execute("ALTER TABLE tasks ADD COLUMN completed_at TIMESTAMP;")
     except:
         pass
 
@@ -2762,31 +2762,26 @@ def export_task_history():
     )
 
 @app.route('/complete_task/<int:id>')
-def complete_task():
+def complete_task(id):
 
     if 'user_id' not in session:
         return redirect('/')
 
     conn = get_db()
-
     c = conn.cursor()
 
     c.execute("""
         UPDATE tasks
-
         SET
             status='Completed',
             completed_at=%s
-
         WHERE id=%s
-    """,
-    (
+    """, (
         datetime.now(),
         id
     ))
 
     conn.commit()
-
     conn.close()
 
     return redirect('/tasks')
