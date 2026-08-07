@@ -438,21 +438,36 @@ class ChatApp {
                 }
     
                 <div class="flex justify-end items-center gap-2 mt-2 text-[10px] opacity-70">
-    
-                    ${new Intl.DateTimeFormat([],{
-                        hour:"2-digit",
-                        minute:"2-digit"
-                    }).format(new Date(chat.created_at))}
-    
-                    ${
-                        mine
+
+                ${(() => {
+
+                    console.log("created_at:", chat.created_at);
+
+                    const d = new Date(chat.created_at);
+
+                    console.log("parsed:", d);
+
+                    if (isNaN(d.getTime())) {
+
+                        return "<span style='color:red'>Invalid</span>";
+
+                    }
+
+                    return new Intl.DateTimeFormat([], {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    }).format(d);
+
+                })()}
+                ${
+                    mine
                         ? (
                             chat.seen
-                            ? "<span class='text-cyan-300'>✔✔</span>"
-                            : "<span>✔</span>"
+                                ? "<span class='text-cyan-300'>✔✔</span>"
+                                : "<span>✔</span>"
                         )
                         : ""
-                    }
+                }
     
                 </div>
     
@@ -556,7 +571,13 @@ class ChatApp {
 
             const data = await response.json();
 
-            if (!data.success) return;
+            if(!data.success || !data.message){
+
+                console.error(data);
+            
+                return;
+            
+            }
 
             // Clear input
 

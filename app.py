@@ -122,14 +122,37 @@ def init_db():
         created_at TEXT
     )''')
 
-    c.execute('''CREATE TABLE IF NOT EXISTS messages (
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS messages (
+
         id SERIAL PRIMARY KEY,
-        sender_id INTEGER,
-        receiver_id INTEGER,
+
+        sender_id INTEGER NOT NULL
+            REFERENCES employees(id)
+            ON DELETE CASCADE,
+
+        receiver_id INTEGER NOT NULL
+            REFERENCES employees(id)
+            ON DELETE CASCADE,
+
         message TEXT,
-        created_at TEXT,
-        is_read INTEGER DEFAULT 0
-    )''')
+
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+
+        seen BOOLEAN DEFAULT FALSE,
+
+        is_read BOOLEAN DEFAULT FALSE,
+
+        edited BOOLEAN DEFAULT FALSE,
+
+        deleted BOOLEAN DEFAULT FALSE,
+
+        file_name TEXT,
+
+        file_path TEXT
+
+    )
+    """)
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS user_presence (
@@ -197,11 +220,6 @@ def init_db():
         pass
 
     try:
-        c.execute("ALTER TABLE messages ADD COLUMN seen INTEGER DEFAULT 0")
-    except:
-        pass
-
-    try:
         c. execute("ALTER TABLE tasks ADD COLUMN created_at TEXT;")
     except:
         pass
@@ -256,25 +274,6 @@ def init_db():
     except:
         pass
 
-    try:
-        c.execute("ALTER TABLE messages ADD COLUMN file_name TEXT")
-    except:
-        pass
-
-    try:
-        c.execute("ALTER TABLE messages ADD COLUMN file_path TEXT")
-    except:
-        pass    
-
-    try:
-        c.execute("ALTER TABLE messages ADD COLUMN deleted INTEGER DEFAULT 0")
-    except:
-        pass
-
-    try:
-        c.execute("ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0")
-    except:
-        pass
 
     conn.commit()
     conn.close()

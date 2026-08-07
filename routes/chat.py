@@ -50,128 +50,40 @@ def register_chat_socketio(socket):
     global socketio
     socketio = socket
 
-
     @socketio.on("connect")
     def chat_connect():
 
         if "user_id" in session:
 
             print(
-                f"{session['name']} connected to chat."
+                f"{session['name']} connected."
             )
 
+    @socketio.on("join_chat")
+    def join_chat(data):
 
-        @socketio.on("join_chat")
-        def join_chat(data):
+        if "user_id" not in session:
+            return
 
-            if "user_id" not in session:
-                return
+        other_user = int(data["user_id"])
 
-            other_user = int(
-                data["user_id"]
-            )
+        room = get_room_name(
+            session["user_id"],
+            other_user
+        )
 
-            room = get_room_name(
-                session["user_id"],
-                other_user
-            )
+        join_room(room)
 
-            join_room(room)
+        print(f"{session['name']} joined {room}")
+
+    @socketio.on("disconnect")
+    def chat_disconnect():
+
+        if "user_id" in session:
 
             print(
-                f"{session['name']} joined {room}"
+                f"{session['name']} disconnected."
             )
-    # @socketio.on("online")
-    # def user_online():
-
-    #     if "user_id" not in session:
-    #         return
-
-    #     conn = get_db()
-    #     c = conn.cursor()
-
-    #     c.execute("""
-
-    #         INSERT INTO user_presence(
-
-    #             user_id,
-    #             online,
-    #             last_seen
-
-    #         )
-
-    #         VALUES(
-
-    #             %s,
-    #             TRUE,
-    #             NOW()
-
-    #         )
-
-    #         ON CONFLICT(user_id)
-
-    #         DO UPDATE SET
-
-    #             online=TRUE,
-    #             last_seen=NOW()
-
-    #     """,(
-
-    #         session["user_id"],
-
-    #     ))
-
-    #     conn.commit()
-
-    #     conn.close()
-
-    #     emit(
-
-    #         "user_online",
-
-    #         {
-
-    #             "user_id":
-
-    #             session["user_id"]
-
-    #         },
-
-    #         broadcast=True
-
-    #     )
-
-        # @socketio.on("disconnect")
-        # def chat_disconnect():
-
-        #     if "user_id" not in session:
-        #         return
-
-        #     print(f"{session['name']} disconnected.")
-
-        #     conn = get_db()
-        #     c = conn.cursor()
-
-        #     c.execute("""
-        #         UPDATE user_presence
-        #         SET
-        #             online = FALSE,
-        #             last_seen = NOW()
-        #         WHERE user_id = %s
-        #     """, (
-        #         session["user_id"],
-        #     ))
-
-        #     conn.commit()
-        #     conn.close()
-
-        #     emit(
-        #         "user_offline",
-        #         {
-        #             "user_id": session["user_id"]
-        #         },
-        #         broadcast=True
-        #     )
 
 # ==========================================
 # HELPERS
@@ -337,28 +249,20 @@ def messages(user_id=None):
         c.execute("""
 
             INSERT INTO messages(
-
                 sender_id,
                 receiver_id,
                 message,
-                created_at,
                 file_name,
                 file_path
-
             )
-
             VALUES(
-
                 %s,
                 %s,
                 %s,
-                NOW(),
                 %s,
                 %s
-
             )
-
-            RETURNING *
+            RETURNING *;
 
         """, (
 
