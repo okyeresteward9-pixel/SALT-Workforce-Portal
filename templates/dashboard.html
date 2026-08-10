@@ -248,11 +248,6 @@
                 </a>
             </li>
             <li>
-                <a href="#">
-                    <i class="fas fa-calendar-alt"></i> <span>-----</span>
-                </a>
-            </li>
-            <li>
                 <a href="/logout" onclick="return confirm('Are you sure you want to logout?')">
                     <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
                 </a>
@@ -402,50 +397,97 @@
 
         <!-- Announcements Section -->
         <div class="announcements">
-            <h3><i class="fas fa-bullhorn"></i> Latest Announcements</h3>
+
+            <h3>
+                <i class="fas fa-bullhorn"></i>
+                Latest Announcements
+            </h3>
+
             {% if latest_announcements %}
+
                 <ul>
+
                 {% for ann in latest_announcements %}
-                <li>
-                    <strong>{{ ann['title'] }}</strong>
-                    <span>{{ ann['message'] }}</span>
-                
-                    {% if ann['file_path'] %}
-                
-                        {% set file = ann['file_path'].lower() %}
-                
-                        <!-- 🖼️ IMAGE PREVIEW -->
-                        {% if file.endswith('.png') or file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.gif') %}
-                            
-                            <div class="ann-image">
-                                <img src="{{ url_for('download_announcement_file', filename=ann['file_path']) }}" alt="attachment">
-                            </div>
-                
-                        <!-- 📄 PDF -->
-                        {% elif file.endswith('.pdf') %}
-                
-                            <a href="{{ url_for('download_announcement_file', filename=ann['file_path']) }}" target="_blank" class="file-link">
-                                📄 View PDF
-                            </a>
-                
-                        <!-- 📦 OTHER FILES -->
-                        {% else %}
-                
-                            <a href="{{ url_for('download_announcement_file', filename=ann['file_path']) }}" class="file-link">
-                                📎 Download File
-                            </a>
-                
+
+                    <li>
+
+                        <strong>{{ ann['title'] }}</strong>
+
+                        <span>{{ ann['message'] }}</span>
+
+
+                        {% if ann['file_path'] %}
+
+                            {% set file = ann['file_path'].lower() %}
+
+
+                            <!-- 🖼️ IMAGE PREVIEW -->
+                            {% if file.endswith('.png')
+                            or file.endswith('.jpg')
+                            or file.endswith('.jpeg')
+                            or file.endswith('.gif') %}
+
+                                <div class="ann-image">
+
+                                    <img
+                                        src="{{ url_for(
+                                            'download_announcement_file',
+                                            id=ann['id']
+                                        ) }}"
+                                        alt="attachment"
+                                    >
+
+                                </div>
+
+
+                            <!-- 📄 PDF -->
+                            {% elif file.endswith('.pdf') %}
+
+                                <a
+                                    href="{{ url_for(
+                                        'download_announcement_file',
+                                        id=ann['id']
+                                    ) }}"
+                                    target="_blank"
+                                    class="file-link"
+                                >
+                                    📄 View PDF
+                                </a>
+
+
+                            <!-- 📦 OTHER FILES -->
+                            {% else %}
+
+                                <a
+                                    href="{{ url_for(
+                                        'download_announcement_file',
+                                        id=ann['id']
+                                    ) }}"
+                                    class="file-link"
+                                >
+                                    📎 Download File
+                                </a>
+
+                            {% endif %}
+
                         {% endif %}
-                
-                    {% endif %}
-                
-                    <small>{{ ann['created_at'] }}</small>
-                </li>
+
+                        <small>
+                            {{ ann['created_at'] }}
+                        </small>
+
+                    </li>
+
                 {% endfor %}
+
                 </ul>
+
             {% else %}
+
                 <p>No announcements yet.</p>
+
             {% endif %}
+
         </div>
 
         <!-- ADMIN ONLY: Working Employees -->
