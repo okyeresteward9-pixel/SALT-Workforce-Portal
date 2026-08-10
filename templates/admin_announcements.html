@@ -1,379 +1,3325 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Admin Announcements - SALT Workforce Portal</title>
-    <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Announcements - SALT Workforce Portal</title>
+
+    <link rel="icon"
+          href="{{ url_for('static', filename='salt-logo.png') }}">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 
 <style>
 
-.main{
-    max-width:11000px;
-    margin:auto;
+/* =========================================================
+   PAGE LAYOUT
+   ========================================================= */
+
+.main {
+
+    width: calc(100% - 260px);
+
+    margin-left: 260px;
+
+    padding: 0 28px 50px;
+
+    box-sizing: border-box;
+
+    min-height: 100vh;
+
+    transition:
+        width .3s ease,
+        margin-left .3s ease;
 }
 
-/* Card style */
-.announcements-form,
-.announcements-table{
-    background:rgb(233, 237, 243);
-    border-radius:12px;
-    padding:25px;
-    margin:25px auto;
-    max-width:1000px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+
+/* Sidebar collapsed */
+
+.sidebar.collapsed + .main {
+
+    width: calc(100% - 90px);
+
+    margin-left: 90px;
 }
 
-/* Form */
-.announcements-form h3{
-    margin-bottom:15px;
-    color:#023e8a;
+
+/* =========================================================
+   PAGE HEADER
+   ========================================================= */
+
+.page-header {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 20px;
+
+    margin: 25px 0;
 }
 
-.announcements-form input,
-.announcements-form textarea{
-    width:100%;
-    padding:12px;
-    margin-bottom:12px;
-    border-radius:8px;
-    border:1px solid #d0d7de;
-    font-size:14px;
+
+.page-title h2 {
+
+    margin: 0;
+
+    color: #023e8a;
+
+    font-size: 25px;
 }
 
-.announcements-form textarea{
-    resize:none;
+
+.page-title p {
+
+    margin: 6px 0 0;
+
+    color: #64748b;
+
+    font-size: 14px;
 }
 
-.announcements-form input[type="file"]{
-    background:white;
-    padding:10px;
+
+/* =========================================================
+   FLASH MESSAGES
+   ========================================================= */
+
+.flash-container {
+
+    margin-bottom: 20px;
 }
 
-/* Buttons */
-.btn{
-    padding:8px 14px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-    font-size:13px;
-    text-decoration:none;
+
+.flash {
+
+    padding: 13px 16px;
+
+    border-radius: 10px;
+
+    margin-bottom: 10px;
+
+    font-size: 14px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
 }
 
-.btn-add{
-    background:#0077b6;
-    color:white;
+
+.flash.success {
+
+    background: #dcfce7;
+
+    color: #166534;
+
+    border: 1px solid #bbf7d0;
 }
 
-.btn-edit{
-    background:#ffb703;
-    color:white;
+
+.flash.error {
+
+    background: #fee2e2;
+
+    color: #991b1b;
+
+    border: 1px solid #fecaca;
 }
 
-.btn-delete{
-    background:#d90429;
-    color:white;
+
+/* =========================================================
+   STATISTICS
+   ========================================================= */
+
+.stats-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+
+    gap: 18px;
+
+    margin-bottom: 25px;
 }
 
-/* Table */
-.announcements-table h3{
-    margin-bottom:15px;
-    color:#023e8a;
+
+.stat-card {
+
+    background: white;
+
+    border-radius: 15px;
+
+    padding: 20px;
+
+    box-shadow:
+        0 5px 20px rgba(15, 23, 42, .07);
+
+    border: 1px solid #e8eef5;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
 }
 
-.announcements-table table{
-    width:100%;
-    border-collapse:collapse;
-    font-size:14px;
+
+.stat-icon {
+
+    width: 48px;
+
+    height: 48px;
+
+    border-radius: 12px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background: #e7f1fb;
+
+    color: #023e8a;
+
+    font-size: 19px;
 }
 
-.announcements-table th{
-    background:#023e8a;
-    color:white;
-    padding:10px;
+
+.stat-card h4 {
+
+    margin: 0;
+
+    font-size: 24px;
+
+    color: #0f172a;
 }
 
-.announcements-table td{
-    padding:10px;
-    border-bottom:1px solid #e6e6e6;
-    vertical-align:middle;
+
+.stat-card span {
+
+    display: block;
+
+    margin-top: 3px;
+
+    color: #64748b;
+
+    font-size: 13px;
 }
 
-.announcements-table tr:hover{
-    background:#f6fbff;
+
+/* =========================================================
+   CREATE ANNOUNCEMENT CARD
+   ========================================================= */
+
+.announcement-card {
+
+    background: white;
+
+    border-radius: 16px;
+
+    border: 1px solid #e8eef5;
+
+    box-shadow:
+        0 5px 20px rgba(15, 23, 42, .07);
+
+    margin-bottom: 25px;
+
+    overflow: hidden;
 }
 
-/* Actions column */
-.actions{
-    white-space:nowrap;
+
+.card-header {
+
+    padding: 20px 22px;
+
+    border-bottom: 1px solid #edf2f7;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
 }
 
-/* File button */
-.file-btn{
-    background:#6c757d;
-    color:white;
-    padding:6px 10px;
-    border-radius:6px;
-    text-decoration:none;
-    font-size:12px;
+
+.card-header h3 {
+
+    margin: 0;
+
+    color: #023e8a;
+
+    font-size: 17px;
 }
 
-.file-btn:hover{
-    background:#495057;
+
+.card-header i {
+
+    color: #0077b6;
 }
 
-.modal{
-    display:none;
-    position:fixed;
-    top:0; left:0;
-    width:100%; height:100%;
-    background:rgba(0,0,0,0.5);
-    justify-content:center;
-    align-items:center;
+
+.card-body {
+
+    padding: 22px;
 }
 
-.modal-content{
-    background:white;
-    padding:20px;
-    border-radius:10px;
-    width:400px;
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+.form-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        1fr 230px;
+
+    gap: 18px;
 }
 
-.toast{
-    position:fixed;
-    bottom:20px;
-    right:20px;
-    background:#023e8a;
-    color:white;
-    padding:12px 20px;
-    border-radius:8px;
-    display:none;
+
+.form-group {
+
+    margin-bottom: 17px;
+}
+
+
+.form-group.full {
+
+    grid-column: 1 / -1;
+}
+
+
+.form-group label {
+
+    display: block;
+
+    margin-bottom: 7px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #334155;
+}
+
+
+.form-control {
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    border: 1px solid #d8e0e8;
+
+    border-radius: 9px;
+
+    padding: 11px 13px;
+
+    font-size: 14px;
+
+    background: #fff;
+
+    color: #1e293b;
+
+    outline: none;
+
+    transition: border .2s,
+                box-shadow .2s;
+}
+
+
+.form-control:focus {
+
+    border-color: #0077b6;
+
+    box-shadow:
+        0 0 0 3px rgba(0, 119, 182, .10);
+}
+
+
+textarea.form-control {
+
+    min-height: 125px;
+
+    resize: vertical;
+}
+
+
+input[type="file"].form-control {
+
+    padding: 9px;
+
+    background: #f8fafc;
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+.btn {
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 10px 15px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        transform .15s,
+        opacity .15s,
+        background .15s;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 7px;
+
+    text-decoration: none;
+}
+
+
+.btn:hover {
+
+    transform: translateY(-1px);
+}
+
+
+.btn-primary {
+
+    background: #0077b6;
+
+    color: white;
+}
+
+
+.btn-primary:hover {
+
+    background: #005f8f;
+}
+
+
+.btn-edit {
+
+    background: #f59e0b;
+
+    color: white;
+}
+
+
+.btn-edit:hover {
+
+    background: #d97706;
+}
+
+
+.btn-delete {
+
+    background: #dc2626;
+
+    color: white;
+}
+
+
+.btn-delete:hover {
+
+    background: #b91c1c;
+}
+
+
+.btn-secondary {
+
+    background: #64748b;
+
+    color: white;
+}
+
+
+.btn-light {
+
+    background: #eef2f7;
+
+    color: #334155;
+}
+
+
+/* =========================================================
+   SEARCH / FILTER
+   ========================================================= */
+
+.filters {
+
+    background: white;
+
+    border: 1px solid #e8eef5;
+
+    box-shadow:
+        0 5px 20px rgba(15, 23, 42, .06);
+
+    border-radius: 14px;
+
+    padding: 16px;
+
+    margin-bottom: 20px;
+}
+
+
+.filter-form {
+
+    display: grid;
+
+    grid-template-columns:
+        1fr 200px auto auto;
+
+    gap: 10px;
+
+    align-items: center;
+}
+
+
+.search-wrapper {
+
+    position: relative;
+}
+
+
+.search-wrapper i {
+
+    position: absolute;
+
+    left: 13px;
+
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    color: #94a3b8;
+}
+
+
+.search-wrapper input {
+
+    padding-left: 38px;
+}
+
+
+/* =========================================================
+   TABLE
+   ========================================================= */
+
+.table-card {
+
+    background: white;
+
+    border-radius: 16px;
+
+    border: 1px solid #e8eef5;
+
+    box-shadow:
+        0 5px 20px rgba(15, 23, 42, .07);
+
+    overflow: hidden;
+}
+
+
+.table-wrapper {
+
+    width: 100%;
+
+    overflow-x: auto;
+
+    -webkit-overflow-scrolling: touch;
+}
+
+
+table {
+
+    width: 100%;
+
+    min-width: 1000px;
+
+    border-collapse: collapse;
+}
+
+
+thead th {
+
+    background: #023e8a;
+
+    color: white;
+
+    padding: 13px 14px;
+
+    text-align: left;
+
+    font-size: 12px;
+
+    text-transform: uppercase;
+
+    letter-spacing: .3px;
+
+    white-space: nowrap;
+}
+
+
+tbody td {
+
+    padding: 14px;
+
+    border-bottom: 1px solid #edf2f7;
+
+    vertical-align: middle;
+
+    color: #334155;
+
+    font-size: 13px;
+}
+
+
+tbody tr:hover {
+
+    background: #f8fbff;
+}
+
+
+.title-cell {
+
+    font-weight: 700;
+
+    color: #0f172a;
+
+    max-width: 220px;
+}
+
+
+.message-cell {
+
+    max-width: 300px;
+
+    line-height: 1.5;
+
+    color: #64748b;
+
+    word-break: break-word;
+}
+
+
+/* =========================================================
+   BADGES
+   ========================================================= */
+
+.badge {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 5px;
+
+    padding: 5px 9px;
+
+    border-radius: 20px;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    white-space: nowrap;
+}
+
+
+.badge-everyone {
+
+    background: #e0f2fe;
+
+    color: #0369a1;
+}
+
+
+.badge-staff {
+
+    background: #dcfce7;
+
+    color: #166534;
+}
+
+
+.badge-admin {
+
+    background: #fef3c7;
+
+    color: #92400e;
+}
+
+
+/* =========================================================
+   FILE LINK
+   ========================================================= */
+
+.file-link {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 7px 10px;
+
+    border-radius: 7px;
+
+    background: #eef6ff;
+
+    color: #0369a1;
+
+    text-decoration: none;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    max-width: 190px;
+}
+
+
+.file-link:hover {
+
+    background: #dceeff;
+}
+
+
+.file-name {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+
+.no-file {
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   ACTIONS
+   ========================================================= */
+
+.actions {
+
+    display: flex;
+
+    gap: 7px;
+
+    white-space: nowrap;
+}
+
+
+.action-btn {
+
+    width: 34px;
+
+    height: 34px;
+
+    padding: 0;
+
+    border-radius: 8px;
+
+    border: none;
+
+    cursor: pointer;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    color: white;
+}
+
+
+.action-edit {
+
+    background: #f59e0b;
+}
+
+
+.action-edit:hover {
+
+    background: #d97706;
+}
+
+
+.action-delete {
+
+    background: #dc2626;
+}
+
+
+.action-delete:hover {
+
+    background: #b91c1c;
+}
+
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.empty-state {
+
+    padding: 55px 20px;
+
+    text-align: center;
+
+    color: #64748b;
+}
+
+
+.empty-state i {
+
+    font-size: 42px;
+
+    color: #cbd5e1;
+
+    margin-bottom: 12px;
+}
+
+
+.empty-state h3 {
+
+    margin: 0 0 5px;
+
+    color: #334155;
+}
+
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+
+.modal {
+
+    display: none;
+
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(15, 23, 42, .58);
+
+    z-index: 9999;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 20px;
+
+    box-sizing: border-box;
+}
+
+
+.modal.show {
+
+    display: flex;
+}
+
+
+.modal-content {
+
+    width: 100%;
+
+    max-width: 560px;
+
+    background: white;
+
+    border-radius: 16px;
+
+    box-shadow:
+        0 20px 60px rgba(0,0,0,.25);
+
+    overflow: hidden;
+
+    animation: modalIn .2s ease;
+}
+
+
+@keyframes modalIn {
+
+    from {
+
+        opacity: 0;
+
+        transform: translateY(10px)
+        scale(.98);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform: translateY(0)
+        scale(1);
+
+    }
+}
+
+
+.modal-header {
+
+    padding: 18px 20px;
+
+    border-bottom: 1px solid #edf2f7;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+}
+
+
+.modal-header h3 {
+
+    margin: 0;
+
+    color: #023e8a;
+
+    font-size: 17px;
+}
+
+
+.modal-close {
+
+    width: 32px;
+
+    height: 32px;
+
+    border: none;
+
+    border-radius: 7px;
+
+    background: #f1f5f9;
+
+    cursor: pointer;
+
+    color: #475569;
+}
+
+
+.modal-body {
+
+    padding: 20px;
+}
+
+
+.modal-footer {
+
+    padding: 15px 20px;
+
+    border-top: 1px solid #edf2f7;
+
+    display: flex;
+
+    justify-content: flex-end;
+
+    gap: 10px;
+}
+
+
+/* Delete modal */
+
+.delete-icon {
+
+    width: 55px;
+
+    height: 55px;
+
+    border-radius: 50%;
+
+    background: #fee2e2;
+
+    color: #dc2626;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 23px;
+
+    margin: 0 auto 15px;
+}
+
+
+.delete-content {
+
+    text-align: center;
+}
+
+
+.delete-content h3 {
+
+    margin: 0 0 8px;
+
+    color: #1e293b;
+}
+
+
+.delete-content p {
+
+    margin: 0;
+
+    color: #64748b;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+}
+
+
+/* Existing attachment */
+
+.current-file {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 10px;
+
+    background: #f8fafc;
+
+    border: 1px solid #e2e8f0;
+
+    border-radius: 8px;
+
+    padding: 10px;
+
+    margin-bottom: 12px;
+}
+
+
+.current-file-name {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    min-width: 0;
+
+    color: #334155;
+
+    font-size: 12px;
+}
+
+
+.current-file-name span {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+
+.remove-file {
+
+    border: none;
+
+    background: #fee2e2;
+
+    color: #dc2626;
+
+    padding: 6px 9px;
+
+    border-radius: 6px;
+
+    cursor: pointer;
+
+    font-size: 11px;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+.toast {
+
+    position: fixed;
+
+    right: 25px;
+
+    bottom: 25px;
+
+    z-index: 10000;
+
+    min-width: 260px;
+
+    max-width: 400px;
+
+    background: #0f172a;
+
+    color: white;
+
+    padding: 13px 17px;
+
+    border-radius: 9px;
+
+    box-shadow:
+        0 8px 30px rgba(0,0,0,.20);
+
+    display: none;
+
+    font-size: 13px;
+}
+
+
+.toast.show {
+
+    display: block;
+
+    animation:
+        toastIn .2s ease;
+}
+
+
+@keyframes toastIn {
+
+    from {
+
+        opacity: 0;
+
+        transform: translateY(8px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform: translateY(0);
+
+    }
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1100px) {
+
+    .stats-grid {
+
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .filter-form {
+
+        grid-template-columns:
+            1fr 180px;
+    }
+
+    .filter-form .btn {
+
+        width: 100%;
+    }
+}
+
+
+@media (max-width: 850px) {
+
+    .main,
+    .sidebar.collapsed + .main {
+
+        width: 100%;
+
+        margin-left: 0;
+
+        padding: 0 15px 35px;
+    }
+
+    .form-grid {
+
+        grid-template-columns: 1fr;
+    }
+
+    .form-group.full {
+
+        grid-column: auto;
+    }
+}
+
+
+@media (max-width: 600px) {
+
+    .page-header {
+
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+    .stats-grid {
+
+        grid-template-columns: 1fr;
+    }
+
+    .filter-form {
+
+        grid-template-columns: 1fr;
+    }
+
+    .card-body {
+
+        padding: 17px;
+    }
+
+    .page-title h2 {
+
+        font-size: 21px;
+    }
+
+    .toast {
+
+        right: 15px;
+
+        left: 15px;
+
+        min-width: auto;
+    }
 }
 
 </style>
+
 </head>
 
 
-
 <body>
+
 <div class="wrapper">
 
-    <!-- Sidebar -->
+
+    <!-- =====================================================
+         SIDEBAR
+         ===================================================== -->
+
     <div class="sidebar">
+
         <div class="logo">
-            <img src="{{ url_for('static', filename='salt-logo.png') }}">
-            <p class="portal-name">Workforce Portal</p>
+
+            <img
+                src="{{ url_for('static', filename='salt-logo.png') }}"
+                alt="SALT">
+
+            <p class="portal-name">
+                Workforce Portal
+            </p>
+
         </div>
+
 
         <ul>
-            <li><a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a></li>
-            <li><a href="/admin/employees"><i class="fas fa-users"></i> Employees</a></li>
-            <li><a href="/admin/tasks"><i class="fas fa-table"></i> Task Board</a></li>
-            <li class="active"><a href="/admin/announcements"><i class="fas fa-bullhorn"></i> Announcements</a></li>
-            <li><a href="/attendance"><i class="fas fa-clock"></i> Attendance</a></li>
-            <li><a href="/tasks"><i class="fas fa-tasks"></i> My Tasks</a></li>
-            <li><a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+
+            <li>
+
+                <a href="/dashboard">
+
+                    <i class="fas fa-home"></i>
+
+                    Dashboard
+
+                </a>
+
+            </li>
+
+
+            <li>
+
+                <a href="/admin/employees">
+
+                    <i class="fas fa-users"></i>
+
+                    Employees
+
+                </a>
+
+            </li>
+
+
+            <li>
+
+                <a href="/admin/tasks">
+
+                    <i class="fas fa-table"></i>
+
+                    Task Board
+
+                </a>
+
+            </li>
+
+
+            <li class="active">
+
+                <a href="/admin/announcements">
+
+                    <i class="fas fa-bullhorn"></i>
+
+                    Announcements
+
+                </a>
+
+            </li>
+
+
+            <li>
+
+                <a href="/attendance">
+
+                    <i class="fas fa-clock"></i>
+
+                    Attendance
+
+                </a>
+
+            </li>
+
+
+            <li>
+
+                <a href="/tasks">
+
+                    <i class="fas fa-tasks"></i>
+
+                    My Tasks
+
+                </a>
+
+            </li>
+
+
+            <li>
+
+                <a href="/logout">
+
+                    <i class="fas fa-sign-out-alt"></i>
+
+                    Logout
+
+                </a>
+
+            </li>
+
         </ul>
+
     </div>
 
-    <!-- Main Section -->
+
+    <!-- =====================================================
+         MAIN CONTENT
+         ===================================================== -->
+
     <div class="main">
 
+
+        <!-- TOPBAR -->
+
         <div class="topbar">
-            <button id="toggle-btn"><i class="fas fa-bars"></i></button>
-            <h3>Welcome, {{ name }}</h3>
+
+            <button id="toggle-btn">
+
+                <i class="fas fa-bars"></i>
+
+            </button>
+
+            <h3>
+                Welcome, {{ session.get('name', 'Admin') }}
+            </h3>
+
         </div>
 
-        <!-- Add Announcement Form -->
-        <div class="announcements-form">
 
-            <h3><i class="fas fa-plus"></i> Add New Announcement</h3>
+        <!-- PAGE HEADER -->
 
-            <form method="POST" action="/admin/announcements" enctype="multipart/form-data">
+        <div class="page-header">
 
-                <input type="text" name="title" placeholder="Announcement Title" required>
+            <div class="page-title">
 
-                <textarea name="message" placeholder="Message" rows="4" required></textarea>
+                <h2>
 
-                <label style="font-size:13px; margin-bottom:5px; display:block;">
-                    Attach File (optional)
-                </label>
+                    <i class="fas fa-bullhorn"></i>
 
-                <input type="file" name="file">
+                    Announcements
 
-                <button type="submit" class="btn btn-add">
-                    <i class="fas fa-bullhorn"></i> Post Announcement
+                </h2>
+
+                <p>
+                    Create, manage and target announcements across the workforce.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             FLASH MESSAGES
+             ================================================= -->
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+
+            {% if messages %}
+
+                <div class="flash-container">
+
+                    {% for category, message in messages %}
+
+                        <div class="flash {{ category }}">
+
+                            {% if category == 'success' %}
+
+                                <i class="fas fa-circle-check"></i>
+
+                            {% else %}
+
+                                <i class="fas fa-circle-exclamation"></i>
+
+                            {% endif %}
+
+                            {{ message }}
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+        {% endwith %}
+
+
+        <!-- =================================================
+             STATISTICS
+             ================================================= -->
+
+        <div class="stats-grid">
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+
+                    <i class="fas fa-bullhorn"></i>
+
+                </div>
+
+                <div>
+
+                    <h4>
+                        {{ total_announcements }}
+                    </h4>
+
+                    <span>
+                        Total Announcements
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+
+                    <i class="fas fa-globe"></i>
+
+                </div>
+
+                <div>
+
+                    <h4>
+                        {{ everyone_count }}
+                    </h4>
+
+                    <span>
+                        Everyone
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+
+                    <i class="fas fa-users"></i>
+
+                </div>
+
+                <div>
+
+                    <h4>
+                        {{ staff_count }}
+                    </h4>
+
+                    <span>
+                        Staff Only
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+
+                    <i class="fas fa-user-shield"></i>
+
+                </div>
+
+                <div>
+
+                    <h4>
+                        {{ admin_count }}
+                    </h4>
+
+                    <span>
+                        Admin Only
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             CREATE ANNOUNCEMENT
+             ================================================= -->
+
+        <div class="announcement-card">
+
+
+            <div class="card-header">
+
+                <i class="fas fa-plus-circle"></i>
+
+                <h3>
+                    Create New Announcement
+                </h3>
+
+            </div>
+
+
+            <div class="card-body">
+
+
+                <form
+                    method="POST"
+                    action="/admin/announcements"
+                    enctype="multipart/form-data"
+                >
+
+
+                    <div class="form-grid">
+
+
+                        <div class="form-group full">
+
+                            <label>
+                                Announcement Title
+                            </label>
+
+                            <input
+                                type="text"
+                                name="title"
+                                class="form-control"
+                                placeholder="Enter announcement title..."
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Message
+                            </label>
+
+                            <textarea
+                                name="message"
+                                class="form-control"
+                                placeholder="Write your announcement..."
+                                required
+                            ></textarea>
+
+                        </div>
+
+
+                        <div>
+
+                            <div class="form-group">
+
+                                <label>
+                                    Audience
+                                </label>
+
+                                <select
+                                    name="audience"
+                                    class="form-control"
+                                    required
+                                >
+
+                                    <option value="everyone">
+                                        Everyone
+                                    </option>
+
+                                    <option value="staff">
+                                        Staff Only
+                                    </option>
+
+                                    <option value="admin">
+                                        Admins Only
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div class="form-group">
+
+                                <label>
+                                    Attachment
+                                </label>
+
+                                <input
+                                    type="file"
+                                    name="file"
+                                    class="form-control"
+                                >
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+
+                        <i class="fas fa-paper-plane"></i>
+
+                        Publish Announcement
+
+                    </button>
+
+
+                </form>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             SEARCH / FILTER
+             ================================================= -->
+
+        <div class="filters">
+
+            <form
+                method="GET"
+                action="/admin/announcements"
+                class="filter-form"
+            >
+
+
+                <div class="search-wrapper">
+
+                    <i class="fas fa-search"></i>
+
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ search }}"
+                        class="form-control"
+                        placeholder="Search announcements..."
+                    >
+
+                </div>
+
+
+                <select
+                    name="audience"
+                    class="form-control"
+                >
+
+                    <option
+                        value="all"
+                        {% if audience_filter == 'all' %}selected{% endif %}
+                    >
+                        All Audiences
+                    </option>
+
+                    <option
+                        value="everyone"
+                        {% if audience_filter == 'everyone' %}selected{% endif %}
+                    >
+                        Everyone
+                    </option>
+
+                    <option
+                        value="staff"
+                        {% if audience_filter == 'staff' %}selected{% endif %}
+                    >
+                        Staff Only
+                    </option>
+
+                    <option
+                        value="admin"
+                        {% if audience_filter == 'admin' %}selected{% endif %}
+                    >
+                        Admins Only
+                    </option>
+
+                </select>
+
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+
+                    <i class="fas fa-filter"></i>
+
+                    Filter
+
                 </button>
+
+
+                <a
+                    href="/admin/announcements"
+                    class="btn btn-light"
+                >
+
+                    <i class="fas fa-rotate-left"></i>
+
+                    Reset
+
+                </a>
+
 
             </form>
 
         </div>
 
-        <!-- Existing Announcements -->
-        <div class="announcements-table">
 
-            <h3><i class="fas fa-list"></i> All Announcements</h3>
+        <!-- =================================================
+             ANNOUNCEMENTS TABLE
+             ================================================= -->
+
+        <div class="table-card">
+
+
+            <div class="card-header">
+
+                <i class="fas fa-list"></i>
+
+                <h3>
+                    All Announcements
+                </h3>
+
+            </div>
+
 
             {% if announcements %}
 
-            <table>
 
-                <tr>
-                    <th>ID</th>
-                    <th>Title</th>
-                    <th>Message</th>
-                    <th>File</th>
-                    <th>Created By</th>
-                    <th>Created At</th>
-                    <th>Actions</th>
-                </tr>
+                <div class="table-wrapper">
 
-                {% for ann in announcements %}
-                <tr>
-                    <td>{{ ann['id'] }}</td>
-                    <td>{{ ann['title'] }}</td>
-                    <td>{{ ann['message'] }}</td>
+                    <table>
 
-                    <!-- FILE COLUMN -->
-                    <td>
-                        {% if ann['file_path'] %}
-                            <a href="{{ url_for('download_announcement_file', filename=ann['file_path']) }}" 
-                            target="_blank" class="file-btn">
-                                <i class="fas fa-file"></i> View / Download
-                            </a>
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
 
-                    <td>{{ ann['name'] }}</td>
-                    <td>{{ ann['created_at'] }}</td>
+                        <thead>
 
-                    <td class="actions">
-                        <button class="btn btn-edit"
-                        data-id="{{ ann['id'] }}"
-                        data-title="{{ ann['title']|e }}"
-                        data-message="{{ ann['message']|e }}"
-                        onclick="openEditModal(this.dataset.id, this.dataset.title, this.dataset.message)">
-                            <i class="fas fa-edit"></i>
-                        </button>
+                            <tr>
 
-                        <button class="btn btn-delete"
-                        data-id="{{ ann['id'] }}"
-                        onclick="deleteAnnouncement(this.dataset.id)">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
+                                <th>
+                                    #
+                                </th>
 
-                </tr>
-                {% endfor %}
+                                <th>
+                                    Announcement
+                                </th>
 
-            </table>
+                                <th>
+                                    Message
+                                </th>
+
+                                <th>
+                                    Audience
+                                </th>
+
+                                <th>
+                                    Attachment
+                                </th>
+
+                                <th>
+                                    Created By
+                                </th>
+
+                                <th>
+                                    Date
+                                </th>
+
+                                <th>
+                                    Actions
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+
+                            {% for ann in announcements %}
+
+                                <tr>
+
+
+                                    <td>
+                                        #{{ ann['id'] }}
+                                    </td>
+
+
+                                    <td class="title-cell">
+
+                                        {{ ann['title'] }}
+
+                                    </td>
+
+
+                                    <td class="message-cell">
+
+                                        {{ ann['message'] }}
+
+                                    </td>
+
+
+                                    <!-- AUDIENCE -->
+
+                                    <td>
+
+                                        {% if ann['audience'] == 'admin' %}
+
+                                            <span class="badge badge-admin">
+
+                                                <i class="fas fa-user-shield"></i>
+
+                                                Admins Only
+
+                                            </span>
+
+                                        {% elif ann['audience'] == 'staff' %}
+
+                                            <span class="badge badge-staff">
+
+                                                <i class="fas fa-users"></i>
+
+                                                Staff Only
+
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="badge badge-everyone">
+
+                                                <i class="fas fa-globe"></i>
+
+                                                Everyone
+
+                                            </span>
+
+                                        {% endif %}
+
+                                    </td>
+
+
+                                    <!-- FILE -->
+
+                                    <td>
+
+                                        {% if ann['file_path'] %}
+
+                                            <a
+                                                href="{{ url_for(
+                                                    'download_announcement_file',
+                                                    id=ann['id']
+                                                ) }}"
+                                                class="file-link"
+                                                title="{{ ann['file_name'] or ann['file_path'] }}"
+                                            >
+
+                                                <i class="fas fa-paperclip"></i>
+
+                                                <span class="file-name">
+
+                                                    {{ ann['file_name'] or 'Download file' }}
+
+                                                </span>
+
+                                            </a>
+
+                                        {% else %}
+
+                                            <span class="no-file">
+                                                No attachment
+                                            </span>
+
+                                        {% endif %}
+
+                                    </td>
+
+
+                                    <!-- CREATOR -->
+
+                                    <td>
+
+                                        <i class="fas fa-user"></i>
+
+                                        {{ ann['name'] }}
+
+                                    </td>
+
+
+                                    <!-- DATE -->
+
+                                    <td>
+
+                                        {% if ann['created_at'] %}
+
+                                            <div>
+                                                {{ ann['created_at'].strftime('%d %b %Y') if ann['created_at'] is not string else ann['created_at'] }}
+                                            </div>
+
+                                            <small style="color:#94a3b8;">
+
+                                                {% if ann['created_at'] is not string %}
+
+                                                    {{ ann['created_at'].strftime('%H:%M') }}
+
+                                                {% endif %}
+
+                                            </small>
+
+                                            {% if ann['updated_at'] and ann['updated_at'] != ann['created_at'] %}
+
+                                                <div>
+
+                                                    <small style="color:#0077b6;">
+
+                                                        Edited
+
+                                                    </small>
+
+                                                </div>
+
+                                            {% endif %}
+
+                                        {% endif %}
+
+                                    </td>
+
+
+                                    <!-- ACTIONS -->
+
+                                    <td>
+
+                                        <div class="actions">
+
+
+                                            <button
+                                            type="button"
+                                            class="action-btn action-edit announcement-edit-btn"
+                                            title="Edit announcement"
+                                        
+                                            data-id="{{ ann['id'] }}"
+                                            data-title="{{ ann['title']|e }}"
+                                            data-message="{{ ann['message']|e }}"
+                                            data-audience="{{ ann['audience'] or 'everyone' }}"
+                                            data-file-name="{{ ann['file_name'] or '' }}"
+                                        >
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+
+
+                                        <button
+                                            type="button"
+                                            class="action-btn action-delete announcement-delete-btn"
+                                            title="Delete announcement"
+                                        
+                                            data-id="{{ ann['id'] }}"
+                                            data-title="{{ ann['title']|e }}"
+                                        >
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+
+
+                                        </div>
+
+                                    </td>
+
+
+                                </tr>
+
+                            {% endfor %}
+
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
 
             {% else %}
-                <p>No announcements yet.</p>
+
+
+                <div class="empty-state">
+
+                    <i class="fas fa-bullhorn"></i>
+
+                    <h3>
+                        No announcements found
+                    </h3>
+
+                    <p>
+                        {% if search or audience_filter != 'all' %}
+
+                            Try changing your search or filter.
+
+                        {% else %}
+
+                            Create your first announcement above.
+
+                        {% endif %}
+                    </p>
+
+                </div>
+
+
             {% endif %}
 
         </div>
 
+
     </div>
+
 </div>
 
-<div id="editModal" class="modal">
+
+<!-- =========================================================
+     EDIT MODAL
+     ========================================================= -->
+
+<div
+    id="editModal"
+    class="modal"
+>
+
+
     <div class="modal-content">
-        <h3>Edit Announcement</h3>
 
-        <input type="hidden" id="edit-id">
 
-        <input type="text" id="edit-title" placeholder="Title">
-        <textarea id="edit-message" rows="4"></textarea>
+        <div class="modal-header">
 
-        <button class="btn btn-add" onclick="saveEdit()">Save</button>
-        <button class="btn btn-delete" onclick="closeModal()">Cancel</button>
+            <h3>
+
+                <i class="fas fa-pen"></i>
+
+                Edit Announcement
+
+            </h3>
+
+
+            <button
+                type="button"
+                class="modal-close"
+                onclick="closeEditModal()"
+            >
+
+                <i class="fas fa-times"></i>
+
+            </button>
+
+        </div>
+
+
+        <form
+            id="editForm"
+            enctype="multipart/form-data"
+        >
+
+
+            <div class="modal-body">
+
+
+                <input
+                    type="hidden"
+                    id="edit-id"
+                >
+
+
+                <div class="form-group">
+
+                    <label>
+                        Title
+                    </label>
+
+                    <input
+                        type="text"
+                        id="edit-title"
+                        name="title"
+                        class="form-control"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Message
+                    </label>
+
+                    <textarea
+                        id="edit-message"
+                        name="message"
+                        class="form-control"
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Audience
+                    </label>
+
+                    <select
+                        id="edit-audience"
+                        name="audience"
+                        class="form-control"
+                    >
+
+                        <option value="everyone">
+                            Everyone
+                        </option>
+
+                        <option value="staff">
+                            Staff Only
+                        </option>
+
+                        <option value="admin">
+                            Admins Only
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Current Attachment
+                    </label>
+
+
+                    <div
+                        id="current-file-container"
+                        style="display:none;"
+                    >
+
+                        <div class="current-file">
+
+
+                            <div class="current-file-name">
+
+                                <i class="fas fa-paperclip"></i>
+
+                                <span id="current-file-name"></span>
+
+                            </div>
+
+
+                            <button
+                                type="button"
+                                class="remove-file"
+                                onclick="removeCurrentFile()"
+                            >
+
+                                <i class="fas fa-trash"></i>
+
+                                Remove
+
+                            </button>
+
+
+                        </div>
+
+                    </div>
+
+
+                    <p
+                        id="no-current-file"
+                        style="
+                            color:#94a3b8;
+                            font-size:12px;
+                            margin:0 0 10px;
+                        "
+                    >
+                        No attachment
+                    </p>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Replace Attachment
+                    </label>
+
+                    <input
+                        type="file"
+                        id="edit-file"
+                        name="file"
+                        class="form-control"
+                    >
+
+                    <small
+                        style="
+                            color:#94a3b8;
+                            display:block;
+                            margin-top:6px;
+                        "
+                    >
+                        Leave empty to keep the current attachment.
+                    </small>
+
+                </div>
+
+
+            </div>
+
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-light"
+                    onclick="closeEditModal()"
+                >
+
+                    Cancel
+
+                </button>
+
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+
+                    <i class="fas fa-save"></i>
+
+                    Save Changes
+
+                </button>
+
+            </div>
+
+
+        </form>
+
     </div>
+
 </div>
 
-<div id="toast" class="toast"></div>
+
+<!-- =========================================================
+     DELETE MODAL
+     ========================================================= -->
+
+<div
+    id="deleteModal"
+    class="modal"
+>
+
+
+    <div class="modal-content"
+         style="max-width:430px;">
+
+        <div class="modal-body delete-content">
+
+            <div class="delete-icon">
+
+                <i class="fas fa-trash"></i>
+
+            </div>
+
+
+            <h3>
+                Delete Announcement?
+            </h3>
+
+
+            <p>
+
+                You are about to permanently delete:
+
+            </p>
+
+
+            <p
+                id="delete-title"
+                style="
+                    font-weight:700;
+                    color:#1e293b;
+                    margin-top:8px;
+                "
+            ></p>
+
+
+            <p style="margin-top:10px;">
+
+                This action cannot be undone.
+
+            </p>
+
+        </div>
+
+
+        <div class="modal-footer">
+
+            <button
+                type="button"
+                class="btn btn-light"
+                onclick="closeDeleteModal()"
+            >
+
+                Cancel
+
+            </button>
+
+
+            <button
+                type="button"
+                class="btn btn-delete"
+                onclick="confirmDelete()"
+            >
+
+                <i class="fas fa-trash"></i>
+
+                Delete
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     TOAST
+     ========================================================= -->
+
+<div
+    id="toast"
+    class="toast"
+></div>
 
 
 <script>
-const toggleBtn = document.getElementById("toggle-btn");
-const sidebar = document.querySelector(".sidebar");
-const main = document.querySelector(".main");
 
-toggleBtn.addEventListener("click", () => {
-    sidebar.classList.toggle("collapsed");
-    main.classList.toggle("expanded");
-});
-</script>
-
-<script>
-    function openEditModal(id, title, message){
-        document.getElementById('editModal').style.display = 'flex';
-        document.getElementById('edit-id').value = id;
-        document.getElementById('edit-title').value = title;
-        document.getElementById('edit-message').value = message;
-    }
+    document.addEventListener("DOMContentLoaded", function () {
     
-    function closeModal(){
-        document.getElementById('editModal').style.display = 'none';
-    }
+        console.log(
+            "Announcement JavaScript loaded successfully."
+        );
     
-    function saveEdit(){
-        const id = document.getElementById('edit-id').value;
-        const title = document.getElementById('edit-title').value;
-        const message = document.getElementById('edit-message').value;
     
-        fetch(`/admin/delete_announcement/${id}`, {
-            method: 'POST'
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === "success"){
-                showToast("Deleted successfully 🗑");
-                location.reload();
+        /* =====================================================
+           SIDEBAR
+           ===================================================== */
+    
+        const toggleBtn =
+            document.getElementById("toggle-btn");
+    
+        const sidebar =
+            document.querySelector(".sidebar");
+    
+        const main =
+            document.querySelector(".main");
+    
+    
+        if (
+            toggleBtn &&
+            sidebar &&
+            main
+        ) {
+    
+            toggleBtn.addEventListener(
+                "click",
+                function () {
+    
+                    sidebar.classList.toggle(
+                        "collapsed"
+                    );
+    
+                    main.classList.toggle(
+                        "expanded"
+                    );
+    
+                }
+            );
+    
+        }
+    
+    
+        /* =====================================================
+           TOAST
+           ===================================================== */
+    
+        window.showToast = function (
+            message,
+            success = true
+        ) {
+    
+            const toast =
+                document.getElementById("toast");
+    
+    
+            if (!toast) {
+    
+                console.log(message);
+    
+                return;
             }
-        });
-    }
-</script>
-
-<script>
-function deleteAnnouncement(id){
-    showToast("Click again to confirm delete ⚠️");
-
-    setTimeout(() => {
-        fetch(`/admin/delete_announcement/${id}`, {
-            method: 'POST'
-        })
-        .then(res => res.json())
-        .then(data => {
-            showToast("Deleted successfully 🗑");
-            location.reload();
-        });
-    }, 1000);
-}
-</script>
-
-<script>
-    function showToast(message){
-        const toast = document.getElementById("toast");
-        toast.innerText = message;
-        toast.style.display = "block";
     
-        setTimeout(() => {
-            toast.style.display = "none";
-        }, 3000);
-    }
     
-</script>
+            toast.innerHTML = success
+    
+                ? `<i class="fas fa-circle-check"></i>
+                   &nbsp; ${message}`
+    
+                : `<i class="fas fa-circle-exclamation"></i>
+                   &nbsp; ${message}`;
+    
+    
+            toast.classList.add("show");
+    
+    
+            setTimeout(
+                function () {
+    
+                    toast.classList.remove(
+                        "show"
+                    );
+    
+                },
+                3500
+            );
+    
+        };
+    
+    
+        /* =====================================================
+           EDIT
+           ===================================================== */
+    
+        let editingAnnouncementId = null;
+    
+        let removeExistingFile = false;
+    
+    
+        window.openEditModal = function (
+            id,
+            title,
+            message,
+            audience,
+            fileName
+        ) {
+    
+            console.log(
+                "EDIT CLICKED:",
+                id,
+                title
+            );
+    
+    
+            editingAnnouncementId = id;
+    
+            removeExistingFile = false;
+    
+    
+            const editId =
+                document.getElementById(
+                    "edit-id"
+                );
+    
+            const editTitle =
+                document.getElementById(
+                    "edit-title"
+                );
+    
+            const editMessage =
+                document.getElementById(
+                    "edit-message"
+                );
+    
+            const editAudience =
+                document.getElementById(
+                    "edit-audience"
+                );
+    
+            const editFile =
+                document.getElementById(
+                    "edit-file"
+                );
+    
+    
+            if (editId) {
+    
+                editId.value = id;
+    
+            }
+    
+    
+            if (editTitle) {
+    
+                editTitle.value =
+                    title || "";
+    
+            }
+    
+    
+            if (editMessage) {
+    
+                editMessage.value =
+                    message || "";
+    
+            }
+    
+    
+            if (editAudience) {
+    
+                editAudience.value =
+                    audience || "everyone";
+    
+            }
+    
+    
+            if (editFile) {
+    
+                editFile.value = "";
+    
+            }
+    
+    
+            const fileContainer =
+                document.getElementById(
+                    "current-file-container"
+                );
+    
+            const noFile =
+                document.getElementById(
+                    "no-current-file"
+                );
+    
+            const currentFileName =
+                document.getElementById(
+                    "current-file-name"
+                );
+    
+    
+            if (fileName) {
+    
+                if (currentFileName) {
+    
+                    currentFileName.textContent =
+                        fileName;
+    
+                }
+    
+    
+                if (fileContainer) {
+    
+                    fileContainer.style.display =
+                        "block";
+    
+                }
+    
+    
+                if (noFile) {
+    
+                    noFile.style.display =
+                        "none";
+    
+                }
+    
+            } else {
+    
+                if (fileContainer) {
+    
+                    fileContainer.style.display =
+                        "none";
+    
+                }
+    
+    
+                if (noFile) {
+    
+                    noFile.style.display =
+                        "block";
+    
+                }
+    
+            }
+    
+    
+            const modal =
+                document.getElementById(
+                    "editModal"
+                );
+    
+    
+            if (!modal) {
+    
+                console.error(
+                    "editModal not found."
+                );
+    
+                showToast(
+                    "Edit window could not be opened.",
+                    false
+                );
+    
+                return;
+            }
+    
+    
+            modal.classList.add(
+                "show"
+            );
+    
+        };
+    
+    
+        /* =====================================================
+           CLOSE EDIT
+           ===================================================== */
+    
+        window.closeEditModal = function () {
+    
+            const modal =
+                document.getElementById(
+                    "editModal"
+                );
+    
+    
+            if (modal) {
+    
+                modal.classList.remove(
+                    "show"
+                );
+    
+            }
+    
+        };
+    
+    
+        /* =====================================================
+           REMOVE CURRENT FILE
+           ===================================================== */
+    
+        window.removeCurrentFile = function () {
+    
+            removeExistingFile = true;
+    
+    
+            const currentFile =
+                document.getElementById(
+                    "current-file-container"
+                );
+    
+            const noFile =
+                document.getElementById(
+                    "no-current-file"
+                );
+    
+    
+            if (currentFile) {
+    
+                currentFile.style.display =
+                    "none";
+    
+            }
+    
+    
+            if (noFile) {
+    
+                noFile.style.display =
+                    "block";
+    
+            }
+    
+    
+            showToast(
+                "Attachment will be removed when you save."
+            );
+    
+        };
+    
+    
+        /* =====================================================
+           EDIT FORM SUBMIT
+           ===================================================== */
+    
+        const editForm =
+            document.getElementById(
+                "editForm"
+            );
+    
+    
+        if (editForm) {
+    
+            editForm.addEventListener(
+                "submit",
+                async function (event) {
+    
+                    event.preventDefault();
+    
+    
+                    console.log(
+                        "EDIT FORM SUBMITTED:",
+                        editingAnnouncementId
+                    );
+    
+    
+                    if (!editingAnnouncementId) {
+    
+                        showToast(
+                            "Invalid announcement.",
+                            false
+                        );
+    
+                        return;
+                    }
+    
+    
+                    const title =
+                        document.getElementById(
+                            "edit-title"
+                        )?.value.trim();
+    
+    
+                    const message =
+                        document.getElementById(
+                            "edit-message"
+                        )?.value.trim();
+    
+    
+                    const audience =
+                        document.getElementById(
+                            "edit-audience"
+                        )?.value ||
+                        "everyone";
+    
+    
+                    if (!title) {
+    
+                        showToast(
+                            "Please enter a title.",
+                            false
+                        );
+    
+                        return;
+                    }
+    
+    
+                    if (!message) {
+    
+                        showToast(
+                            "Please enter a message.",
+                            false
+                        );
+    
+                        return;
+                    }
+    
+    
+                    const formData =
+                        new FormData();
+    
+    
+                    formData.append(
+                        "title",
+                        title
+                    );
+    
+    
+                    formData.append(
+                        "message",
+                        message
+                    );
+    
+    
+                    formData.append(
+                        "audience",
+                        audience
+                    );
+    
+    
+                    formData.append(
+                        "remove_file",
+                        removeExistingFile
+                            ? "1"
+                            : "0"
+                    );
+    
+    
+                    const fileInput =
+                        document.getElementById(
+                            "edit-file"
+                        );
+    
+    
+                    if (
+                        fileInput &&
+                        fileInput.files &&
+                        fileInput.files.length
+                    ) {
+    
+                        formData.append(
+                            "file",
+                            fileInput.files[0]
+                        );
+    
+                    }
+    
+    
+                    try {
+    
+                        const response =
+                            await fetch(
+                                `/admin/update_announcement/${editingAnnouncementId}`,
+                                {
+                                    method: "POST",
+                                    body: formData
+                                }
+                            );
+    
+    
+                        const responseText =
+                            await response.text();
+    
+    
+                        console.log(
+                            "EDIT RESPONSE:",
+                            response.status,
+                            responseText
+                        );
+    
+    
+                        let data;
+    
+    
+                        try {
+    
+                            data =
+                                JSON.parse(
+                                    responseText
+                                );
+    
+                        } catch (error) {
+    
+                            console.error(
+                                "EDIT SERVER RESPONSE:",
+                                responseText
+                            );
+    
+                            showToast(
+                                "Server returned an invalid response. Check Flask.",
+                                false
+                            );
+    
+                            return;
+                        }
+    
+    
+                        if (
+                            !response.ok ||
+                            data.status !== "success"
+                        ) {
+    
+                            showToast(
+                                data.message ||
+                                "Unable to update announcement.",
+                                false
+                            );
+    
+                            return;
+                        }
+    
+    
+                        window.closeEditModal();
+    
+    
+                        showToast(
+                            data.message ||
+                            "Announcement updated successfully."
+                        );
+    
+    
+                        setTimeout(
+                            function () {
+    
+                                window.location.reload();
+    
+                            },
+                            700
+                        );
+    
+    
+                    } catch (error) {
+    
+                        console.error(
+                            "EDIT ERROR:",
+                            error
+                        );
+    
+    
+                        showToast(
+                            "Unable to connect to the server.",
+                            false
+                        );
+    
+                    }
+    
+                }
+            );
+    
+        } else {
+    
+            console.error(
+                "editForm was not found."
+            );
+    
+        }
+    
+    
+        /* =====================================================
+           DELETE
+           ===================================================== */
+    
+        let deletingAnnouncementId = null;
+    
+    
+        window.openDeleteModal = function (
+            id,
+            title
+        ) {
+    
+            console.log(
+                "DELETE CLICKED:",
+                id,
+                title
+            );
+    
+    
+            deletingAnnouncementId = id;
+    
+    
+            const deleteTitle =
+                document.getElementById(
+                    "delete-title"
+                );
+    
+    
+            if (deleteTitle) {
+    
+                deleteTitle.textContent =
+                    title || "this announcement";
+    
+            }
+    
+    
+            const modal =
+                document.getElementById(
+                    "deleteModal"
+                );
+    
+    
+            if (!modal) {
+    
+                console.error(
+                    "deleteModal not found."
+                );
+    
+                showToast(
+                    "Delete window could not be opened.",
+                    false
+                );
+    
+                return;
+            }
+    
+    
+            modal.classList.add(
+                "show"
+            );
+    
+        };
+    
+    
+        /* =====================================================
+           CLOSE DELETE
+           ===================================================== */
+    
+        window.closeDeleteModal = function () {
+    
+            deletingAnnouncementId = null;
+    
+    
+            const modal =
+                document.getElementById(
+                    "deleteModal"
+                );
+    
+    
+            if (modal) {
+    
+                modal.classList.remove(
+                    "show"
+                );
+    
+            }
+    
+        };
+    
+    
+        /* =====================================================
+           CONFIRM DELETE
+           ===================================================== */
+    
+        window.confirmDelete = async function () {
+    
+            console.log(
+                "CONFIRM DELETE:",
+                deletingAnnouncementId
+            );
+    
+    
+            if (!deletingAnnouncementId) {
+    
+                showToast(
+                    "Invalid announcement.",
+                    false
+                );
+    
+                return;
+            }
+    
+    
+            const id =
+                deletingAnnouncementId;
+    
+    
+            try {
+    
+                const response =
+                    await fetch(
+                        `/admin/delete_announcement/${id}`,
+                        {
+                            method: "POST"
+                        }
+                    );
+    
+    
+                const responseText =
+                    await response.text();
+    
+    
+                console.log(
+                    "DELETE RESPONSE:",
+                    response.status,
+                    responseText
+                );
+    
+    
+                let data;
+    
+    
+                try {
+    
+                    data =
+                        JSON.parse(
+                            responseText
+                        );
+    
+                } catch (error) {
+    
+                    console.error(
+                        "DELETE SERVER RESPONSE:",
+                        responseText
+                    );
+    
+                    showToast(
+                        "Server returned an invalid response. Check Flask.",
+                        false
+                    );
+    
+                    return;
+                }
+    
+    
+                if (
+                    !response.ok ||
+                    data.status !== "success"
+                ) {
+    
+                    showToast(
+                        data.message ||
+                        "Unable to delete announcement.",
+                        false
+                    );
+    
+                    return;
+                }
+    
+    
+                window.closeDeleteModal();
+    
+    
+                showToast(
+                    data.message ||
+                    "Announcement deleted successfully."
+                );
+    
+    
+                setTimeout(
+                    function () {
+    
+                        window.location.reload();
+    
+                    },
+                    700
+                );
+    
+    
+            } catch (error) {
+    
+                console.error(
+                    "DELETE ERROR:",
+                    error
+                );
+    
+    
+                showToast(
+                    "Unable to connect to the server.",
+                    false
+                );
+    
+            }
+    
+        };
+    
+    
+        /* =====================================================
+           CLICK OUTSIDE MODALS
+           ===================================================== */
+    
+        window.addEventListener(
+            "click",
+            function (event) {
+    
+                const editModal =
+                    document.getElementById(
+                        "editModal"
+                    );
+    
+                const deleteModal =
+                    document.getElementById(
+                        "deleteModal"
+                    );
+    
+    
+                if (
+                    editModal &&
+                    event.target === editModal
+                ) {
+    
+                    window.closeEditModal();
+    
+                }
+    
+    
+                if (
+                    deleteModal &&
+                    event.target === deleteModal
+                ) {
+    
+                    window.closeDeleteModal();
+    
+                }
+    
+            }
+        );
+    
+    
+        /* =====================================================
+        ESC KEY
+        ===================================================== */
 
-<script>
-    window.onclick = function(e){
-    const modal = document.getElementById('editModal');
-    if(e.target === modal){
-        closeModal();
-    }
-}
-</script>
+        document.addEventListener(
+            "keydown",
+            function (event) {
+
+                if (event.key === "Escape") {
+
+                    window.closeEditModal();
+
+                    window.closeDeleteModal();
+
+                }
+
+            }
+        );
+
+
+        /* =====================================================
+        EDIT BUTTONS
+        ===================================================== */
+
+        document.querySelectorAll(
+            ".announcement-edit-btn"
+        ).forEach(function (button) {
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    window.openEditModal(
+                        this.dataset.id,
+                        this.dataset.title || "",
+                        this.dataset.message || "",
+                        this.dataset.audience || "everyone",
+                        this.dataset.fileName || null
+                    );
+
+                }
+            );
+
+        });
+
+
+        /* =====================================================
+        DELETE BUTTONS
+        ===================================================== */
+
+        document.querySelectorAll(
+            ".announcement-delete-btn"
+        ).forEach(function (button) {
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    window.openDeleteModal(
+                        this.dataset.id,
+                        this.dataset.title || ""
+                    );
+
+                }
+            );
+
+        });
+
+
+        console.log(
+            "Announcement JavaScript initialized."
+        );
+
+        });
+    
+    </script>
 
 </body>
+
 </html>

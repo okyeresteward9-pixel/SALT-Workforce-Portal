@@ -1,167 +1,1030 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Assign Task</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
 
-    <link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>Tasks Management - SALT Workforce Portal</title>
+
+<link
+    rel="icon"
+    href="{{ url_for('static', filename='salt-logo.png') }}"
+>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Font Awesome -->
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+>
+
+<style>
+
+    :root {
+        --salt-navy: #0f2b5b;
+        --salt-navy-dark: #0b2147;
+        --salt-blue: #1558b0;
+        --salt-blue-light: #eaf2ff;
+        --salt-border: #dbe4f0;
+        --salt-bg: #f5f7fb;
+        --salt-text: #172033;
+        --salt-muted: #6b7280;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        background: var(--salt-bg);
+        color: var(--salt-text);
+        font-family:
+            Inter,
+            ui-sans-serif,
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+    }
+
+    /* =====================================================
+       SIDEBAR
+       ===================================================== */
+
+    .sidebar {
+        background:
+            linear-gradient(
+                180deg,
+                var(--salt-navy) 0%,
+                #12366f 100%
+            );
+    }
+
+    .sidebar-link {
+        transition:
+            background .2s ease,
+            color .2s ease,
+            transform .2s ease;
+    }
+
+    .sidebar-link:hover {
+        background: rgba(255,255,255,.10);
+        transform: translateX(2px);
+    }
+
+    .sidebar-link.active {
+        background: rgba(255,255,255,.16);
+        box-shadow:
+            inset 3px 0 0 #60a5fa;
+    }
+
+    /* =====================================================
+       MAIN CONTENT
+       ===================================================== */
+
+    .page-container {
+        max-width: 1180px;
+        margin: 0 auto;
+    }
+
+    /* =====================================================
+       INFO BAR
+       ===================================================== */
+
+    .info-box {
+        background: var(--salt-blue-light);
+        border: 1px solid #cfe0fb;
+        color: #31527f;
+        border-radius: 14px;
+    }
+
+    /* =====================================================
+       FORM CARD
+       ===================================================== */
+
+    .form-card {
+        background: #ffffff;
+        border: 1px solid var(--salt-border);
+        border-radius: 20px;
+        box-shadow:
+            0 8px 30px rgba(15,43,91,.06);
+    }
+
+    .section-header {
+        border-bottom: 1px solid var(--salt-border);
+    }
+
+    /* =====================================================
+       FORM ELEMENTS
+       ===================================================== */
+
+    .form-label {
+        display: block;
+        color: #26344d;
+        font-size: .9rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .required {
+        color: #dc2626;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+        width: 100%;
+        background: #fff;
+        border: 1px solid #d6dfeb;
+        border-radius: 12px;
+        color: #172033;
+        font-size: .95rem;
+        outline: none;
+        transition:
+            border-color .2s ease,
+            box-shadow .2s ease;
+    }
+
+    .form-input,
+    .form-select {
+        height: 50px;
+        padding: 0 15px;
+    }
+
+    .form-textarea {
+        padding: 13px 15px;
+        resize: vertical;
+        min-height: 120px;
+    }
+
+    .form-input::placeholder,
+    .form-textarea::placeholder {
+        color: #9aa5b5;
+    }
+
+    .form-input:hover,
+    .form-select:hover,
+    .form-textarea:hover {
+        border-color: #b9c7da;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+        border-color: var(--salt-blue);
+        box-shadow:
+            0 0 0 3px rgba(21,88,176,.12);
+    }
+
+    /* =====================================================
+       INPUT ICONS
+       ===================================================== */
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #7b8aa3;
+        pointer-events: none;
+    }
+
+    .has-icon {
+        padding-left: 43px !important;
+    }
+
+    /* =====================================================
+       BUTTONS
+       ===================================================== */
+
+    .primary-btn {
+        background:
+            linear-gradient(
+                135deg,
+                #1558b0,
+                #0f4b99
+            );
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        padding: 13px 22px;
+        font-weight: 700;
+        box-shadow:
+            0 6px 16px rgba(21,88,176,.20);
+        transition:
+            transform .2s ease,
+            box-shadow .2s ease;
+    }
+
+    .primary-btn:hover {
+        transform: translateY(-1px);
+        box-shadow:
+            0 9px 20px rgba(21,88,176,.27);
+    }
+
+    .secondary-btn {
+        background: #fff;
+        color: #334155;
+        border: 1px solid #d5deea;
+        border-radius: 12px;
+        padding: 13px 20px;
+        font-weight: 700;
+        transition:
+            background .2s ease,
+            border-color .2s ease;
+    }
+
+    .secondary-btn:hover {
+        background: #f8fafc;
+        border-color: #b9c7da;
+    }
+
+    /* =====================================================
+       RESPONSIVE
+       ===================================================== */
+
+    @media (max-width: 900px) {
+
+        .sidebar {
+            width: 220px !important;
+        }
+
+    }
+
+    @media (max-width: 768px) {
+
+        .layout {
+            flex-direction: column;
+        }
+
+        .sidebar {
+            width: 100% !important;
+            min-height: auto;
+        }
+
+        .sidebar-nav {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .main-content {
+            padding: 20px !important;
+        }
+
+        .top-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .back-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+    }
+
+    @media (max-width: 500px) {
+
+        .sidebar-nav {
+            grid-template-columns: 1fr;
+        }
+
+        .form-card {
+            border-radius: 15px;
+        }
+
+        .form-body {
+            padding: 20px !important;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .action-buttons a,
+        .action-buttons button {
+            width: 100%;
+            justify-content: center;
+        }
+
+    }
+
+</style>
+
 
 </head>
 
-<body class="bg-gray-100">
+<body>
 
-    <div class="flex min-h-screen">
+<div class="layout flex min-h-screen">
 
-        <!-- SIDEBAR -->
-        <aside class="w-64 bg-blue-900 text-white flex flex-col">
 
-            <!-- LOGO -->
-            <div class="p-6 border-b border-blue-800">
-                <h2 class="text-2xl font-bold">SALT Portal</h2>
-                <p class="text-sm text-blue-200">Admin Panel</p>
+<!-- =====================================================
+     SIDEBAR
+     ===================================================== -->
+
+<aside
+    class="sidebar w-64 text-white flex flex-col shrink-0"
+>
+
+    <!-- LOGO -->
+    <div
+        class="px-6 py-6 border-b border-white/10"
+    >
+
+        <div class="flex items-center gap-3">
+
+            <div
+                class="w-11 h-11 rounded-xl bg-white/10
+                       flex items-center justify-center
+                       border border-white/10"
+            >
+                <img
+                    src="{{ url_for('static', filename='salt-logo.png') }}"
+                    alt="SALT"
+                    class="w-8 h-8 object-contain"
+                >
             </div>
 
-            <!-- MENU -->
-            <nav class="flex-1 p-4 space-y-2">
+            <div>
 
-                <a href="/dashboard"
-                   class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-800 transition">
-                    <i class="fas fa-home"></i>
-                    Dashboard
-                </a>
+                <h2
+                    class="text-xl font-bold tracking-tight"
+                >
+                    SALT Portal
+                </h2>
 
-                <a href="/admin/tasks"
-                   class="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-700">
+                <p
+                    class="text-xs text-blue-200 mt-0.5"
+                >
+                    Assign Task
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         NAVIGATION
+         ================================================= -->
+
+    <nav
+        class="sidebar-nav flex-1 p-4 space-y-2"
+    >
+
+        <!-- DASHBOARD -->
+
+        <a
+            href="/dashboard"
+            class="sidebar-link flex items-center gap-3
+                   px-4 py-3 rounded-xl text-blue-100"
+        >
+
+            <span
+                class="w-9 h-9 rounded-lg bg-white/10
+                       flex items-center justify-center"
+            >
+                <i class="fas fa-home"></i>
+            </span>
+
+            <span class="font-medium">
+                Dashboard
+            </span>
+
+        </a>
+
+
+        <!-- EMPLOYEES -->
+
+        <a
+            href="/admin/employees"
+            class="sidebar-link flex items-center gap-3
+                   px-4 py-3 rounded-xl text-blue-100"
+        >
+
+            <span
+                class="w-9 h-9 rounded-lg bg-white/10
+                       flex items-center justify-center"
+            >
+                <i class="fas fa-users"></i>
+            </span>
+
+            <span class="font-medium">
+                Employees
+            </span>
+
+        </a>
+
+
+        <!-- TASK BOARD -->
+
+        <a
+            href="/admin/tasks"
+            class="sidebar-link flex items-center gap-3
+                   px-4 py-3 rounded-xl text-blue-100"
+        >
+
+            <span
+                class="w-9 h-9 rounded-lg bg-white/10
+                       flex items-center justify-center"
+            >
+                <i class="fas fa-list-check"></i>
+            </span>
+
+            <span class="font-medium">
+                Task Board
+            </span>
+
+        </a>
+
+
+        <!-- ASSIGN TASK - ACTIVE -->
+
+        <a
+            href="/admin/assign_task"
+            class="sidebar-link active flex items-center gap-3
+                   px-4 py-3 rounded-xl text-white"
+        >
+
+            <span
+                class="w-9 h-9 rounded-lg bg-white/10
+                       flex items-center justify-center"
+            >
+                <i class="fas fa-plus"></i>
+            </span>
+
+            <span class="font-semibold">
+                Assign Task
+            </span>
+
+        </a>
+
+
+        <!-- ATTENDANCE -->
+
+        <a
+            href="/attendance"
+            class="sidebar-link flex items-center gap-3
+                   px-4 py-3 rounded-xl text-blue-100"
+        >
+
+            <span
+                class="w-9 h-9 rounded-lg bg-white/10
+                       flex items-center justify-center"
+            >
+                <i class="fas fa-calendar-check"></i>
+            </span>
+
+            <span class="font-medium">
+                Attendance
+            </span>
+
+        </a>
+
+
+        <!-- MY TASKS -->
+
+        <a
+            href="/tasks"
+            class="sidebar-link flex items-center gap-3
+                   px-4 py-3 rounded-xl text-blue-100"
+        >
+
+            <span
+                class="w-9 h-9 rounded-lg bg-white/10
+                       flex items-center justify-center"
+            >
+                <i class="fas fa-clipboard-list"></i>
+            </span>
+
+            <span class="font-medium">
+                My Tasks
+            </span>
+
+        </a>
+
+    </nav>
+
+
+    <!-- =================================================
+         LOGOUT
+         ================================================= -->
+
+    <div
+        class="p-4 border-t border-white/10"
+    >
+
+        <a
+            href="/logout"
+            class="sidebar-link flex items-center gap-3
+                   px-4 py-3 rounded-xl
+                   bg-red-500/90 hover:bg-red-600"
+        >
+
+            <span
+                class="w-9 h-9 rounded-lg bg-white/10
+                       flex items-center justify-center"
+            >
+                <i class="fas fa-right-from-bracket"></i>
+            </span>
+
+            <span class="font-semibold">
+                Logout
+            </span>
+
+        </a>
+
+    </div>
+
+</aside>
+
+
+<!-- =====================================================
+     MAIN CONTENT
+     ===================================================== -->
+
+<main
+    class="main-content flex-1 p-8"
+>
+
+    <div class="page-container">
+
+
+        <!-- =================================================
+             TOP HEADER
+             ================================================= -->
+
+        <div
+            class="top-header flex justify-between items-center mb-7"
+        >
+
+            <div>
+
+                <!-- TOP BADGE -->
+
+                <div
+                    class="flex items-center gap-2
+                           text-sm text-blue-600
+                           font-semibold mb-2"
+                >
+
                     <i class="fas fa-list-check"></i>
-                    Tasks
-                </a>
 
-            </nav>
+                    Task Management
 
-            <!-- LOGOUT -->
-            <div class="p-4 border-t border-blue-800">
-                <a href="/logout"
-                   class="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 transition">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Logout
-                </a>
-            </div>
-
-        </aside>
-
-        <!-- MAIN CONTENT -->
-        <main class="flex-1 p-8">
-
-            <!-- TOP -->
-            <div class="flex justify-between items-center mb-8">
-
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-800">
-                        Assign New Task
-                    </h1>
-
-                    <p class="text-gray-500 mt-1">
-                        Create and assign tasks to employees
-                    </p>
                 </div>
 
-                <a href="/admin/tasks"
-                   class="bg-gray-800 text-white px-5 py-3 rounded-xl hover:bg-black transition">
-                    <i class="fas fa-arrow-left mr-2"></i>
-                    Back to Tasks
-                </a>
+
+                <h1
+                    class="text-3xl md:text-4xl
+                           font-bold text-slate-800"
+                >
+                    Assign New Task
+                </h1>
+
+
+                <p
+                    class="text-slate-500 mt-2"
+                >
+                    Create a task and assign it to a member
+                    of your team.
+                </p>
 
             </div>
 
-            <!-- FORM CARD -->
-            <div class="bg-white rounded-2xl shadow-lg p-8 max-w-4xl">
 
-                <form method="POST" class="space-y-6">
+            <a
+                href="/admin/tasks"
+                class="back-btn secondary-btn
+                       flex items-center gap-2"
+            >
+
+                <i class="fas fa-arrow-left"></i>
+
+                Back to Tasks
+
+            </a>
+
+        </div>
+
+
+        <!-- =================================================
+             LIGHT BLUE WELCOME BAR
+             ================================================= -->
+
+        <div
+            class="info-box flex items-start gap-3
+                   px-5 py-4 mb-6"
+        >
+
+            <div
+                class="w-9 h-9 rounded-lg
+                       bg-blue-600/10
+                       flex items-center justify-center
+                       shrink-0"
+            >
+
+                <i
+                    class="fas fa-circle-info text-blue-600"
+                ></i>
+
+            </div>
+
+
+            <div>
+
+                <p
+                    class="font-semibold text-slate-700"
+                >
+                    Welcome to Task Management
+                </p>
+
+                <p
+                    class="text-sm mt-0.5"
+                >
+                    Create clear, actionable tasks, assign them
+                    to the appropriate employee, and set deadlines
+                    to keep work moving efficiently.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             FORM CARD
+             ================================================= -->
+
+        <div
+            class="form-card overflow-hidden"
+        >
+
+            <!-- CARD HEADER -->
+
+            <div
+                class="section-header px-7 py-5
+                       flex items-center gap-4"
+            >
+
+                <div
+                    class="w-12 h-12 rounded-xl
+                           bg-blue-50 text-blue-600
+                           flex items-center justify-center"
+                >
+
+                    <i
+                        class="fas fa-clipboard-list text-xl"
+                    ></i>
+
+                </div>
+
+
+                <div>
+
+                    <h2
+                        class="font-bold text-lg text-slate-800"
+                    >
+                        Task Details
+                    </h2>
+
+                    <p
+                        class="text-sm text-slate-500"
+                    >
+                        Enter the information for the new task.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- FORM BODY -->
+
+            <div class="form-body p-7">
+
+                <form
+                    method="POST"
+                    class="space-y-7"
+                >
+
 
                     <!-- TITLE -->
+
                     <div>
-                        <label class="block text-gray-700 font-semibold mb-2">
+
+                        <label
+                            for="title"
+                            class="form-label"
+                        >
                             Task Title
+                            <span class="required">*</span>
                         </label>
 
-                        <input type="text"
-                               name="title"
-                               required
-                               placeholder="Enter task title"
-                               class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                        <div class="input-wrapper">
+
+                            <i
+                                class="input-icon fas fa-heading"
+                            ></i>
+
+                            <input
+                                id="title"
+                                type="text"
+                                name="title"
+                                required
+                                autocomplete="off"
+                                placeholder="e.g. Prepare monthly staff report"
+                                class="form-input has-icon"
+                            >
+
+                        </div>
+
+
+                        <p
+                            class="text-xs text-slate-400 mt-2"
+                        >
+                            Use a short, specific title that clearly
+                            describes the task.
+                        </p>
+
                     </div>
+
 
                     <!-- DESCRIPTION -->
+
                     <div>
-                        <label class="block text-gray-700 font-semibold mb-2">
+
+                        <label
+                            for="description"
+                            class="form-label"
+                        >
                             Description
+                            <span class="required">*</span>
                         </label>
 
-                        <textarea name="description"
-                                  rows="5"
-                                  placeholder="Enter task description"
-                                  class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows="5"
+                            required
+                            placeholder="Describe what needs to be done, the expected result, and any relevant details..."
+                            class="form-textarea"
+                        ></textarea>
+
+
+                        <p
+                            class="text-xs text-slate-400 mt-2"
+                        >
+                            Give enough detail for the employee to
+                            complete the task without confusion.
+                        </p>
+
                     </div>
 
-                    <!-- COMMENT / NOTE -->
+
+                    <!-- NOTE -->
+
                     <div>
-                        <label class="block text-gray-700 font-semibold mb-2">
+
+                        <label
+                            for="note"
+                            class="form-label"
+                        >
                             Comment / Note
+
+                            <span
+                                class="font-normal text-slate-400"
+                            >
+                                Optional
+                            </span>
                         </label>
 
-                        <textarea name="note"
-                                  rows="3"
-                                  placeholder="Add instructions, comments or notes..."
-                                  class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    </div>
 
-                    <!-- GRID -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                        <!-- ASSIGN -->
-                        <div>
-                            <label class="block text-gray-700 font-semibold mb-2">
-                                Assign To
-                            </label>
-
-                            <select name="assigned_to"
-                                    class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
-
-                                    {% for emp in employees %}
-                                    <option value="{{ emp.id }}">
-                                        {{ emp.name }}
-                                    </option>
-                                    {% endfor %}
-
-                            </select>
-                        </div>
-
-                        <!-- DEADLINE -->
-                        <div>
-                            <label class="block text-gray-700 font-semibold mb-2">
-                                Deadline
-                            </label>
-
-                            <input type="date"
-                                   name="deadline"
-                                   class="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
+                        <textarea
+                            id="note"
+                            name="note"
+                            rows="3"
+                            placeholder="Add additional instructions, comments, reminders, or special considerations..."
+                            class="form-textarea"
+                        ></textarea>
 
                     </div>
 
-                    <!-- BUTTON -->
-                    <div class="pt-4">
 
-                        <button type="submit"
-                                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-xl transition shadow-md">
-                            <i class="fas fa-paper-plane mr-2"></i>
-                            Assign Task
-                        </button>
+                    <!-- ASSIGNMENT SETTINGS -->
+
+                    <div
+                        class="border-t border-slate-200 pt-7"
+                    >
+
+                        <div class="mb-5">
+
+                            <h3
+                                class="font-bold text-slate-800"
+                            >
+                                Assignment Settings
+                            </h3>
+
+                            <p
+                                class="text-sm text-slate-500 mt-1"
+                            >
+                                Choose who should receive the task
+                                and when it should be completed.
+                            </p>
+
+                        </div>
+
+
+                        <div
+                            class="grid grid-cols-1
+                                   md:grid-cols-2 gap-6"
+                        >
+
+                            <!-- ASSIGN TO -->
+
+                            <div>
+
+                                <label
+                                    for="assigned_to"
+                                    class="form-label"
+                                >
+                                    Assign To
+                                    <span class="required">*</span>
+                                </label>
+
+
+                                <div class="input-wrapper">
+
+                                    <i
+                                        class="input-icon fas fa-user"
+                                    ></i>
+
+
+                                    <select
+                                        id="assigned_to"
+                                        name="assigned_to"
+                                        required
+                                        class="form-select has-icon"
+                                    >
+
+                                        <option
+                                            value=""
+                                            disabled
+                                            selected
+                                        >
+                                            Select employee
+                                        </option>
+
+
+                                        {% for emp in employees %}
+
+                                        <option
+                                            value="{{ emp.id }}"
+                                        >
+                                            {{ emp.name }}
+                                        </option>
+
+                                        {% endfor %}
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- DEADLINE -->
+
+                            <div>
+
+                                <label
+                                    for="deadline"
+                                    class="form-label"
+                                >
+                                    Deadline
+
+                                    <span
+                                        class="font-normal
+                                               text-slate-400"
+                                    >
+                                        Optional
+                                    </span>
+                                </label>
+
+
+                                <div class="input-wrapper">
+
+                                    <i
+                                        class="input-icon
+                                               fas fa-calendar-days"
+                                    ></i>
+
+
+                                    <input
+                                        id="deadline"
+                                        type="date"
+                                        name="deadline"
+                                        class="form-input has-icon"
+                                    >
+
+                                </div>
+
+
+                                <p
+                                    class="text-xs text-slate-400 mt-2"
+                                >
+                                    Select the expected completion
+                                    date.
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ACTIONS -->
+
+                    <div
+                        class="border-t border-slate-200 pt-6
+                               flex flex-col sm:flex-row
+                               sm:justify-between
+                               sm:items-center gap-4"
+                    >
+
+                        <div
+                            class="text-sm text-slate-500"
+                        >
+
+                            <i
+                                class="fas fa-shield-halved
+                                       text-blue-500 mr-1"
+                            ></i>
+
+                            The assigned employee will receive
+                            this task.
+
+                        </div>
+
+
+                        <div
+                            class="action-buttons flex
+                                   items-center gap-3"
+                        >
+
+                            <a
+                                href="/admin/tasks"
+                                class="secondary-btn
+                                       flex items-center
+                                       justify-center gap-2"
+                            >
+
+                                <i class="fas fa-xmark"></i>
+
+                                Cancel
+
+                            </a>
+
+
+                            <button
+                                type="submit"
+                                class="primary-btn
+                                       flex items-center
+                                       justify-center gap-2"
+                            >
+
+                                <i
+                                    class="fas fa-paper-plane"
+                                ></i>
+
+                                Assign Task
+
+                            </button>
+
+                        </div>
 
                     </div>
 
@@ -169,9 +1032,83 @@
 
             </div>
 
-        </main>
+        </div>
+
+
+        <!-- FOOTER -->
+
+        <div
+            class="text-center text-xs text-slate-400
+                   mt-6 pb-3"
+        >
+
+            <i class="fas fa-lock mr-1"></i>
+
+            SALT Workforce Portal · Admin Task Management
+
+        </div>
 
     </div>
 
+</main>
+
+</div>
+
+<!-- =========================================================
+     DEADLINE: PREVENT PAST DATES
+     ========================================================= -->
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const deadline =
+            document.getElementById(
+                "deadline"
+            );
+
+
+        if (!deadline) {
+            return;
+        }
+
+
+        const today =
+            new Date();
+
+
+        const year =
+            today.getFullYear();
+
+
+        const month =
+            String(
+                today.getMonth() + 1
+            ).padStart(
+                2,
+                "0"
+            );
+
+
+        const day =
+            String(
+                today.getDate()
+            ).padStart(
+                2,
+                "0"
+            );
+
+
+        deadline.min =
+            `${year}-${month}-${day}`;
+
+    }
+);
+
+</script>
+
 </body>
+
 </html>

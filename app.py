@@ -117,45 +117,22 @@ def init_db():
         created_at TEXT
     )''')
 
-    c.execute('''CREATE TABLE IF NOT EXISTS announcements (
+    # -------------------------
+    # ANNOUNCEMENTS TABLE
+    # -------------------------
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS announcements (
         id SERIAL PRIMARY KEY,
-        title TEXT,
-        message TEXT,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
         created_by INTEGER,
-        created_at TEXT
-    )''')
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS messages (
-
-        id SERIAL PRIMARY KEY,
-
-        sender_id INTEGER NOT NULL
-            REFERENCES employees(id)
-            ON DELETE CASCADE,
-
-        receiver_id INTEGER NOT NULL
-            REFERENCES employees(id)
-            ON DELETE CASCADE,
-
-        message TEXT,
-
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-
-        seen BOOLEAN DEFAULT FALSE,
-
-        is_read BOOLEAN DEFAULT FALSE,
-
-        edited BOOLEAN DEFAULT FALSE,
-
-        deleted BOOLEAN DEFAULT FALSE,
-
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        audience TEXT DEFAULT 'everyone',
         file_name TEXT,
-
         file_path TEXT
-
     )
-    """)
+    ''')
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS user_presence (
@@ -208,10 +185,60 @@ def init_db():
     except:
         pass
     
-    try:
-        c.execute("ALTER TABLE announcements ADD COLUMN file_path TEXT")
-    except:
-        pass
+    # -------------------------
+    # ANNOUNCEMENT MIGRATIONS
+    # -------------------------
+
+    # Make sure PostgreSQL is not inside
+    # an aborted transaction from an earlier
+    # migration attempt.
+    conn.rollback()
+
+    # Add attachment path to existing databases
+    c.execute("""
+        ALTER TABLE announcements
+        ADD COLUMN IF NOT EXISTS file_path TEXT
+    """)
+
+    # Add original attachment filename
+    c.execute("""
+        ALTER TABLE announcements
+        ADD COLUMN IF NOT EXISTS file_name TEXT
+    """)
+
+    # Add announcement audience
+    c.execute("""
+        ALTER TABLE announcements
+        ADD COLUMN IF NOT EXISTS audience TEXT
+        DEFAULT 'everyone'
+    """)
+
+    # Add last-updated timestamp
+    c.execute("""
+        ALTER TABLE announcements
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP
+    """)
+
+    # -------------------------
+    # FIX EXISTING RECORDS
+    # -------------------------
+
+    # Existing announcements should be
+    # visible to everyone by default.
+    c.execute("""
+        UPDATE announcements
+        SET audience = 'everyone'
+        WHERE audience IS NULL
+        OR audience = ''
+    """)
+
+    # Existing announcements were not edited,
+    # so use created_at as their updated_at.
+    c.execute("""
+        UPDATE announcements
+        SET updated_at = created_at
+        WHERE updated_at IS NULL
+    """)
 
     try:
         c.execute("ALTER TABLE tasks ADD COLUMN created_by INTEGER")
@@ -894,13 +921,83 @@ def dashboard():
     # Announcements
     # -------------------------
 
-    c.execute("""
-        SELECT title, message, created_at, file_path
-        FROM announcements
-        ORDER BY created_at DESC
-        LIMIT 5
-    """)
+    if role == 'admin':
 
+        # Admins can see:
+        # - Everyone announcements
+        # - Staff announcements
+        # - Admin announcements
+
+        c.execute("""
+            SELECT
+                announcements.id,
+                announcements.title,
+                announcements.message,
+                announcements.created_at,
+                announcements.updated_at,
+                announcements.audience,
+                announcements.file_name,
+                announcements.file_path,
+
+                COALESCE(
+                    employees.name,
+                    'Unknown'
+                ) AS created_by_name
+
+            FROM announcements
+
+            LEFT JOIN employees
+                ON announcements.created_by = employees.id
+
+            WHERE announcements.audience IN (
+                'everyone',
+                'staff',
+                'admin'
+            )
+
+            ORDER BY announcements.created_at DESC
+
+            LIMIT 5
+        """)
+
+    else:
+
+        # Staff can see:
+        # - Everyone announcements
+        # - Staff announcements
+        #
+        # Admin-only announcements are hidden.
+
+        c.execute("""
+            SELECT
+                announcements.id,
+                announcements.title,
+                announcements.message,
+                announcements.created_at,
+                announcements.updated_at,
+                announcements.audience,
+                announcements.file_name,
+                announcements.file_path,
+
+                COALESCE(
+                    employees.name,
+                    'Unknown'
+                ) AS created_by_name
+
+            FROM announcements
+
+            LEFT JOIN employees
+                ON announcements.created_by = employees.id
+
+            WHERE announcements.audience IN (
+                'everyone',
+                'staff'
+            )
+
+            ORDER BY announcements.created_at DESC
+
+            LIMIT 5
+        """)
 
     latest_announcements = c.fetchall()
 
@@ -1962,14 +2059,364 @@ def delete_employee(id):
 @app.route('/admin/announcements', methods=['GET', 'POST'])
 def admin_announcements():
 
+    # -------------------------
+    # ACCESS CONTROL
+    # -------------------------
     if 'user_id' not in session:
         return redirect('/')
 
-
     if session.get('role') != 'admin':
-        return "Access Denied"
+        return "Access Denied", 403
 
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
+    # =====================================================
+    # CREATE ANNOUNCEMENT
+    # =====================================================
+    if request.method == 'POST':
+
+        title = request.form.get('title', '').strip()
+        message = request.form.get('message', '').strip()
+        audience = request.form.get('audience', 'everyone').strip().lower()
+
+        # -------------------------
+        # VALIDATE INPUT
+        # -------------------------
+        if not title:
+            flash("Please enter an announcement title.", "error")
+            conn.close()
+            return redirect('/admin/announcements')
+
+        if not message:
+            flash("Please enter an announcement message.", "error")
+            conn.close()
+            return redirect('/admin/announcements')
+
+        # Only allow valid audience values
+        if audience not in ('everyone', 'staff', 'admin'):
+            audience = 'everyone'
+
+        # -------------------------
+        # FILE UPLOAD
+        # -------------------------
+        uploaded_file = request.files.get('file')
+
+        file_name = None
+        file_path = None
+
+        if uploaded_file and uploaded_file.filename:
+
+            original_filename = secure_filename(
+                uploaded_file.filename
+            )
+
+            if not original_filename:
+                flash("Invalid file name.", "error")
+                conn.close()
+                return redirect('/admin/announcements')
+
+            # Get extension
+            if '.' in original_filename:
+                extension = original_filename.rsplit(
+                    '.',
+                    1
+                )[1].lower()
+            else:
+                extension = ''
+
+            # Allowed announcement file types
+            allowed_extensions = {
+                'pdf',
+                'doc',
+                'docx',
+                'xls',
+                'xlsx',
+                'ppt',
+                'pptx',
+                'txt',
+                'csv',
+                'jpg',
+                'jpeg',
+                'png',
+                'gif',
+                'webp',
+                'zip'
+            }
+
+            if extension not in allowed_extensions:
+
+                flash(
+                    "Invalid attachment type. "
+                    "Allowed files include PDF, Word, Excel, "
+                    "PowerPoint, images, TXT, CSV and ZIP.",
+                    "error"
+                )
+
+                conn.close()
+                return redirect('/admin/announcements')
+
+            # -------------------------
+            # CREATE UPLOAD DIRECTORY
+            # -------------------------
+            upload_folder = os.path.join(
+                app.root_path,
+                "static",
+                "announcements"
+            )
+
+            os.makedirs(
+                upload_folder,
+                exist_ok=True
+            )
+
+            # -------------------------
+            # UNIQUE FILE NAME
+            # -------------------------
+            timestamp = int(time.time())
+
+            unique_filename = (
+                f"{timestamp}_"
+                f"{session['user_id']}_"
+                f"{original_filename}"
+            )
+
+            full_path = os.path.join(
+                upload_folder,
+                unique_filename
+            )
+
+            # Save physical file
+            uploaded_file.save(full_path)
+
+            file_name = original_filename
+            file_path = unique_filename
+
+        # -------------------------
+        # CREATE DATABASE RECORD
+        # -------------------------
+        now = datetime.now()
+
+        c.execute("""
+            INSERT INTO announcements
+            (
+                title,
+                message,
+                created_by,
+                created_at,
+                updated_at,
+                audience,
+                file_name,
+                file_path
+            )
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )
+        """,
+        (
+            title,
+            message,
+            session['user_id'],
+            now,
+            now,
+            audience,
+            file_name,
+            file_path
+        ))
+
+        conn.commit()
+        conn.close()
+
+        flash(
+            "Announcement published successfully.",
+            "success"
+        )
+
+        return redirect('/admin/announcements')
+
+    # =====================================================
+    # SEARCH
+    # =====================================================
+    search = request.args.get(
+        'search',
+        ''
+    ).strip()
+
+    # =====================================================
+    # AUDIENCE FILTER
+    # =====================================================
+    audience_filter = request.args.get(
+        'audience',
+        'all'
+    ).strip().lower()
+
+    # Only accept valid filters
+    if audience_filter not in (
+        'all',
+        'everyone',
+        'staff',
+        'admin'
+    ):
+        audience_filter = 'all'
+
+    # =====================================================
+    # BUILD ANNOUNCEMENT QUERY
+    # =====================================================
+    query = """
+        SELECT
+            announcements.id,
+            announcements.title,
+            announcements.message,
+            announcements.created_by,
+            announcements.created_at,
+            announcements.updated_at,
+            announcements.audience,
+            announcements.file_name,
+            announcements.file_path,
+
+            COALESCE(
+                employees.name,
+                'Unknown'
+            ) AS name
+
+        FROM announcements
+
+        LEFT JOIN employees
+            ON announcements.created_by = employees.id
+
+        WHERE 1=1
+    """
+
+    params = []
+
+    # -------------------------
+    # SEARCH FILTER
+    # -------------------------
+    if search:
+
+        query += """
+            AND (
+                announcements.title ILIKE %s
+                OR announcements.message ILIKE %s
+                OR employees.name ILIKE %s
+            )
+        """
+
+        search_value = f"%{search}%"
+
+        params.extend([
+            search_value,
+            search_value,
+            search_value
+        ])
+
+    # -------------------------
+    # AUDIENCE FILTER
+    # -------------------------
+    if audience_filter != 'all':
+
+        query += """
+            AND announcements.audience=%s
+        """
+
+        params.append(
+            audience_filter
+        )
+
+    # -------------------------
+    # SORT
+    # -------------------------
+    query += """
+        ORDER BY announcements.created_at DESC
+    """
+
+    c.execute(
+        query,
+        params
+    )
+
+    announcements = c.fetchall()
+
+    # =====================================================
+    # ANNOUNCEMENT STATISTICS
+    # =====================================================
+
+    # Total
+    c.execute("""
+        SELECT COUNT(*) AS count
+        FROM announcements
+    """)
+
+    total_announcements = c.fetchone()['count']
+
+    # Everyone
+    c.execute("""
+        SELECT COUNT(*) AS count
+        FROM announcements
+        WHERE audience='everyone'
+           OR audience IS NULL
+    """)
+
+    everyone_count = c.fetchone()['count']
+
+    # Staff
+    c.execute("""
+        SELECT COUNT(*) AS count
+        FROM announcements
+        WHERE audience='staff'
+    """)
+
+    staff_count = c.fetchone()['count']
+
+    # Admin
+    c.execute("""
+        SELECT COUNT(*) AS count
+        FROM announcements
+        WHERE audience='admin'
+    """)
+
+    admin_count = c.fetchone()['count']
+
+    conn.close()
+
+    # =====================================================
+    # RENDER PAGE
+    # =====================================================
+    return render_template(
+        "admin_announcements.html",
+
+        announcements=announcements,
+
+        search=search,
+
+        audience_filter=audience_filter,
+
+        total_announcements=total_announcements,
+
+        everyone_count=everyone_count,
+
+        staff_count=staff_count,
+
+        admin_count=admin_count
+    )
+
+# =====================================================
+# DOWNLOAD ANNOUNCEMENT ATTACHMENT
+# =====================================================
+
+@app.route('/admin/announcement/file/<int:id>')
+def download_announcement_file(id):
+
+    if 'user_id' not in session:
+        return redirect('/')
 
     conn = get_db()
 
@@ -1977,28 +2424,225 @@ def admin_announcements():
         cursor_factory=RealDictCursor
     )
 
+    c.execute("""
+        SELECT file_path, file_name
+        FROM announcements
+        WHERE id=%s
+    """, (id,))
+
+    announcement = c.fetchone()
+
+    conn.close()
+
+    if not announcement:
+        return "Announcement not found", 404
+
+    if not announcement['file_path']:
+        return "No attachment", 404
+
+    folder = os.path.join(
+        app.root_path,
+        "static",
+        "announcements"
+    )
+
+    filename = os.path.basename(
+        announcement['file_path']
+    )
+
+    full_path = os.path.join(
+        folder,
+        filename
+    )
+
+    if not os.path.isfile(full_path):
+        return "Attachment not found", 404
+
+    return send_from_directory(
+        folder,
+        filename,
+        as_attachment=True,
+        download_name=(
+            announcement['file_name']
+            or filename
+        )
+    )
+
+# =====================================================
+# UPDATE ANNOUNCEMENT
+# =====================================================
+
+@app.route('/admin/update_announcement/<int:id>', methods=['POST'])
+def update_announcement(id):
+
+    # -------------------------
+    # ADMIN CHECK
+    # -------------------------
+
+    if 'user_id' not in session:
+        return jsonify({
+            "status": "error",
+            "message": "Please log in."
+        }), 401
+
+    if session.get('role') != 'admin':
+        return jsonify({
+            "status": "error",
+            "message": "Access denied."
+        }), 403
 
 
-    # =========================
-    # CREATE ANNOUNCEMENT
-    # =========================
+    conn = None
 
-    if request.method == 'POST':
+    try:
 
-        title = request.form['title']
+        # -------------------------
+        # FORM DATA
+        # -------------------------
 
-        message = request.form['message']
+        title = request.form.get(
+            'title',
+            ''
+        ).strip()
+
+        message = request.form.get(
+            'message',
+            ''
+        ).strip()
+
+        audience = request.form.get(
+            'audience',
+            'everyone'
+        ).strip().lower()
+
+        remove_file = (
+            request.form.get(
+                'remove_file',
+                '0'
+            ) == '1'
+        )
+
+        uploaded_file = request.files.get(
+            'file'
+        )
 
 
+        # -------------------------
+        # VALIDATION
+        # -------------------------
 
-        file = request.files.get('file')
+        if not title:
 
-        file_path = None
+            return jsonify({
+                "status": "error",
+                "message": "Announcement title is required."
+            }), 400
 
 
+        if not message:
 
-        if file and file.filename != "":
+            return jsonify({
+                "status": "error",
+                "message": "Announcement message is required."
+            }), 400
 
+
+        if audience not in (
+            'everyone',
+            'staff',
+            'admin'
+        ):
+
+            audience = 'everyone'
+
+
+        # -------------------------
+        # DATABASE
+        # -------------------------
+
+        conn = get_db()
+
+        c = conn.cursor(
+            cursor_factory=RealDictCursor
+        )
+
+
+        # Get existing announcement
+
+        c.execute("""
+            SELECT
+                id,
+                title,
+                message,
+                audience,
+                file_name,
+                file_path
+            FROM announcements
+            WHERE id=%s
+        """, (id,))
+
+
+        announcement = c.fetchone()
+
+
+        if not announcement:
+
+            return jsonify({
+                "status": "error",
+                "message": "Announcement not found."
+            }), 404
+
+
+        old_file_path = (
+            announcement['file_path']
+        )
+
+        old_file_name = (
+            announcement['file_name']
+        )
+
+
+        new_file_path = old_file_path
+        new_file_name = old_file_name
+
+
+        # =================================================
+        # REMOVE CURRENT FILE
+        # =================================================
+
+        if remove_file:
+
+            new_file_path = None
+            new_file_name = None
+
+            if old_file_path:
+
+                old_full_path = os.path.join(
+                    app.root_path,
+                    "static",
+                    "announcements",
+                    os.path.basename(
+                        old_file_path
+                    )
+                )
+
+                if os.path.isfile(
+                    old_full_path
+                ):
+
+                    os.remove(
+                        old_full_path
+                    )
+
+
+        # =================================================
+        # NEW FILE
+        # =================================================
+
+        if (
+            uploaded_file and
+            uploaded_file.filename
+        ):
 
             from werkzeug.utils import secure_filename
             import time
@@ -2017,16 +2661,24 @@ def admin_announcements():
             )
 
 
-
-            original = secure_filename(
-                file.filename
+            original_name = secure_filename(
+                uploaded_file.filename
             )
+
+
+            if not original_name:
+
+                return jsonify({
+                    "status": "error",
+                    "message": "Invalid file name."
+                }), 400
 
 
             unique_name = (
-                f"{int(time.time())}_{original}"
+                f"{int(time.time())}_"
+                f"{session['user_id']}_"
+                f"{original_name}"
             )
-
 
 
             full_path = os.path.join(
@@ -2035,252 +2687,224 @@ def admin_announcements():
             )
 
 
-
-            file.save(full_path)
-
-
-
-            file_path = unique_name
+            uploaded_file.save(
+                full_path
+            )
 
 
+            # Delete old attachment
+
+            if old_file_path:
+
+                old_full_path = os.path.join(
+                    upload_folder,
+                    os.path.basename(
+                        old_file_path
+                    )
+                )
+
+                if os.path.isfile(
+                    old_full_path
+                ):
+
+                    os.remove(
+                        old_full_path
+                    )
+
+
+            new_file_path = unique_name
+            new_file_name = original_name
+
+
+        # =================================================
+        # UPDATE DATABASE
+        # =================================================
 
         c.execute("""
-            INSERT INTO announcements
-            (
-                title,
-                message,
-                created_by,
-                created_at,
-                file_path
-            )
+            UPDATE announcements
 
-            VALUES
-            (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s
-            )
+            SET
+                title=%s,
+                message=%s,
+                audience=%s,
+                updated_at=%s,
+                file_name=%s,
+                file_path=%s
 
+            WHERE id=%s
         """,
         (
             title,
             message,
-            session['user_id'],
+            audience,
             datetime.now(),
-            file_path
+            new_file_name,
+            new_file_path,
+            id
         ))
-
 
 
         conn.commit()
 
-        conn.close()
+
+        return jsonify({
+            "status": "success",
+            "message":
+                "Announcement updated successfully."
+        })
 
 
+    except Exception as e:
 
-        return redirect(
-            '/admin/announcements'
+        if conn:
+            conn.rollback()
+
+
+        print(
+            "UPDATE ANNOUNCEMENT ERROR:",
+            repr(e)
         )
 
 
-
-    # =========================
-    # GET ANNOUNCEMENTS
-    # =========================
-
-
-    c.execute("""
-        SELECT
-
-            announcements.*,
-
-            COALESCE(
-                employees.name,
-                'Unknown'
-            ) AS name
-
-
-        FROM announcements
-
-
-        LEFT JOIN employees
-
-        ON announcements.created_by = employees.id
-
-
-        ORDER BY created_at DESC
-
-    """)
-
-
-
-    announcements = c.fetchall()
-
-
-
-    conn.close()
-
-
-
-    return render_template(
-        "admin_announcements.html",
-        announcements=announcements
-    )
-
-@app.route('/admin/announcement/file/<filename>')
-def download_announcement_file(filename):
-
-
-    folder = os.path.join(
-        app.root_path,
-        "static",
-        "announcements"
-    )
-
-
-    return send_from_directory(
-        folder,
-        filename,
-        as_attachment=True
-    )
-
-@app.route('/admin/update_announcement/<int:id>', methods=['POST'])
-def update_announcement(id):
-
-
-    if 'role' not in session or session['role'] != 'admin':
         return jsonify({
-            "status":"error"
-        }),403
+            "status": "error",
+            "message":
+                "Failed to update announcement."
+        }), 500
 
 
+    finally:
 
-    data = request.get_json()
+        if conn:
+            conn.close()
 
-
-
-    title = data.get("title")
-
-    message = data.get("message")
-
-
-
-    conn = get_db()
-
-    c = conn.cursor()
-
-
-
-    c.execute("""
-        UPDATE announcements
-
-        SET
-        title=%s,
-        message=%s
-
-        WHERE id=%s
-
-    """,
-    (
-        title,
-        message,
-        id
-    ))
-
-
-
-    conn.commit()
-
-    conn.close()
-
-
-
-    return jsonify({
-        "status":"success"
-    })
+# =====================================================
+# DELETE ANNOUNCEMENT
+# =====================================================
 
 @app.route('/admin/delete_announcement/<int:id>', methods=['POST'])
 def delete_announcement(id):
 
-
-    if 'role' not in session or session['role'] != 'admin':
+    # -------------------------
+    # ACCESS CONTROL
+    # -------------------------
+    if 'user_id' not in session:
         return jsonify({
-            "status":"error"
-        }),403
+            "status": "error",
+            "message": "Unauthorized"
+        }), 401
 
+    if session.get('role') != 'admin':
+        return jsonify({
+            "status": "error",
+            "message": "Access Denied"
+        }), 403
 
-
+    # -------------------------
+    # CONNECT TO DATABASE
+    # -------------------------
     conn = get_db()
 
     c = conn.cursor(
         cursor_factory=RealDictCursor
     )
 
-
-
-    # Get file first
-
+    # -------------------------
+    # FIND ANNOUNCEMENT
+    # -------------------------
     c.execute("""
-        SELECT file_path
-
+        SELECT
+            id,
+            title,
+            file_path
         FROM announcements
-
         WHERE id=%s
-
-    """,
-    (
-        id,
-    ))
-
-
+    """, (id,))
 
     announcement = c.fetchone()
 
+    # -------------------------
+    # NOT FOUND
+    # -------------------------
+    if not announcement:
 
+        conn.close()
 
-    if announcement and announcement['file_path']:
+        return jsonify({
+            "status": "error",
+            "message": "Announcement not found."
+        }), 404
 
+    # -------------------------
+    # DELETE ATTACHMENT
+    # -------------------------
+    file_path = announcement.get(
+        'file_path'
+    )
 
-        file_path = os.path.join(
+    if file_path:
+
+        upload_folder = os.path.join(
             app.root_path,
             "static",
-            "announcements",
-            announcement['file_path']
+            "announcements"
         )
 
+        # basename prevents path traversal
+        safe_filename = os.path.basename(
+            file_path
+        )
 
-        if os.path.exists(file_path):
+        full_file_path = os.path.join(
+            upload_folder,
+            safe_filename
+        )
 
-            os.remove(file_path)
+        if os.path.isfile(
+            full_file_path
+        ):
 
+            try:
 
+                os.remove(
+                    full_file_path
+                )
 
+            except OSError as e:
 
-    # Delete database record
+                # Don't leave the database
+                # connection open if deletion fails
+                conn.close()
 
+                return jsonify({
+                    "status": "error",
+                    "message": (
+                        "The announcement could not be "
+                        "deleted because its attachment "
+                        "could not be removed."
+                    )
+                }), 500
+
+    # -------------------------
+    # DELETE DATABASE RECORD
+    # -------------------------
     c.execute("""
         DELETE FROM announcements
-
         WHERE id=%s
-
-    """,
-    (
-        id,
-    ))
-
-
+    """, (id,))
 
     conn.commit()
 
     conn.close()
 
-
-
+    # -------------------------
+    # SUCCESS RESPONSE
+    # -------------------------
     return jsonify({
-        "status":"success"
+        "status": "success",
+        "message": "Announcement deleted successfully."
     })
+
 @app.route('/tasks')
 def tasks():
 
