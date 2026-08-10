@@ -236,7 +236,7 @@ def init_db():
     # so use created_at as their updated_at.
     c.execute("""
         UPDATE announcements
-        SET updated_at = created_at
+        SET updated_at = created_at::timestamp
         WHERE updated_at IS NULL
     """)
 
