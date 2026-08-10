@@ -28,6 +28,7 @@ import time
 import os
 
 import cloudinary
+print("Cloudinary module:", cloudinary)
 import cloudinary.uploader
 import cloudinary_config
 
