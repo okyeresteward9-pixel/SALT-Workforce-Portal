@@ -1,3 +1,6 @@
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask, render_template, request, redirect, session, jsonify, flash
 import psycopg2
 from psycopg2.extras import RealDictCursor
