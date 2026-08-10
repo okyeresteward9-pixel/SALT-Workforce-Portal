@@ -27,9 +27,7 @@ from datetime import datetime
 import time
 import os
 
-import cloudinary
-print("Cloudinary module:", cloudinary)
-import cloudinary.uploader
+from cloudinary import uploader
 import cloudinary_config
 
 
@@ -110,6 +108,7 @@ def get_room_name(user1, user2):
 
 
 from werkzeug.utils import secure_filename
+import os
 
 def save_uploaded_file(file):
 
@@ -118,7 +117,7 @@ def save_uploaded_file(file):
 
     filename = secure_filename(file.filename)
 
-    result = cloudinary.uploader.upload(
+    result = uploader.upload(
         file,
         folder="salt_portal/chat",
         public_id=os.path.splitext(filename)[0],
