@@ -1,6 +1,5 @@
 import os
 import cloudinary
-import cloudinary.uploader
 
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
