@@ -104,43 +104,25 @@ def get_room_name(user1, user2):
     )
 
 
+from werkzeug.utils import secure_filename
+
 def save_uploaded_file(file):
 
-    """
-    Saves uploaded file.
-    Returns:
-        file_name,
-        file_path
-    """
-
-    if not file:
+    if not file or file.filename == "":
         return None, None
 
-    if file.filename == "":
-        return None, None
+    filename = secure_filename(file.filename)
 
-    if not allowed_file(file.filename):
-        return None, None
-
-
-    filename = secure_filename(
-        file.filename
+    result = cloudinary.uploader.upload(
+        file,
+        folder="salt_portal/chat",
+        public_id=os.path.splitext(filename)[0],
+        resource_type="auto"
     )
-
-    filename = (
-        f"{int(time.time())}_{filename}"
-    )
-
-    save_path = os.path.join(
-        UPLOAD_FOLDER,
-        filename
-    )
-
-    file.save(save_path)
 
     return (
-        file.filename,
-        f"static/uploads/{filename}"
+        filename,
+        result["secure_url"]
     )
 
 # ==========================================

@@ -276,12 +276,12 @@ class ChatApp {
     
             return `
     
-            <a href="/${chat.file_path}"
+            <a href="${chat.file_path}"
                target="_blank">
     
                 <img
     
-                    src="/${chat.file_path}"
+                    src="${chat.file_path}"
     
                     class="mt-3 rounded-2xl max-w-[240px] shadow-lg hover:scale-[1.02] transition">
     
@@ -294,7 +294,7 @@ class ChatApp {
         return `
     
         <a
-            href="/${chat.file_path}"
+            href="${chat.file_path}"
             target="_blank"
             class="flex items-center gap-3 mt-3 bg-gray-100 hover:bg-gray-200 rounded-2xl p-3">
     
