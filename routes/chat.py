@@ -24,8 +24,12 @@ from flask_socketio import emit
 
 from datetime import datetime
 
-import os
 import time
+import os
+
+import cloudinary
+import cloudinary.uploader
+import cloudinary_config
 
 
 # ==========================================
