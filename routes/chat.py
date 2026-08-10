@@ -107,9 +107,6 @@ def get_room_name(user1, user2):
     )
 
 
-from werkzeug.utils import secure_filename
-import os
-
 def save_uploaded_file(file):
 
     if not file or file.filename == "":
