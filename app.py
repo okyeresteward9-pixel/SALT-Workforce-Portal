@@ -1482,16 +1482,20 @@ def admin_tasks():
 
     conn = get_db()
 
-    c = conn.cursor(cursor_factory=RealDictCursor)
-
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
 
 
     status = request.args.get("status")
 
 
+    # =========================================================
+    # LOAD TASKS
+    # =========================================================
 
     base_query = """
-        SELECT 
+        SELECT
             tasks.id,
             tasks.title,
             tasks.description,
@@ -1510,21 +1514,27 @@ def admin_tasks():
         FROM tasks
 
         LEFT JOIN employees
-        ON tasks.assigned_to = employees.id
+            ON tasks.assigned_to = employees.id
 
         WHERE
-            tasks.task_scope IN ('admin_board', 'personal')
-            OR tasks.task_scope IS NULL
+            (
+                tasks.task_scope = 'admin_board'
+                OR tasks.task_scope IS NULL
+            )
     """
 
 
     params = []
 
 
+    # =========================================================
+    # STATUS FILTER
+    # =========================================================
+
     if status:
 
         base_query += """
-            AND tasks.status=%s
+            AND tasks.status = %s
         """
 
         params.append(status)
@@ -1540,73 +1550,139 @@ def admin_tasks():
         params
     )
 
+
     tasks = c.fetchall()
 
 
-
-    # ----------------------------
-    # COMMENTS
-    # ----------------------------
+    # =========================================================
+    # NORMALIZE DEADLINES
+    #
+    # Convert every deadline to a Python date.
+    # This prevents:
+    #
+    # datetime.date < string
+    #
+    # =========================================================
 
     for task in tasks:
 
+        deadline = task.get("deadline")
+
+
+        if deadline:
+
+            if isinstance(deadline, datetime):
+
+                task["deadline_date"] = deadline.date()
+
+
+            elif isinstance(deadline, date):
+
+                task["deadline_date"] = deadline
+
+
+            elif isinstance(deadline, str):
+
+                try:
+
+                    task["deadline_date"] = datetime.strptime(
+                        deadline[:10],
+                        "%Y-%m-%d"
+                    ).date()
+
+                except (
+                    ValueError,
+                    TypeError
+                ):
+
+                    task["deadline_date"] = None
+
+            else:
+
+                task["deadline_date"] = None
+
+        else:
+
+            task["deadline_date"] = None
+
+
+    # =========================================================
+    # COMMENTS
+    # =========================================================
+
+    for task in tasks:
 
         c.execute("""
             SELECT *
             FROM task_comments
-            WHERE task_id=%s
+
+            WHERE task_id = %s
+
             ORDER BY created_at ASC
         """,
-        (task['id'],))
+        (
+            task["id"],
+        ))
 
 
         comments = c.fetchall()
 
 
-        task['comments'] = build_comment_tree(comments)
+        task["comments"] = build_comment_tree(
+            comments
+        )
 
 
-
-    # ----------------------------
-    # STATS
-    # ----------------------------
-
-    c.execute("""
-        SELECT COUNT(*) AS count
-        FROM tasks
-        WHERE status='Pending'
-    """)
-
-    pending_count = c.fetchone()['count']
-
+    # =========================================================
+    # STATISTICS
+    # =========================================================
 
     c.execute("""
         SELECT COUNT(*) AS count
+
         FROM tasks
-        WHERE status='In Progress'
+
+        WHERE status = 'Pending'
     """)
 
-    progress_count = c.fetchone()['count']
+    pending_count = c.fetchone()["count"]
 
 
     c.execute("""
         SELECT COUNT(*) AS count
+
         FROM tasks
-        WHERE status='Completed'
+
+        WHERE status = 'In Progress'
     """)
 
-    completed_count = c.fetchone()['count']
+    progress_count = c.fetchone()["count"]
+
+
+    c.execute("""
+        SELECT COUNT(*) AS count
+
+        FROM tasks
+
+        WHERE status = 'Completed'
+    """)
+
+    completed_count = c.fetchone()["count"]
 
 
     conn.close()
 
 
-    # ----------------------------
+    # =========================================================
     # TODAY
-    # ----------------------------
+    # =========================================================
 
     today = date.today()
 
+
+    # =========================================================
+    # RENDER
+    # =========================================================
 
     return render_template(
         "admin_tasks.html",
@@ -1621,6 +1697,8 @@ def admin_tasks():
 
         today=today
     )
+
+
 @app.route('/admin/reply_task/<int:id>', methods=['POST'])
 def admin_reply_task(id):
 
