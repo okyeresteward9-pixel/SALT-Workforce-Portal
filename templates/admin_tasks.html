@@ -2708,7 +2708,8 @@
 
                                 {% if
                                     task.status != "Completed"
-                                    and task.deadline < today
+                                    and task.deadline_date
+                                    and task.deadline_date < today
                                 %}
 
                                     <div class="mt-2">
