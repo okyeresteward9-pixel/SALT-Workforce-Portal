@@ -1,478 +1,5182 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Tasks</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>My Tasks - SALT Workforce Portal</title>
+
+<link
+    rel="icon"
+    href="{{ url_for('static', filename='salt-logo.png') }}"
+>
+
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}"
+>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+>
+
+
+<style>
+
+    :root {
+
+        --salt-navy: #0f2b5b;
+        --salt-navy-dark: #0b2147;
+
+        --salt-blue: #1558b0;
+        --salt-blue-dark: #0f4b99;
+
+        --salt-blue-soft: #eaf2ff;
+
+        --salt-border: #dbe4f0;
+
+        --salt-bg: #f5f7fb;
+
+        --salt-text: #172033;
+
+        --salt-muted: #6b7280;
+
+    }
+
+
+    * {
+        box-sizing: border-box;
+    }
+
+
+    html,
+    body {
+
+        margin: 0;
+
+        min-height: 100%;
+
+    }
+
+
+    body {
+
+        background:
+            var(--salt-bg);
+
+        color:
+            var(--salt-text);
+
+        font-family:
+            Inter,
+            ui-sans-serif,
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+
+    }
+
+
+    /* =====================================================
+       SIDEBAR
+       ===================================================== */
+
+    .salt-sidebar {
+
+        position: fixed;
+
+        top: 0;
+        left: 0;
+
+        width: 260px;
+
+        min-width: 260px;
+
+        height: 100vh;
+
+        overflow-y: auto;
+
+        overflow-x: hidden;
+
+        z-index: 1000;
+
+        display: flex;
+
+        flex-direction: column;
+
+        background:
+            linear-gradient(
+                180deg,
+                var(--salt-navy) 0%,
+                #12366f 100%
+            );
+
+        color: white;
+
+        transition:
+            left .25s ease,
+            width .25s ease;
+
+    }
+
+
+    .salt-sidebar::-webkit-scrollbar {
+        width: 5px;
+    }
+
+
+    .salt-sidebar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+
+    .salt-sidebar::-webkit-scrollbar-thumb {
+
+        background:
+            rgba(255,255,255,.18);
+
+        border-radius: 20px;
+
+    }
+
+
+    /* =====================================================
+       SIDEBAR BRAND
+       ===================================================== */
+
+    .sidebar-brand {
+
+        padding:
+            22px 20px;
+
+        border-bottom:
+            1px solid rgba(255,255,255,.10);
+
+    }
+
+
+    .brand-logo {
+
+        width: 44px;
+        height: 44px;
+
+        flex-shrink: 0;
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
+
+        border-radius: 12px;
+
+        background:
+            rgba(255,255,255,.10);
+
+        border:
+            1px solid rgba(255,255,255,.10);
+
+    }
+
+
+    .brand-logo img {
+
+        width: 32px;
+        height: 32px;
+
+        object-fit: contain;
+
+    }
+
+
+    /* =====================================================
+       SIDEBAR LINKS
+       ===================================================== */
+
+    .sidebar-link {
+
+        display: flex;
+
+        align-items: center;
+
+        gap: 12px;
+
+        padding:
+            11px 14px;
+
+        margin-bottom:
+            5px;
+
+        border-radius:
+            12px;
+
+        color:
+            #dbeafe;
+
+        text-decoration:
+            none;
+
+        transition:
+            background .2s ease,
+            transform .2s ease,
+            color .2s ease;
+
+    }
+
+
+    .sidebar-link:hover {
+
+        background:
+            rgba(255,255,255,.09);
+
+        color: white;
+
+        transform:
+            translateX(2px);
+
+    }
+
+
+    .sidebar-link.active {
+
+        background:
+            rgba(255,255,255,.16);
+
+        color: white;
+
+        box-shadow:
+            inset 3px 0 0 #60a5fa;
+
+    }
+
+
+    .sidebar-icon {
+
+        width: 38px;
+        height: 38px;
+
+        flex-shrink: 0;
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
+
+        border-radius: 10px;
+
+        background:
+            rgba(255,255,255,.09);
+
+    }
+
+
+    /* =====================================================
+       MAIN CONTENT
+       ===================================================== */
+
+    .portal-main {
+
+        margin-left: 260px;
+
+        width:
+            calc(100% - 260px);
+
+        min-height: 100vh;
+
+    }
+
+
+    .main-inner {
+
+        max-width: 1500px;
+
+        margin:
+            0 auto;
+
+        padding:
+            28px 30px 40px;
+
+    }
+
+
+    /* =====================================================
+       TOP BAR
+       ===================================================== */
+
+    .topbar {
+
+        height: 58px;
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: space-between;
+
+        margin-bottom: 24px;
+
+    }
+
+
+    .menu-button {
+
+        width: 42px;
+        height: 42px;
+
+        border:
+            1px solid var(--salt-border);
+
+        border-radius: 11px;
+
+        background:
+            white;
+
+        color:
+            #475569;
+
+        box-shadow:
+            0 3px 10px rgba(15,43,91,.06);
+
+        cursor: pointer;
+
+        transition:
+            .2s ease;
+
+    }
+
+
+    .menu-button:hover {
+
+        color:
+            var(--salt-blue);
+
+        background:
+            #f8fafc;
+
+    }
+
+
+    .portal-pill {
+
+        display: flex;
+
+        align-items: center;
+
+        gap: 9px;
+
+        padding:
+            9px 15px;
+
+        border:
+            1px solid var(--salt-border);
+
+        border-radius:
+            12px;
+
+        background:
+            white;
+
+        color:
+            #475569;
+
+        font-size:
+            13px;
+
+        font-weight:
+            700;
+
+        box-shadow:
+            0 3px 12px rgba(15,43,91,.05);
+
+    }
+
+
+    .portal-pill i {
+
+        color:
+            var(--salt-blue);
+
+    }
+
+
+    /* =====================================================
+       PAGE HEADER
+       ===================================================== */
+
+    .page-header {
+
+        display: flex;
+
+        align-items: flex-end;
+
+        justify-content: space-between;
+
+        gap: 20px;
+
+        margin-bottom: 22px;
+
+    }
+
+
+    .page-badge {
+
+        display: inline-flex;
+
+        align-items: center;
+
+        gap: 8px;
+
+        margin-bottom: 8px;
+
+        color:
+            var(--salt-blue);
+
+        font-size:
+            13px;
+
+        font-weight:
+            800;
+
+        letter-spacing:
+            .05em;
+
+    }
+
+
+    .page-title {
+
+        margin: 0;
+
+        color:
+            #172033;
+
+        font-size:
+            clamp(28px, 3vw, 38px);
+
+        line-height:
+            1.15;
+
+        font-weight:
+            800;
+
+        letter-spacing:
+            -.025em;
+
+    }
+
+
+    .page-subtitle {
+
+        margin-top:
+            8px;
+
+        color:
+            var(--salt-muted);
+
+        font-size:
+            14px;
+
+        line-height:
+            1.6;
+
+    }
+
+
+    /* =====================================================
+       WELCOME BAR
+       ===================================================== */
+
+    .welcome-bar {
+
+        display: flex;
+
+        align-items: flex-start;
+
+        gap: 13px;
+
+        padding:
+            15px 18px;
+
+        margin-bottom:
+            24px;
+
+        border:
+            1px solid #cfe0fb;
+
+        border-radius:
+            14px;
+
+        background:
+            var(--salt-blue-soft);
+
+        color:
+            #31527f;
+
+    }
+
+
+    .welcome-icon {
+
+        width: 38px;
+        height: 38px;
+
+        flex-shrink: 0;
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
+
+        border-radius:
+            10px;
+
+        background:
+            rgba(21,88,176,.10);
+
+        color:
+            var(--salt-blue);
+
+    }
+
+
+    .welcome-title {
+
+        color:
+            #263f67;
+
+        font-size:
+            14px;
+
+        font-weight:
+            800;
+
+    }
+
+
+    .welcome-text {
+
+        margin-top:
+            3px;
+
+        color:
+            #536b8d;
+
+        font-size:
+            13px;
+
+        line-height:
+            1.55;
+
+    }
+
+
+    /* =====================================================
+       TASK CARD
+       ===================================================== */
+
+    .tasks-card {
+
+        background:
+            white;
+
+        border:
+            1px solid var(--salt-border);
+
+        border-radius:
+            18px;
+
+        overflow:
+            hidden;
+
+        box-shadow:
+            0 8px 28px rgba(15,43,91,.055);
+
+    }
+
+
+    .card-header {
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: space-between;
+
+        gap: 15px;
+
+        padding:
+            20px 22px;
+
+        border-bottom:
+            1px solid var(--salt-border);
+
+    }
+
+
+    .card-title-group {
+
+        display: flex;
+
+        align-items: center;
+
+        gap: 11px;
+
+    }
+
+
+    .card-icon {
+
+        width: 40px;
+        height: 40px;
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
+
+        border-radius:
+            11px;
+
+        background:
+            var(--salt-blue-soft);
+
+        color:
+            var(--salt-blue);
+
+    }
+
+
+    .card-title {
+
+        margin: 0;
+
+        color:
+            #26344d;
+
+        font-size:
+            17px;
+
+        font-weight:
+            800;
+
+    }
+
+
+    .card-description {
+
+        margin-top:
+            2px;
+
+        color:
+            #94a3b8;
+
+        font-size:
+            11px;
+
+    }
+
+
+    /* =====================================================
+       CREATE TASK
+       ===================================================== */
+
+    .create-section {
+
+        margin:
+            20px;
+
+        padding:
+            19px;
+
+        border:
+            1px solid #dbe7f7;
+
+        border-radius:
+            15px;
+
+        background:
+            linear-gradient(
+                135deg,
+                #f8fbff,
+                #f1f7ff
+            );
+
+    }
+
+
+    .create-heading {
+
+        display: flex;
+
+        align-items: center;
+
+        gap: 9px;
+
+        margin-bottom:
+            14px;
+
+        color:
+            #263f67;
+
+        font-size:
+            14px;
+
+        font-weight:
+            800;
+
+    }
+
+
+    .create-heading i {
+
+        color:
+            var(--salt-blue);
+
+    }
+
+
+    .create-form {
+
+        display: grid;
+
+        grid-template-columns:
+            minmax(0, 1.5fr)
+            minmax(170px, .7fr)
+            auto;
+
+        gap:
+            10px;
+
+    }
+
+
+    .field {
+
+        width:
+            100%;
+
+        padding:
+            11px 13px;
+
+        border:
+            1px solid #d5dfec;
+
+        border-radius:
+            10px;
+
+        background:
+            white;
+
+        color:
+            #334155;
+
+        font-size:
+            13px;
+
+        outline:
+            none;
+
+        transition:
+            border-color .2s ease,
+            box-shadow .2s ease;
+
+    }
+
+
+    .field:focus {
+
+        border-color:
+            var(--salt-blue);
+
+        box-shadow:
+            0 0 0 3px rgba(21,88,176,.09);
+
+    }
+
+
+    textarea.field {
+
+        min-height:
+            90px;
+
+        resize:
+            vertical;
+
+    }
+
+
+    .description-field {
+
+        grid-column:
+            1 / -1;
+
+    }
+
+
+    .create-button {
+
+        display: inline-flex;
+
+        align-items: center;
+
+        justify-content: center;
+
+        gap: 8px;
+
+        padding:
+            11px 17px;
+
+        border:
+            none;
+
+        border-radius:
+            10px;
+
+        background:
+            linear-gradient(
+                135deg,
+                var(--salt-blue),
+                var(--salt-blue-dark)
+            );
+
+        color:
+            white;
+
+        font-size:
+            13px;
+
+        font-weight:
+            700;
+
+        cursor:
+            pointer;
+
+        box-shadow:
+            0 5px 14px rgba(21,88,176,.18);
+
+        transition:
+            transform .2s ease,
+            box-shadow .2s ease;
+
+    }
+
+
+    .create-button:hover {
+
+        transform:
+            translateY(-1px);
+
+        box-shadow:
+            0 8px 18px rgba(21,88,176,.25);
+
+    }
+
+
+    /* =====================================================
+       TABLE
+       ===================================================== */
+
+    .table-wrapper {
+
+        width:
+            100%;
+
+        overflow-x:
+            auto;
+
+        -webkit-overflow-scrolling:
+            touch;
+
+    }
+
+
+    .table-wrapper::-webkit-scrollbar {
+
+        height:
+            8px;
+
+    }
+
+
+    .table-wrapper::-webkit-scrollbar-track {
+
+        background:
+            #f1f5f9;
+
+    }
+
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+
+        background:
+            #cbd5e1;
+
+        border-radius:
+            20px;
+
+    }
+
+
+    table {
+
+        width:
+            100%;
+
+        min-width:
+            1250px;
+
+        border-collapse:
+            collapse;
+
+    }
+
+
+    thead {
+
+        background:
+            #f7f9fc;
+
+    }
+
+
+    th {
+
+        padding:
+            12px 15px;
+
+        border-bottom:
+            1px solid var(--salt-border);
+
+        color:
+            #64748b;
+
+        font-size:
+            10px;
+
+        font-weight:
+            800;
+
+        text-align:
+            left;
+
+        text-transform:
+            uppercase;
+
+        letter-spacing:
+            .055em;
+
+        white-space:
+            nowrap;
+
+    }
+
+
+    td {
+
+        padding:
+            16px 15px;
+
+        border-bottom:
+            1px solid #edf1f6;
+
+        vertical-align:
+            top;
+
+    }
+
+
+    tbody tr {
+
+        transition:
+            background .15s ease;
+
+    }
+
+
+    tbody tr:hover {
+
+        background:
+            #fbfdff;
+
+    }
+
+
+    tbody tr:last-child td {
+
+        border-bottom:
+            none;
+
+    }
+
+
+    /* =====================================================
+       TASK DETAILS
+       ===================================================== */
+
+    .task-title {
+
+        min-width:
+            150px;
+
+        color:
+            #1e293b;
+
+        font-size:
+            13px;
+
+        font-weight:
+            800;
+
+        line-height:
+            1.45;
+
+    }
+
+
+    .task-description {
+
+        max-width:
+            230px;
+
+        margin-top:
+            5px;
+
+        color:
+            #64748b;
+
+        font-size:
+            11px;
+
+        line-height:
+            1.55;
+
+    }
+
+
+    /* =====================================================
+       DEADLINE
+       ===================================================== */
+
+    .deadline {
+
+        display:
+            flex;
+
+        align-items:
+            center;
+
+        gap:
+            6px;
+
+        color:
+            #475569;
+
+        font-size:
+            11px;
+
+        font-weight:
+            700;
+
+        white-space:
+            nowrap;
+
+    }
+
+
+    .deadline i {
+
+        color:
+            var(--salt-blue);
+
+    }
+
+
+    .carried-badge {
+
+        display:
+            inline-flex;
+
+        align-items:
+            center;
+
+        gap:
+            5px;
+
+        margin-top:
+            7px;
+
+        padding:
+            5px 8px;
+
+        border-radius:
+            999px;
+
+        background:
+            #fff7df;
+
+        color:
+            #a16207;
+
+        font-size:
+            9px;
+
+        font-weight:
+            800;
+
+    }
+
+
+    /* =====================================================
+       STATUS
+       ===================================================== */
+
+    .status-badge {
+
+        display:
+            inline-flex;
+
+        align-items:
+            center;
+
+        gap:
+            6px;
+
+        padding:
+            6px 10px;
+
+        border-radius:
+            999px;
+
+        font-size:
+            10px;
+
+        font-weight:
+            800;
+
+        white-space:
+            nowrap;
+
+    }
+
+
+    .status-pending {
+
+        background:
+            #fff7df;
+
+        color:
+            #a16207;
+
+    }
+
+
+    .status-progress {
+
+        background:
+            var(--salt-blue-soft);
+
+        color:
+            var(--salt-blue);
+
+    }
+
+
+    .status-completed {
+
+        background:
+            #eaf8f0;
+
+        color:
+            #15803d;
+
+    }
+
+
+    /* =====================================================
+       TYPE
+       ===================================================== */
+
+    .type-self {
+
+        background:
+            #eaf2ff;
+
+        color:
+            #1558b0;
+
+    }
+
+
+    .type-assigned {
+
+        background:
+            #f3eefe;
+
+        color:
+            #7c3aed;
+
+    }
+
+
+    /* =====================================================
+       DISCUSSION
+       ===================================================== */
+
+    .discussion-cell {
+
+        width:
+            430px;
+
+        min-width:
+            430px;
+
+    }
+
+
+    .discussion-stack {
+
+        display:
+            flex;
+
+        flex-direction:
+            column;
+
+        gap:
+            9px;
+
+    }
+
+
+    .comment {
+
+        padding:
+            10px;
+
+        border:
+            1px solid #e3e9f1;
+
+        border-radius:
+            11px;
+
+        background:
+            #fbfcfe;
+
+    }
+
+
+    .comment.admin-comment {
+
+        border-left:
+            3px solid #7c3aed;
+
+    }
+
+
+    .comment.employee-comment {
+
+        border-left:
+            3px solid #16a34a;
+
+    }
+
+
+    .comment-header {
+
+        display:
+            flex;
+
+        align-items:
+            center;
+
+        justify-content:
+            space-between;
+
+        gap:
+            10px;
+
+    }
+
+
+    .comment-role {
+
+        font-size:
+            9px;
+
+        font-weight:
+            800;
+
+        text-transform:
+            uppercase;
+
+        letter-spacing:
+            .04em;
+
+    }
+
+
+    .role-admin {
+
+        color:
+            #7c3aed;
+
+    }
+
+
+    .role-employee {
+
+        color:
+            #15803d;
+
+    }
+
+
+    .comment-date {
+
+        color:
+            #94a3b8;
+
+        font-size:
+            9px;
+
+        white-space:
+            nowrap;
+
+    }
+
+
+    .comment-message {
+
+        margin-top:
+            6px;
+
+        color:
+            #475569;
+
+        font-size:
+            11px;
+
+        line-height:
+            1.5;
+
+    }
+
+
+    .progress-note {
+
+        margin-top:
+            7px;
+
+        padding:
+            8px 10px;
+
+        border-radius:
+            9px;
+
+        background:
+            #eef6ff;
+
+        color:
+            #31527f;
+
+        font-size:
+            11px;
+
+        line-height:
+            1.5;
+
+    }
+
+
+    .progress-note-label {
+
+        margin-bottom:
+            3px;
+
+        color:
+            var(--salt-blue);
+
+        font-size:
+            9px;
+
+        font-weight:
+            800;
+
+        text-transform:
+            uppercase;
+
+    }
+
+
+    .reply-form {
+
+        margin-top:
+            9px;
+
+    }
+
+
+    .reply-form textarea {
+
+        width:
+            100%;
+
+        min-height:
+            45px;
+
+        padding:
+            8px 9px;
+
+        resize:
+            vertical;
+
+        border:
+            1px solid #d7e0eb;
+
+        border-radius:
+            8px;
+
+        outline:
+            none;
+
+        font-size:
+            10px;
+
+    }
+
+
+    .reply-form textarea:focus {
+
+        border-color:
+            var(--salt-blue);
+
+        box-shadow:
+            0 0 0 2px rgba(21,88,176,.08);
+
+    }
+
+
+    .reply-button {
+
+        margin-top:
+            5px;
+
+        padding:
+            5px 9px;
+
+        border:
+            none;
+
+        border-radius:
+            7px;
+
+        background:
+            #eef2f7;
+
+        color:
+            #475569;
+
+        font-size:
+            9px;
+
+        font-weight:
+            700;
+
+        cursor:
+            pointer;
+
+    }
+
+
+    .reply-button:hover {
+
+        background:
+            #e2e8f0;
+
+    }
+
+
+    .empty-discussion {
+
+        padding:
+            10px;
+
+        color:
+            #94a3b8;
+
+        font-size:
+            10px;
+
+        font-style:
+            italic;
+
+    }
+
+
+    /* =====================================================
+       ACTIONS
+       ===================================================== */
+
+    .action-stack {
+
+        display:
+            flex;
+
+        flex-direction:
+            column;
+
+        gap:
+            6px;
+
+        min-width:
+            95px;
+
+    }
+
+
+    .action-button {
+
+        display:
+            inline-flex;
+
+        align-items:
+            center;
+
+        justify-content:
+            center;
+
+        gap:
+            6px;
+
+        width:
+            100%;
+
+        padding:
+            7px 9px;
+
+        border-radius:
+            8px;
+
+        font-size:
+            10px;
+
+        font-weight:
+            700;
+
+        text-decoration:
+            none;
+
+        border:
+            none;
+
+        cursor:
+            pointer;
+
+        transition:
+            transform .15s ease,
+            opacity .15s ease;
+
+    }
+
+
+    .action-button:hover {
+
+        transform:
+            translateY(-1px);
+
+        opacity:
+            .92;
+
+    }
+
+
+    .action-start {
+
+        background:
+            var(--salt-blue-soft);
+
+        color:
+            var(--salt-blue);
+
+    }
+
+
+    .action-complete {
+
+        background:
+            #eaf8f0;
+
+        color:
+            #15803d;
+
+    }
+
+
+    .action-edit {
+
+        background:
+            #fff7df;
+
+        color:
+            #a16207;
+
+    }
+
+
+    .action-delete {
+
+        background:
+            #fff0f0;
+
+        color:
+            #dc2626;
+
+    }
+
+
+    /* =====================================================
+       EMPTY STATE
+       ===================================================== */
+
+    .empty-state {
+
+        padding:
+            70px 20px;
+
+        text-align:
+            center;
+
+    }
+
+
+    .empty-icon {
+
+        width:
+            65px;
+
+        height:
+            65px;
+
+        margin:
+            0 auto 15px;
+
+        display:
+            flex;
+
+        align-items:
+            center;
+
+        justify-content:
+            center;
+
+        border-radius:
+            17px;
+
+        background:
+            var(--salt-blue-soft);
+
+        color:
+            #8fb6e8;
+
+        font-size:
+            26px;
+
+    }
+
+
+    .empty-state h3 {
+
+        margin:
+            0;
+
+        color:
+            #334155;
+
+        font-size:
+            18px;
+
+        font-weight:
+            800;
+
+    }
+
+
+    .empty-state p {
+
+        margin-top:
+            6px;
+
+        color:
+            #94a3b8;
+
+        font-size:
+            12px;
+
+    }
+
+
+    /* =====================================================
+       DISCUSSION UPGRADE
+       ===================================================== */
+
+    .discussion-header {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:8px;
+        margin-bottom:8px;
+        padding-bottom:7px;
+        border-bottom:1px solid #edf1f6;
+    }
+
+    .discussion-title {
+        display:flex;
+        align-items:center;
+        gap:6px;
+        color:#334155;
+        font-size:10px;
+        font-weight:800;
+        text-transform:uppercase;
+        letter-spacing:.045em;
+    }
+
+    .discussion-title i { color:var(--salt-blue); }
+
+    .discussion-count {
+        min-width:20px;
+        padding:3px 6px;
+        border-radius:999px;
+        background:var(--salt-blue-soft);
+        color:var(--salt-blue);
+        font-size:9px;
+        font-weight:800;
+        text-align:center;
+    }
+
+    .comment-thread {
+        position:relative;
+        display:flex;
+        flex-direction:column;
+        gap:7px;
+    }
+
+    .comment-wrap { position:relative; }
+
+    .comment-wrap[data-level="1"],
+    .comment-wrap[data-level="2"],
+    .comment-wrap[data-level="3"] {
+        border-left:2px solid #e4ebf5;
+        padding-left:8px;
+    }
+
+    .comment:hover {
+        border-color:#cbd8e8;
+        background:#f8fbff;
+    }
+
+    .comment-actions {
+        display:flex;
+        align-items:center;
+        justify-content:flex-end;
+        margin-top:4px;
+    }
+
+    .reply-button {
+        transition:background .15s ease, color .15s ease, transform .15s ease;
+    }
+
+    .reply-button:hover {
+        color:var(--salt-blue);
+        transform:translateY(-1px);
+    }
+
+    .start-discussion {
+        margin-top:10px;
+        padding:10px;
+        border:1px solid #dbe7f7;
+        border-radius:11px;
+        background:linear-gradient(135deg,#f8fbff,#f1f7ff);
+    }
+
+    .start-discussion-label {
+        display:flex;
+        align-items:center;
+        gap:6px;
+        margin-bottom:6px;
+        color:#31527f;
+        font-size:10px;
+        font-weight:800;
+    }
+
+    .start-discussion-label i { color:var(--salt-blue); }
+
+    .start-discussion .reply-form { margin-top:0; }
+
+    .start-discussion .reply-button {
+        background:var(--salt-blue-soft);
+        color:var(--salt-blue);
+    }
+
+    .start-discussion .reply-button:hover {
+        background:#dceaff;
+    }
+
+    /* =====================================================
+       EDIT MODAL
+       ===================================================== */
+
+    .modal-overlay {
+
+        position:
+            fixed;
+
+        inset:
+            0;
+
+        z-index:
+            2000;
+
+        display:
+            none;
+
+        align-items:
+            center;
+
+        justify-content:
+            center;
+
+        padding:
+            20px;
+
+        background:
+            rgba(15,23,42,.55);
+
+        backdrop-filter:
+            blur(4px);
+
+    }
+
+
+    .modal-overlay.show {
+
+        display:
+            flex;
+
+    }
+
+
+    .edit-modal {
+
+        width:
+            100%;
+
+        max-width:
+            560px;
+
+        padding:
+            24px;
+
+        border:
+            1px solid var(--salt-border);
+
+        border-radius:
+            18px;
+
+        background:
+            white;
+
+        box-shadow:
+            0 25px 70px rgba(15,23,42,.22);
+
+        animation:
+            modalIn .2s ease;
+
+    }
+
+
+    @keyframes modalIn {
+
+        from {
+
+            opacity:
+                0;
+
+            transform:
+                translateY(10px)
+                scale(.98);
+
+        }
+
+        to {
+
+            opacity:
+                1;
+
+            transform:
+                translateY(0)
+                scale(1);
+
+        }
+
+    }
+
+
+    .modal-header {
+
+        display:
+            flex;
+
+        align-items:
+            center;
+
+        justify-content:
+            space-between;
+
+        margin-bottom:
+            20px;
+
+    }
+
+
+    .modal-title {
+
+        display:
+            flex;
+
+        align-items:
+            center;
+
+        gap:
+            10px;
+
+        color:
+            #26344d;
+
+        font-size:
+            18px;
+
+        font-weight:
+            800;
+
+    }
+
+
+    .modal-title i {
+
+        color:
+            var(--salt-blue);
+
+    }
+
+
+    .modal-close {
+
+        width:
+            34px;
+
+        height:
+            34px;
+
+        border:
+            none;
+
+        border-radius:
+            9px;
+
+        background:
+            #f1f5f9;
+
+        color:
+            #64748b;
+
+        cursor:
+            pointer;
+
+    }
+
+
+    .modal-close:hover {
+
+        background:
+            #e2e8f0;
+
+    }
+
+
+    .modal-footer {
+
+        display:
+            flex;
+
+        justify-content:
+            flex-end;
+
+        gap:
+            9px;
+
+        margin-top:
+            18px;
+
+    }
+
+
+    .modal-cancel {
+
+        padding:
+            9px 14px;
+
+        border:
+            1px solid var(--salt-border);
+
+        border-radius:
+            9px;
+
+        background:
+            white;
+
+        color:
+            #64748b;
+
+        font-size:
+            12px;
+
+        font-weight:
+            700;
+
+        cursor:
+            pointer;
+
+    }
+
+
+    .modal-save {
+
+        padding:
+            9px 15px;
+
+        border:
+            none;
+
+        border-radius:
+            9px;
+
+        background:
+            var(--salt-blue);
+
+        color:
+            white;
+
+        font-size:
+            12px;
+
+        font-weight:
+            700;
+
+        cursor:
+            pointer;
+
+    }
+
+
+    .modal-save:disabled {
+
+        opacity:
+            .65;
+
+        cursor:
+            not-allowed;
+
+    }
+
+
+    body.modal-open {
+        overflow: hidden;
+    }
+
+
+    /* =====================================================
+       TOAST
+       ===================================================== */
+
+    .toast {
+
+        position:
+            fixed;
+
+        right:
+            22px;
+
+        bottom:
+            22px;
+
+        z-index:
+            3000;
+
+        min-width:
+            260px;
+
+        max-width:
+            380px;
+
+        padding:
+            13px 16px;
+
+        border:
+            1px solid var(--salt-border);
+
+        border-radius:
+            12px;
+
+        background:
+            white;
+
+        color:
+            #334155;
+
+        box-shadow:
+            0 12px 35px rgba(15,43,91,.15);
+
+        display:
+            none;
+
+        align-items:
+            center;
+
+        gap:
+            10px;
+
+        font-size:
+            12px;
+
+        font-weight:
+            700;
+
+    }
+
+
+    .toast.show {
+
+        display:
+            flex;
+
+        animation:
+            toastIn .2s ease;
+
+    }
+
+
+    .toast.success i {
+
+        color:
+            #16a34a;
+
+    }
+
+
+    .toast.error i {
+
+        color:
+            #dc2626;
+
+    }
+
+
+    @keyframes toastIn {
+
+        from {
+
+            opacity:
+                0;
+
+            transform:
+                translateY(8px);
+
+        }
+
+        to {
+
+            opacity:
+                1;
+
+            transform:
+                translateY(0);
+
+        }
+
+    }
+
+
+    /* =====================================================
+       FOOTER
+       ===================================================== */
+
+    .page-footer {
+
+        padding:
+            20px 0 5px;
+
+        text-align:
+            center;
+
+        color:
+            #9aa7b8;
+
+        font-size:
+            10px;
+
+    }
+
+
+    /* =====================================================
+       MOBILE
+       ===================================================== */
+
+    @media (max-width: 900px) {
+
+        .salt-sidebar {
+
+            left:
+                -270px;
+
+        }
+
+
+        .salt-sidebar.mobile-open {
+
+            left:
+                0;
+
+            box-shadow:
+                10px 0 30px rgba(0,0,0,.15);
+
+        }
+
+
+        .portal-main {
+
+            margin-left:
+                0;
+
+            width:
+                100%;
+
+        }
+
+
+        .main-inner {
+
+            padding:
+                20px 16px 30px;
+
+        }
+
+
+        .page-header {
+
+            align-items:
+                flex-start;
+
+            flex-direction:
+                column;
+
+        }
+
+
+        .create-form {
+
+            grid-template-columns:
+                1fr;
+
+        }
+
+
+        .description-field {
+
+            grid-column:
+                auto;
+
+        }
+
+    }
+
+
+    @media (max-width: 600px) {
+
+        .portal-pill {
+
+            display:
+                none;
+
+        }
+
+
+        .page-title {
+
+            font-size:
+                28px;
+
+        }
+
+
+        .welcome-bar {
+
+            padding:
+                13px;
+
+        }
+
+
+        .card-header {
+
+            padding:
+                16px;
+
+        }
+
+
+        .create-section {
+
+            margin:
+                14px;
+
+            padding:
+                14px;
+
+        }
+
+
+        .toast {
+
+            right:
+                12px;
+
+            left:
+                12px;
+
+            bottom:
+                12px;
+
+            min-width:
+                auto;
+
+        }
+
+    }
+
+
+/* =====================================================
+   COLLAPSIBLE DISCUSSION + REPLY TARGET
+   ===================================================== */
+
+.discussion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 9px;
+}
+
+.discussion-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #334155;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .055em;
+}
+
+.discussion-title i {
+    color: #1558b0;
+}
+
+.discussion-count {
+    min-width: 22px;
+    height: 20px;
+    padding: 0 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #eaf2ff;
+    color: #1558b0;
+    font-size: 9px;
+    font-weight: 900;
+}
+
+.discussion-preview {
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e4ebf3;
+    border-radius: 9px;
+    background: #fafcff;
+    color: #64748b;
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.discussion-preview-label {
+    margin-bottom: 3px;
+    color: #94a3b8;
+    font-size: 8px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.discussion-preview-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.discussion-toggle {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border: 1px solid #dbe5f0;
+    border-radius: 9px;
+    background: #f8fbff;
+    color: #1558b0;
+    font-size: 9px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.discussion-toggle:hover {
+    background: #eaf2ff;
+    border-color: #c9dbf2;
+}
+
+.discussion-toggle i {
+    transition: transform .2s ease;
+}
+
+.discussion-toggle.is-open i {
+    transform: rotate(180deg);
+}
+
+.discussion-body {
+    display: none;
+    margin-top: 9px;
+}
+
+.discussion-body.is-open {
+    display: block;
+}
+
+.comment-node {
+    position: relative;
+}
+
+.comment-wrap {
+    position: relative;
+}
+
+.comment-reply-target {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-left: 3px solid #1558b0;
+    border-radius: 7px;
+    background: #f4f8ff;
+    color: #526985;
+    font-size: 9px;
+    line-height: 1.45;
+}
+
+.comment-reply-target strong {
+    display: block;
+    margin-bottom: 3px;
+    color: #1558b0;
+    font-size: 8px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.comment-reply-target .quoted-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-style: italic;
+}
+
+.reply-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 7px;
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 7px;
+    background: #eef2f7;
+    color: #526276;
+    font-size: 9px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.reply-trigger:hover {
+    background: #eaf2ff;
+    color: #1558b0;
+}
+
+.inline-reply {
+    display: none;
+    margin-top: 8px;
+}
+
+.inline-reply.is-open {
+    display: block;
+}
+
+.inline-reply-form {
+    padding: 9px;
+    border: 1px solid #d7e4f3;
+    border-radius: 10px;
+    background: #f8fbff;
+}
+
+.inline-reply-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+    margin-top: 6px;
+}
+
+.cancel-reply {
+    padding: 6px 9px;
+    border: 1px solid #dbe3ec;
+    border-radius: 7px;
+    background: #fff;
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.cancel-reply:hover {
+    background: #f1f5f9;
+}
+
+.send-reply {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: #1558b0;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.send-reply:hover {
+    background: #0f4b99;
+}
+
+.comment-highlight {
+    animation: replyHighlight 1.8s ease;
+}
+
+@keyframes replyHighlight {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(21, 88, 176, 0);
+    }
+    25%, 65% {
+        box-shadow: 0 0 0 3px rgba(21, 88, 176, .13);
+    }
+}
+
+.start-discussion,
+.discussion-composer {
+    margin-top: 10px;
+}
+
+.start-discussion-label,
+.discussion-composer-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    color: #526985;
+    font-size: 9px;
+    font-weight: 900;
+}
+
+.start-discussion-label i,
+.discussion-composer-label i {
+    color: #1558b0;
+}
+
+.discussion-body .reply-form {
+    display: none;
+}
+
+</style>
+
+
 </head>
 
 <body>
 
-  <div class="wrapper">
-  
-      <!-- =========================
-           SIDEBAR
-      ========================== -->
-      <div class="sidebar" id="sidebar">
-  
-          <!-- LOGO -->
-          <div class="logo py-5">
-              <img src="{{ url_for('static', filename='salt-logo.png') }}">
-              <div class="portal-name">SALT Workforce Portal</div>
-          </div>
-  
-          <!-- MENU -->
-          <ul>
-  
-              <li>
-                  <a href="/dashboard">
-                      <i class="fas fa-home"></i>
-                      <span>Dashboard</span>
-                  </a>
-              </li>
-  
-              <li class="active">
-                  <a href="/tasks">
-                      <i class="fas fa-tasks"></i>
-                      <span>My Tasks</span>
-                  </a>
-              </li>
-  
-              <li>
-                <a href="/task-history">
-                    <i class="fas fa-history"></i>
-                    <span>Task History</span>
-                </a>
-            </li>
+<div class="portal-layout">
 
-          </ul>
-  
-      </div>
-  
-  
-      <!-- =========================
-           MAIN AREA
-      ========================== -->
-      <div class="main" id="main">
-  
-          <!-- TOPBAR -->
-          <div class="topbar">
-  
-              <button id="toggle-btn" class="bg-white px-3 py-2 rounded-lg shadow">
-                  <i class="fas fa-bars"></i>
-              </button>
-  
-              <h3 class="font-semibold text-lg">
-                  My Tasks
-              </h3>
-  
-          </div>
-  
-  
-          <!-- =========================
-               CONTENT
-          ========================== -->
-          <div class="content">
-  
-              <!-- TASK CONTAINER -->
-              <div class="bg-white shadow-lg rounded-2xl border border-gray-200 p-6">
-  
-                  <h2 class="text-2xl font-semibold text-gray-800 mb-6">
-                      My Tasks
-                  </h2>
-  
-                  <!-- CREATE TASK -->
-                  <div class="mb-6 border-b pb-4">
-  
-                      <h3 class="text-lg font-semibold mb-3 text-gray-700">
-                          ➕ Create My Task
-                      </h3>
-  
-                      <form method="POST"
-                            action="/tasks/create"
-                            class="grid grid-cols-1 md:grid-cols-3 gap-3">
-  
-                          <input type="text"
-                                 name="title"
-                                 placeholder="Task Title"
-                                 required
-                                 class="border rounded-xl px-3 py-3">
-  
-                          <input type="date"
-                                 name="deadline"
-                                 class="border rounded-xl px-3 py-3">
-  
-                          <button type="submit"
-                              class="bg-blue-600 text-white rounded-xl px-4 py-2 hover:bg-blue-700">
-                              Add Task
-                          </button>
-  
-                          <textarea name="description"
-                              placeholder="Task Description"
-                              class="md:col-span-3 border rounded-xl px-3 py-3"></textarea>
-  
-                      </form>
-  
-                  </div>
-  
-  
-                  <!-- TASK TABLE -->
-                  {% if tasks %}
-  
-                  <div class="overflow-x-auto">
-  
-                      <table class="min-w-full">
-  
-                        <thead>
-                            <tr>
-                                <th>Task</th>
-                                <th>Description</th>
-                                <th>Deadline</th>
-                                <th>Status</th>
-                                <th>Type</th>
-                                <th>Discussion</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-  
-                          <tbody>
-  
-                          {% for task in tasks %}
-                          <tr>
-  
-                              <td>{{ task.title }}</td>
-  
-                              <td>{{ task.description }}</td>
-  
-                              <!-- DEADLINE -->
-                                <td>
+```
+<!-- =====================================================
+     SIDEBAR
+     ===================================================== -->
 
-                                    {{ task.deadline }}
-
-                                    {% if task.carried_forward == 1 %}
-                                    <div class="mt-1">
-                                        <span class="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs">
-                                            Carried Forward
-                                        </span>
-                                    </div>
-                                    {% endif %}
-
-                                </td>
-
-                                <!-- STATUS -->
-                                <td>
-
-                                {% if task.status == "Pending" %}
-                                    <span class="badge active">
-                                        Pending
-                                    </span>
-
-                                {% elif task.status == "In Progress" %}
-
-                                    <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
-                                        In Progress
-                                    </span>
-
-                                {% else %}
-
-                                    <span class="badge completed">
-                                        Completed
-                                    </span>
-
-                                {% endif %}
-
-                                </td>
+<aside
+    class="salt-sidebar"
+    id="sidebar"
+>
 
 
-                              <!-- TYPE -->
-                              <td>
-  
-                                  {% if task.created_by == task.assigned_to %}
-  
-                                  <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
-                                      Self
-                                  </span>
-  
-                                  {% else %}
-  
-                                  <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs">
-                                      Assigned
-                                  </span>
-  
-                                  {% endif %}
-  
-                              </td>
+    <!-- BRAND -->
+
+    <div class="sidebar-brand">
+
+        <div class="flex items-center gap-3">
+
+            <div class="brand-logo">
+
+                <img
+                    src="{{ url_for('static', filename='salt-logo.png') }}"
+                    alt="SALT"
+                >
+
+            </div>
 
 
-                            <!-- PROGRESS NOTES -->
-                            <div class="mb-4">
+            <div>
 
-                                <h4 class="font-semibold text-blue-700 mb-3">
-                                    Progress Notes
-                                </h4>
+                <h2
+                    class="text-lg font-bold tracking-tight"
+                >
+                    SALT Portal
+                </h2>
 
-                                <!-- ADD NOTE -->
-                                <form method="POST"
-                                    action="/task/add_note/{{ task.id }}"
-                                    class="mb-4">
+                <p
+                    class="text-xs text-blue-200"
+                >
+                    Workforce Portal
+                </p>
 
-                                    <textarea
-                                        name="note"
-                                        rows="2"
-                                        required
-                                        placeholder="Write progress update..."
-                                        class="w-full border rounded-lg p-2 text-sm"></textarea>
+            </div>
 
-                                    <button
-                                        class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+        </div>
 
-                                        Add Note
+    </div>
 
-                                    </button>
 
-                                </form>
+    <!-- NAVIGATION -->
 
-                                <!-- NOTES LIST -->
-                                <div class="space-y-2">
+    <nav class="flex-1 p-4">
 
-                                    {% for comment in task.comments %}
 
-                                        {% if comment.comment_type == 'note' %}
+        <!-- DASHBOARD -->
 
-                                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3">
+        <a
+            href="/dashboard"
+            class="sidebar-link"
+        >
 
-                                            <div class="flex justify-between items-center">
+            <span class="sidebar-icon">
 
-                                                <div class="font-semibold text-blue-700 text-sm">
-                                                    Progress Update
-                                                </div>
+                <i class="fas fa-home"></i>
 
-                                                <div class="text-xs text-gray-400">
-                                                    {{ comment.created_at[:16] }}
-                                                </div>
+            </span>
 
-                                            </div>
+            <span>
+                Dashboard
+            </span>
 
-                                            <div class="text-gray-700 mt-2">
-                                                {{ comment.message }}
-                                            </div>
+        </a>
 
-                                        </div>
 
-                                        {% endif %}
+        <!-- MY TASKS -->
 
-                                    {% endfor %}
+        <a
+            href="/tasks"
+            class="sidebar-link active"
+        >
 
-                                </div>
+            <span class="sidebar-icon">
+
+                <i class="fas fa-list-check"></i>
+
+            </span>
+
+            <span>
+                My Tasks
+            </span>
+
+        </a>
+
+
+        <!-- TASK HISTORY -->
+
+        <a
+            href="/task-history"
+            class="sidebar-link"
+        >
+
+            <span class="sidebar-icon">
+
+                <i class="fas fa-clock-rotate-left"></i>
+
+            </span>
+
+            <span>
+                Task History
+            </span>
+
+        </a>
+
+    </nav>
+
+
+    <!-- LOGOUT -->
+
+    <div
+        class="p-4 border-t border-white/10"
+    >
+
+        <a
+            href="/logout"
+            class="
+                sidebar-link
+                !bg-red-500/90
+                hover:!bg-red-600
+            "
+        >
+
+            <span class="sidebar-icon">
+
+                <i
+                    class="fas fa-right-from-bracket"
+                ></i>
+
+            </span>
+
+            <span>
+                Logout
+            </span>
+
+        </a>
+
+    </div>
+
+
+</aside>
+
+
+<!-- =====================================================
+     MAIN CONTENT
+     ===================================================== -->
+
+<main class="portal-main">
+
+    <div class="main-inner">
+
+
+        <!-- TOP BAR -->
+
+        <div class="topbar">
+
+            <button
+                id="toggle-btn"
+                class="menu-button"
+                type="button"
+                aria-label="Open navigation"
+            >
+
+                <i class="fas fa-bars"></i>
+
+            </button>
+
+
+            <div class="portal-pill">
+
+                <i class="fas fa-clipboard-check"></i>
+
+                My Task Workspace
+
+            </div>
+
+        </div>
+
+
+        <!-- PAGE HEADER -->
+
+        <section class="page-header">
+
+            <div>
+
+                <div class="page-badge">
+
+                    <i class="fas fa-list-check"></i>
+
+                    WORKFORCE TASKS
+
+                </div>
+
+
+                <h1 class="page-title">
+
+                    My Tasks
+
+                </h1>
+
+
+                <p class="page-subtitle">
+
+                    Manage your personal tasks, review assigned
+                    work, provide progress updates, and communicate
+                    with administrators.
+
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- WELCOME BAR -->
+
+        <div class="welcome-bar">
+
+            <div class="welcome-icon">
+
+                <i class="fas fa-circle-info"></i>
+
+            </div>
+
+
+            <div>
+
+                <div class="welcome-title">
+
+                    Stay on top of your work
+
+                </div>
+
+
+                <div class="welcome-text">
+
+                    Use this workspace to create your own tasks,
+                    work through assignments, update your progress,
+                    and keep all task discussions in one place.
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             TASK CARD
+             ================================================= -->
+
+        <div class="tasks-card">
+
+
+            <!-- CARD HEADER -->
+
+            <div class="card-header">
+
+                <div class="card-title-group">
+
+                    <div class="card-icon">
+
+                        <i class="fas fa-clipboard-list"></i>
+
+                    </div>
+
+
+                    <div>
+
+                        <h2 class="card-title">
+
+                            My Work
+
+                        </h2>
+
+
+                        <p class="card-description">
+
+                            Your personal and assigned tasks
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="text-xs text-slate-400 hidden sm:block"
+                >
+
+                    <i
+                        class="fas fa-arrows-left-right mr-1"
+                    ></i>
+
+                    Swipe or scroll table
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 CREATE PERSONAL TASK
+                 ================================================= -->
+
+            <section class="create-section">
+
+                <div class="create-heading">
+
+                    <i class="fas fa-plus-circle"></i>
+
+                    Create a Personal Task
+
+                </div>
+
+
+                <form
+                    method="POST"
+                    action="/tasks/create"
+                    class="create-form"
+                >
+
+
+                    <input
+                        type="text"
+                        name="title"
+                        placeholder="Task title"
+                        required
+                        class="field"
+                    >
+
+
+                    <input
+                        type="date"
+                        name="deadline"
+                        class="field"
+                    >
+
+
+                    <button
+                        type="submit"
+                        class="create-button"
+                    >
+
+                        <i class="fas fa-plus"></i>
+
+                        Add Task
+
+                    </button>
+
+
+                    <textarea
+                        name="description"
+                        placeholder="Describe the task, expected outcome, or any important details..."
+                        class="field description-field"
+                    ></textarea>
+
+
+                </form>
+
+            </section>
+
+
+            <!-- =================================================
+                 TASK TABLE
+                 ================================================= -->
+
+            {% if tasks %}
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Task
+                            </th>
+
+                            <th>
+                                Deadline
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                            <th>
+                                Type
+                            </th>
+
+                            <th>
+                                Discussion
+                            </th>
+
+                            <th>
+                                Actions
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+
+                    {% for task in tasks %}
+
+                    <tr
+                        data-task-row="{{ task.id }}"
+                    >
+
+
+                        <!-- TASK -->
+
+                        <td>
+
+                            <div class="task-title">
+
+                                {{ task.title }}
 
                             </div>
 
-                            <!-- DISCUSSION -->
-                            <td class="min-w-[420px]">
 
-                                <div class="space-y-3">
-                            
-                                    {% macro render_comment(comment, level=0) %}
+                            {% if task.description %}
 
-                                        <div class="border rounded-xl p-3 bg-white shadow-sm ml-{{ level * 6 }}">
-                                    
-                                            <!-- HEADER -->
-                                            <div class="flex items-center justify-between">
-                                    
-                                                <div class="font-semibold
-                                                    {% if comment.sender_role == 'admin' %}
-                                                        text-purple-700
-                                                    {% else %}
-                                                        text-green-700
-                                                    {% endif %}
-                                                ">
-                                                    {{ comment.sender_role|capitalize }}
-                                                </div>
-                                    
-                                                <div class="text-xs text-gray-400">
-                                                    {{ comment.created_at[:16] }}
-                                                </div>
-                                    
-                                            </div>
-                                    
-                                            <!-- MESSAGE -->
-                                            {% if comment.comment_type == 'note' %}
-                                    
-                                                <div class="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg mt-2">
-                                    
-                                                    <div class="text-xs font-semibold mb-1">
-                                                        Progress Update
-                                                    </div>
-                                    
-                                                    {{ comment.message }}
-                                    
-                                                </div>
-                                    
-                                            {% else %}
-                                    
-                                                <div class="text-gray-700 mt-2">
-                                                    {{ comment.message }}
-                                                </div>
-                                    
-                                            {% endif %}
-                                    
-                                            <!-- SHOW REPLY FORM ONLY IF -->
-                                            <!-- ADMIN COMMENT -->
-                                            <!-- OR ADMIN ALREADY REPLIED -->
-                                            {% set show_reply = false %}
-                                    
-                                            {% if comment.sender_role == 'admin' %}
-                                                {% set show_reply = true %}
-                                            {% endif %}
-                                    
-                                            {% for child in comment.children %}
-                                                {% if child.sender_role == 'admin' %}
-                                                    {% set show_reply = true %}
-                                                {% endif %}
-                                            {% endfor %}
-                                    
-                                            {% if show_reply %}
-                                    
-                                            <form method="POST"
-                                                action="/reply_task/{{ task.id }}"
-                                                class="mt-3">
-                                    
-                                                <input type="hidden"
-                                                    name="parent_comment_id"
-                                                    value="{{ comment.id }}">
-                                    
-                                                <textarea name="reply"
-                                                        rows="1"
-                                                        class="w-full border rounded-lg p-2 text-sm"
-                                                        placeholder="Reply..."></textarea>
-                                    
-                                                <button class="mt-1 text-xs bg-gray-200 px-3 py-1 rounded-lg hover:bg-gray-300">
-                                                    Reply
-                                                </button>
-                                    
-                                            </form>
-                                    
-                                            {% endif %}
-                                    
-                                        </div>
-                            
-                                        <!-- CHILD COMMENTS -->
-                                        {% for child in comment.children %}
-                                            {{ render_comment(child, level + 1) }}
-                                        {% endfor %}
-                            
-                                    {% endmacro %}
-                            
-                                    <!-- ROOT COMMENTS -->
-                                    {% for comment in task.comments %}
+                                <div class="task-description">
 
-                                        {% if comment.visibility == 'public' %}
-                                    
-                                            {{ render_comment(comment) }}
-                                    
-                                        {% endif %}
-                                    
-                                    {% endfor %}
-                            
-                                    {% if task.comments|length == 0 %}
-                                        <div class="text-gray-400 text-sm">
-                                            No discussion yet
-                                        </div>
-                                    {% endif %}
-                            
+                                    {{ task.description }}
+
                                 </div>
-                            
-                            </td>
 
-                            <!-- ACTION -->
-                            <td class="space-x-2">
+                            {% else %}
 
-                                {% if task.status == "Pending" %}
-                                <a href="/start_task/{{ task.id }}">
-                                    <button class="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs">
+                                <div
+                                    class="
+                                        task-description
+                                        italic
+                                    "
+                                >
+
+                                    No description provided.
+
+                                </div>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- DEADLINE -->
+
+                        <td>
+
+                            {% if task.deadline %}
+
+                                <div class="deadline">
+
+                                    <i
+                                        class="fas fa-calendar-day"
+                                    ></i>
+
+                                    {{ task.deadline }}
+
+                                </div>
+
+
+                                {% if
+                                    task.carried_forward == 1
+                                %}
+
+                                    <div
+                                        class="carried-badge"
+                                    >
+
+                                        <i
+                                            class="fas fa-rotate-right"
+                                        ></i>
+
+                                        Carried Forward
+
+                                    </div>
+
+                                {% endif %}
+
+                            {% else %}
+
+                                <span
+                                    class="
+                                        text-xs
+                                        text-slate-400
+                                    "
+                                >
+
+                                    No deadline
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- STATUS -->
+
+                        <td>
+
+                            {% if task.status == "Pending" %}
+
+                                <span
+                                    class="
+                                        status-badge
+                                        status-pending
+                                    "
+                                >
+
+                                    <i
+                                        class="fas fa-clock"
+                                    ></i>
+
+                                    Pending
+
+                                </span>
+
+
+                            {% elif
+                                task.status == "In Progress"
+                            %}
+
+                                <span
+                                    class="
+                                        status-badge
+                                        status-progress
+                                    "
+                                >
+
+                                    <i
+                                        class="fas fa-spinner"
+                                    ></i>
+
+                                    In Progress
+
+                                </span>
+
+
+                            {% else %}
+
+                                <span
+                                    class="
+                                        status-badge
+                                        status-completed
+                                    "
+                                >
+
+                                    <i
+                                        class="fas fa-check"
+                                    ></i>
+
+                                    Completed
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- TYPE -->
+
+                        <td>
+
+                            {% if
+                                task.created_by
+                                == task.assigned_to
+                            %}
+
+                                <span
+                                    class="
+                                        status-badge
+                                        type-self
+                                    "
+                                >
+
+                                    <i
+                                        class="fas fa-user"
+                                    ></i>
+
+                                    Self
+
+                                </span>
+
+                            {% else %}
+
+                                <span
+                                    class="
+                                        status-badge
+                                        type-assigned
+                                    "
+                                >
+
+                                    <i
+                                        class="fas fa-user-plus"
+                                    ></i>
+
+                                    Assigned
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                    <!-- =====================================================
+                        DISCUSSION
+                        ===================================================== -->
+
+                        <td class="discussion-cell">
+
+                            <div
+                                class="discussion-stack"
+                                data-task-discussion="{{ task.id }}"
+                            >
+                        
+                                <!-- DISCUSSION HEADER -->
+                        
+                                <div class="discussion-header">
+                        
+                                    <div class="discussion-title">
+                        
+                                        <i class="far fa-comments"></i>
+                        
+                                        Discussion
+                        
+                                    </div>
+                        
+                        
+                                    <span class="discussion-count">
+                        
+                                        {{ task.comments|length }}
+                        
+                                    </span>
+                        
+                                </div>
+                        
+                        
+                                <!-- LATEST COMMENT PREVIEW -->
+                        
+                                <div class="discussion-preview">
+                        
+                                    <div class="discussion-preview-label">
+                        
+                                        Latest conversation
+                        
+                                    </div>
+                        
+                        
+                                    <div class="discussion-preview-text">
+                        
+                                        {% if task.comments|length > 0 %}
+                        
+                                            {{ task.comments[0].message }}
+                        
+                                        {% else %}
+                        
+                                            No discussion yet.
+                        
+                                        {% endif %}
+                        
+                                    </div>
+                        
+                                </div>
+                        
+                        
+                                <!-- SHOW / HIDE BUTTON -->
+                        
+                                <button
+                                    type="button"
+                                    class="discussion-toggle"
+                                >
+                        
+                                    <i class="fas fa-chevron-down"></i>
+                        
+                                    <span class="toggle-text">
+                                        Show Discussion
+                                    </span>
+                        
+                                </button>
+                        
+                        
+                                <!-- DISCUSSION BODY -->
+                        
+                                <div class="discussion-body">
+                        
+                        
+                                    {% macro render_comment(comment, level=0) %}
+                        
+                                        <div
+                                            class="comment-node"
+                                            data-comment-id="{{ comment.id }}"
+                                        >
+                        
+                        
+                                            <!-- COMMENT -->
+                        
+                                            <div
+                                                class="
+                                                    comment-wrap
+                                                    comment-level-{{ [level, 3]|min }}
+                                                "
+                                                style="
+                                                    {% if level < 3 %}
+                                                        margin-left: {{ level * 16 }}px;
+                                                    {% endif %}
+                                                "
+                                            >
+                        
+                        
+                                                <div
+                                                    class="
+                                                        comment
+                                                        {% if comment.sender_role == 'admin' %}
+                                                            admin-comment
+                                                        {% else %}
+                                                            employee-comment
+                                                        {% endif %}
+                                                    "
+                                                >
+                        
+                        
+                                                    <!-- COMMENT HEADER -->
+                        
+                                                    <div class="comment-head">
+                        
+                                                        <div
+                                                            class="
+                                                                comment-role
+                                                                {% if comment.sender_role == 'admin' %}
+                                                                    comment-admin
+                                                                {% else %}
+                                                                    comment-employee
+                                                                {% endif %}
+                                                            "
+                                                        >
+                        
+                                                            {% if
+                                                                comment.sender_role == 'admin'
+                                                            %}
+                        
+                                                                <i
+                                                                    class="
+                                                                        fas
+                                                                        fa-shield-halved
+                                                                        mr-1
+                                                                    "
+                                                                ></i>
+                        
+                                                                Admin
+                        
+                                                            {% else %}
+                        
+                                                                <i
+                                                                    class="
+                                                                        fas
+                                                                        fa-user
+                                                                        mr-1
+                                                                    "
+                                                                ></i>
+                        
+                                                                Employee
+                        
+                                                            {% endif %}
+                        
+                                                        </div>
+                        
+                        
+                                                        <!-- DATE -->
+                        
+                                                        <div class="comment-date">
+                        
+                                                            {% if comment.created_at %}
+                        
+                                                                {% if
+                                                                    comment.created_at.strftime
+                                                                    is defined
+                                                                %}
+                        
+                                                                    {{
+                                                                        comment.created_at.strftime(
+                                                                            '%d %b %Y, %I:%M %p'
+                                                                        )
+                                                                    }}
+                        
+                                                                {% else %}
+                        
+                                                                    {{ comment.created_at }}
+                        
+                                                                {% endif %}
+                        
+                                                            {% else %}
+                        
+                                                                —
+                        
+                                                            {% endif %}
+                        
+                                                        </div>
+                        
+                                                    </div>
+                        
+                        
+                                                    <!-- MESSAGE -->
+                        
+                                                    {% if
+                                                        comment.comment_type == 'note'
+                                                    %}
+                        
+                                                        <div class="progress-note">
+                        
+                                                            <div
+                                                                class="progress-note-label"
+                                                            >
+                        
+                                                                <i
+                                                                    class="
+                                                                        fas
+                                                                        fa-chart-line
+                                                                        mr-1
+                                                                    "
+                                                                ></i>
+                        
+                                                                Progress Update
+                        
+                                                            </div>
+                        
+                        
+                                                            {{ comment.message }}
+                        
+                                                        </div>
+                        
+                                                    {% else %}
+                        
+                                                        <div class="comment-message">
+                        
+                                                            {{ comment.message }}
+                        
+                                                        </div>
+                        
+                                                    {% endif %}
+                        
+                        
+                                                    <!-- REPLY BUTTON -->
+                        
+                                                    <button
+                                                        type="button"
+                                                        class="reply-trigger"
+                                                    >
+                        
+                                                        <i
+                                                            class="fas fa-reply"
+                                                        ></i>
+                        
+                                                        Reply
+                        
+                                                    </button>
+                        
+                        
+                                                    <!-- INLINE REPLY -->
+                        
+                                                    <div class="inline-reply">
+                        
+                                                        <form
+                                                            method="POST"
+                                                            action="/reply_task/{{ task.id }}"
+                                                            class="inline-reply-form"
+                                                        >
+                        
+                                                            <input
+                                                                type="hidden"
+                                                                name="parent_comment_id"
+                                                                value="{{ comment.id }}"
+                                                            >
+                        
+                        
+                                                            <!-- REPLY TARGET -->
+                        
+                                                            <div
+                                                                class="
+                                                                    comment-reply-target
+                                                                "
+                                                            >
+                        
+                                                                <strong>
+                        
+                                                                    <i
+                                                                        class="
+                                                                            fas
+                                                                            fa-reply
+                                                                            mr-1
+                                                                        "
+                                                                    ></i>
+                        
+                                                                    Replying to this comment
+                        
+                                                                </strong>
+                        
+                        
+                                                                <div
+                                                                    class="quoted-text"
+                                                                >
+                        
+                                                                    “{{ comment.message }}”
+                        
+                                                                </div>
+                        
+                                                            </div>
+                        
+                        
+                                                            <!-- REPLY TEXT -->
+                        
+                                                            <textarea
+                                                                name="reply"
+                                                                rows="2"
+                                                                placeholder="Write your reply..."
+                                                                required
+                                                                class="reply-textarea"
+                                                            ></textarea>
+                        
+                        
+                                                            <!-- REPLY ACTIONS -->
+                        
+                                                            <div
+                                                                class="
+                                                                    inline-reply-actions
+                                                                "
+                                                            >
+                        
+                                                                <button
+                                                                    type="button"
+                                                                    class="cancel-reply"
+                                                                >
+                        
+                                                                    Cancel
+                        
+                                                                </button>
+                        
+                        
+                                                                <button
+                                                                    type="submit"
+                                                                    class="send-reply"
+                                                                >
+                        
+                                                                    <i
+                                                                        class="
+                                                                            fas
+                                                                            fa-paper-plane
+                                                                        "
+                                                                    ></i>
+                        
+                                                                    Send Reply
+                        
+                                                                </button>
+                        
+                                                            </div>
+                        
+                                                        </form>
+                        
+                                                    </div>
+                        
+                                                </div>
+                        
+                                            </div>
+                        
+                        
+                                            <!-- CHILD COMMENTS -->
+                        
+                                            {% if comment.children %}
+                        
+                                                <div
+                                                    class="comment-children"
+                                                >
+                        
+                                                    {% for child
+                                                        in comment.children
+                                                    %}
+                        
+                                                        {{
+                                                            render_comment(
+                                                                child,
+                                                                level + 1
+                                                            )
+                                                        }}
+                        
+                                                    {% endfor %}
+                        
+                                                </div>
+                        
+                                            {% endif %}
+                        
+                        
+                                        </div>
+                        
+                                    {% endmacro %}
+                        
+                        
+                                    <!-- ROOT COMMENTS -->
+                        
+                                    {% for comment
+                                        in task.comments
+                                    %}
+                        
+                                        {% if
+                                            comment.visibility != 'private'
+                                        %}
+                        
+                                            {{
+                                                render_comment(
+                                                    comment,
+                                                    0
+                                                )
+                                            }}
+                        
+                                        {% endif %}
+                        
+                                    {% endfor %}
+                        
+                        
+                                    <!-- NO DISCUSSION -->
+                        
+                                    {% if
+                                        task.comments|length == 0
+                                    %}
+                        
+                                        <div
+                                            class="empty-discussion"
+                                        >
+                        
+                                            <i
+                                                class="
+                                                    far
+                                                    fa-comment-dots
+                                                    mr-1
+                                                "
+                                            ></i>
+                        
+                                            No discussion yet.
+                        
+                                        </div>
+                        
+                                    {% endif %}
+                        
+                                </div>
+                        
+                        
+                                <!-- START / ADD DISCUSSION -->
+                        
+                                <div
+                                    class="start-discussion"
+                                >
+                        
+                                    <div
+                                        class="start-discussion-label"
+                                    >
+                        
+                                        <i
+                                            class="fas fa-message"
+                                        ></i>
+                        
+                        
+                                        {% if
+                                            task.comments|length == 0
+                                        %}
+                        
+                                            Start Discussion
+                        
+                                        {% else %}
+                        
+                                            Add to Discussion
+                        
+                                        {% endif %}
+                        
+                                    </div>
+                        
+                        
+                                    <form
+                                        method="POST"
+                                        action="/reply_task/{{ task.id }}"
+                                        class="reply-form"
+                                    >
+                        
+                                        <textarea
+                                            name="reply"
+                                            rows="2"
+                                            placeholder="
+                                                Write an update, question,
+                                                clarification, or response...
+                                            "
+                                            required
+                                        ></textarea>
+                        
+                        
+                                        <button
+                                            type="submit"
+                                            class="reply-button"
+                                        >
+                        
+                                            <i
+                                                class="
+                                                    fas
+                                                    fa-paper-plane
+                                                    mr-1
+                                                "
+                                            ></i>
+                        
+                                            Post to Discussion
+                        
+                                        </button>
+                        
+                                    </form>
+                        
+                                </div>
+                        
+                            </div>
+                        
+                        </td>
+
+
+                        <!-- ACTIONS -->
+
+                        <td>
+
+                            <div class="action-stack">
+
+
+                                <!-- START -->
+
+                                {% if
+                                    task.status == "Pending"
+                                %}
+
+                                    <a
+                                        href="/start_task/{{ task.id }}"
+                                        class="
+                                            action-button
+                                            action-start
+                                        "
+                                    >
+
+                                        <i
+                                            class="fas fa-play"
+                                        ></i>
+
                                         Start
-                                    </button>
-                                </a>
+
+                                    </a>
+
                                 {% endif %}
 
-                                {% if task.status != "Completed" %}
-                                <a href="/complete_task/{{ task.id }}">
-                                    <button class="bg-green-600 text-white px-3 py-1 rounded-lg text-xs">
+
+                                <!-- COMPLETE -->
+
+                                {% if
+                                    task.status != "Completed"
+                                %}
+
+                                    <a
+                                        href="/complete_task/{{ task.id }}"
+                                        class="
+                                            action-button
+                                            action-complete
+                                        "
+                                    >
+
+                                        <i
+                                            class="fas fa-check"
+                                        ></i>
+
                                         Complete
-                                    </button>
-                                </a>
+
+                                    </a>
+
                                 {% endif %}
+
+
+                                <!-- EDIT -->
 
                                 <button
-                                    onclick="openEdit('{{ task.id }}','{{ task.title }}','{{ task.description }}')"
-                                    class="bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs">
+    type="button"
+    class="action-button action-edit edit-task-button"
+    data-task-id="{{ task.id }}"
+    data-task-title="{{ task.title|e }}"
+    data-task-description="{{ task.description|default('', true)|e }}"
+>
+    <i class="fas fa-pen"></i>
+    Edit
+</button>
 
-                                    Edit
 
-                                </button>
+                                <!-- DELETE -->
 
-                                <a href="/delete_task/{{ task.id }}"
-                                    onclick="return confirm('Delete this task?')">
+                                <a
+                                    href="/delete_task/{{ task.id }}"
+                                    class="
+                                        action-button
+                                        action-delete
+                                    "
+                                >
 
-                                    <button class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs">
+                                    <i
+                                        class="fas fa-trash"
+                                    ></i>
 
-                                        Delete
-
-                                    </button>
+                                    Delete
 
                                 </a>
 
-                            </td>
-  
-                          </tr>
-                          {% endfor %}
-  
-                          </tbody>
-  
-                      </table>
-  
-                  </div>
-  
-                  {% else %}
-  
-                  <p class="text-center text-gray-400 italic py-6">
-                      No tasks yet. Create your first task 🚀
-                  </p>
-  
-                  {% endif %}
-  
-              </div>
-  
-          </div>
-  
-      </div>
-  
-  </div>
-  
-  
-  <!-- FONT AWESOME -->
-  <link rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  
-  
-  <!-- SIDEBAR TOGGLE -->
-  <script>
-  
-  const sidebar = document.getElementById("sidebar");
-  const main = document.getElementById("main");
-  
-  document.getElementById("toggle-btn").onclick = () => {
-  
-      sidebar.classList.toggle("collapsed");
-      main.classList.toggle("expanded");
-  
-  };
-  
-  </script>
+
+                            </div>
+
+                        </td>
+
+
+                    </tr>
+
+                    {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+            {% else %}
+
+
+            <!-- EMPTY STATE -->
+
+            <div class="empty-state">
+
+                <div class="empty-icon">
+
+                    <i
+                        class="fas fa-clipboard-list"
+                    ></i>
+
+                </div>
+
+
+                <h3>
+
+                    No Tasks Yet
+
+                </h3>
+
+
+                <p>
+
+                    Create your first personal task
+                    using the form above.
+
+                </p>
+
+            </div>
+
+
+            {% endif %}
+
+
+        </div>
+
+
+        <!-- FOOTER -->
+
+        <div class="page-footer">
+
+            <i
+                class="fas fa-lock mr-1"
+            ></i>
+
+            SALT Workforce Portal · My Tasks
+
+        </div>
+
+
+    </div>
+
+</main>
+```
+
+</div>
+
+<!-- =========================================================
+     EDIT MODAL
+     ========================================================= -->
+
+<div
+    id="editModal"
+    class="modal-overlay"
+>
+
+
+<div
+    class="edit-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="editModalTitle"
+>
+
+
+    <div class="modal-header">
+
+        <div
+            id="editModalTitle"
+            class="modal-title"
+        >
+
+            <i
+                class="fas fa-pen-to-square"
+            ></i>
+
+            Edit Task
+
+        </div>
+
+
+        <button
+            type="button"
+            class="modal-close"
+            onclick="closeEdit()"
+            aria-label="Close"
+        >
+
+            <i
+                class="fas fa-xmark"
+            ></i>
+
+        </button>
+
+    </div>
+
+
+    <form
+        id="editTaskForm"
+    >
+
+
+        <div class="mb-4">
+
+            <label
+                class="
+                    block
+                    text-xs
+                    font-bold
+                    text-slate-600
+                    mb-2
+                "
+                for="editTitle"
+            >
+
+                Task Title
+
+            </label>
+
+
+            <input
+                type="text"
+                id="editTitle"
+                name="title"
+                required
+                class="field"
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label
+                class="
+                    block
+                    text-xs
+                    font-bold
+                    text-slate-600
+                    mb-2
+                "
+                for="editDescription"
+            >
+
+                Description
+
+            </label>
+
+
+            <textarea
+                id="editDescription"
+                name="description"
+                rows="5"
+                class="field"
+            ></textarea>
+
+        </div>
+
+
+        <div class="modal-footer">
+
+            <button
+                type="button"
+                class="modal-cancel"
+                onclick="closeEdit()"
+            >
+
+                Cancel
+
+            </button>
+
+
+            <button
+                type="submit"
+                class="modal-save"
+            >
+
+                <i
+                    class="fas fa-save mr-1"
+                ></i>
+
+                Save Changes
+
+            </button>
+
+        </div>
+
+
+    </form>
+
+</div>
+
+
+</div>
+
+<!-- =========================================================
+     TOAST
+     ========================================================= -->
+
+<div
+    id="toast"
+    class="toast"
+>
+
+<i
+    id="toastIcon"
+    class="fas fa-circle-check"
+></i>
+
+
+<span
+    id="toastMessage"
+></span>
+
+
+</div>
+
+<!-- =========================================================
+     JAVASCRIPT
+     ========================================================= -->
+
+<script>
+
+let editingTaskId = null;
+
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const sidebar =
+            document.getElementById(
+                "sidebar"
+            );
+
+
+        const toggleBtn =
+            document.getElementById(
+                "toggle-btn"
+            );
+
+
+        if (
+            !sidebar ||
+            !toggleBtn
+        ) {
+
+            return;
+
+        }
+
+
+        /*
+         * Open / close mobile sidebar
+         */
+
+        toggleBtn.addEventListener(
+            "click",
+            function (event) {
+
+                event.stopPropagation();
+
+
+                if (
+                    window.innerWidth <= 900
+                ) {
+
+                    sidebar.classList.toggle(
+                        "mobile-open"
+                    );
+
+                }
+
+            }
+        );
+
+
+        /*
+         * Close mobile sidebar
+         * when clicking outside
+         */
+
+        document.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    window.innerWidth > 900
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    sidebar.contains(
+                        event.target
+                    )
+                    ||
+                    toggleBtn.contains(
+                        event.target
+                    )
+                ) {
+
+                    return;
+
+                }
+
+
+                sidebar.classList.remove(
+                    "mobile-open"
+                );
+
+            }
+        );
+
+
+        /*
+         * Close after selecting
+         * a navigation link
+         */
+
+        sidebar
+            .querySelectorAll("a")
+            .forEach(
+                function (link) {
+
+                    link.addEventListener(
+                        "click",
+                        function () {
+
+                            if (
+                                window.innerWidth <= 900
+                            ) {
+
+                                sidebar.classList.remove(
+                                    "mobile-open"
+                                );
+
+                            }
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+);
+
+
+/* =========================================================
+   PRESERVE TASK SCROLL POSITION FOR NAVIGATION ACTIONS
+   ========================================================= */
+
+/* =========================================================
+   START / COMPLETE / DELETE — KEEP SCROLL POSITION
+   ========================================================= */
+
+document.addEventListener("click", function (event) {
+
+    const actionLink = event.target.closest(
+        'a[href*="/start_task/"], a[href*="/complete_task/"], a[href*="/delete_task/"]'
+    );
+
+    if (!actionLink) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const href = actionLink.getAttribute("href");
+
+    if (!href) {
+        return;
+    }
+
+    const isDelete = href.includes("/delete_task/");
+
+    if (isDelete) {
+
+        const confirmed = window.confirm(
+            "Are you sure you want to delete this task?"
+        );
+
+        if (!confirmed) {
+            return;
+        }
+    }
+
+    const originalHTML = actionLink.innerHTML;
+
+    actionLink.style.pointerEvents = "none";
+    actionLink.style.opacity = "0.65";
+    actionLink.setAttribute("aria-busy", "true");
+
+    if (isDelete) {
+
+        actionLink.innerHTML = `
+            <i class="fas fa-spinner fa-spin"></i>
+            Deleting...
+        `;
+
+    } else if (href.includes("/start_task/")) {
+
+        actionLink.innerHTML = `
+            <i class="fas fa-spinner fa-spin"></i>
+            Starting...
+        `;
+
+    } else {
+
+        actionLink.innerHTML = `
+            <i class="fas fa-spinner fa-spin"></i>
+            Completing...
+        `;
+    }
+
+    /* Remember the exact vertical position before the action. */
+    sessionStorage.setItem(
+        "taskScrollPosition",
+        String(window.scrollY)
+    );
+
+    fetch(href, {
+        method: "GET",
+        headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "text/html,application/json"
+        },
+        credentials: "same-origin",
+        redirect: "follow"
+    })
+    .then(function (response) {
+
+        if (!response.ok) {
+            throw new Error(
+                "The task action could not be completed."
+            );
+        }
+
+        /*
+         * The existing Flask routes redirect back to /tasks.
+         * We intentionally reload once the server has completed
+         * the action, then restore the exact previous position.
+         */
+        window.location.reload();
+    })
+    .catch(function (error) {
+
+        console.error("TASK ACTION ERROR:", error);
+
+        actionLink.innerHTML = originalHTML;
+        actionLink.style.pointerEvents = "";
+        actionLink.style.opacity = "";
+        actionLink.removeAttribute("aria-busy");
+
+        sessionStorage.removeItem("taskScrollPosition");
+
+        if (typeof showToast === "function") {
+            showToast(
+                "error",
+                error.message || "Unable to complete task action."
+            );
+        } else {
+            alert(
+                error.message || "Unable to complete task action."
+            );
+        }
+    });
+});
+
+
+/* =========================================================
+   RESTORE TASK SCROLL POSITION
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const savedPosition =
+        sessionStorage.getItem("taskScrollPosition");
+
+    if (savedPosition === null) {
+        return;
+    }
+
+    sessionStorage.removeItem("taskScrollPosition");
+
+    const position = parseInt(savedPosition, 10);
+
+    if (Number.isNaN(position)) {
+        return;
+    }
+
+    /* Wait for the table/discussions to finish rendering. */
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+
+            window.scrollTo({
+                top: position,
+                left: 0,
+                behavior: "auto"
+            });
+
+        });
+    });
+});
+
+
+/* =========================================================
+   EDIT TASK
+   ========================================================= */
+
+function openEdit(id, title, description) {
+
+    editingTaskId = String(id);
+
+    const modal = document.getElementById("editModal");
+    const titleInput = document.getElementById("editTitle");
+    const descriptionInput = document.getElementById("editDescription");
+
+    if (!modal || !titleInput || !descriptionInput) {
+        console.error("Edit modal elements were not found.");
+        return;
+    }
+
+    titleInput.value = title || "";
+    descriptionInput.value = description || "";
+
+    modal.classList.add("show");
+    document.body.classList.add("modal-open");
+
+    setTimeout(function () {
+        titleInput.focus();
+        titleInput.select();
+    }, 100);
+}
+
+
+/*
+ * Edit button handler.
+ * Uses event delegation so the button does not depend on
+ * inline onclick JavaScript.
+ */
+document.addEventListener("click", function (event) {
+
+    const editButton = event.target.closest(".edit-task-button");
+
+    if (!editButton) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    openEdit(
+        editButton.dataset.taskId,
+        editButton.dataset.taskTitle || "",
+        editButton.dataset.taskDescription || ""
+    );
+});
+
+
+/* =========================================================
+   CLOSE EDIT
+   ========================================================= */
+
+function closeEdit() {
+
+    editingTaskId = null;
+
+    const modal = document.getElementById("editModal");
+    const form = document.getElementById("editTaskForm");
+
+    if (modal) {
+        modal.classList.remove("show");
+    }
+
+    document.body.classList.remove("modal-open");
+
+    if (form) {
+        form.reset();
+    }
+}
+
+
+/* =========================================================
+   EDIT FORM SUBMIT
+   ========================================================= */
+
+const editTaskForm = document.getElementById("editTaskForm");
+
+if (editTaskForm) {
+
+    editTaskForm.addEventListener(
+        "submit",
+        async function (event) {
+
+            event.preventDefault();
+
+            if (!editingTaskId) {
+
+                showToast(
+                    "error",
+                    "No task selected."
+                );
+
+                return;
+            }
+
+            const title =
+                document.getElementById("editTitle")
+                    .value
+                    .trim();
+
+            const description =
+                document.getElementById("editDescription")
+                    .value
+                    .trim();
+
+            if (!title) {
+
+                showToast(
+                    "error",
+                    "Please enter a task title."
+                );
+
+                return;
+            }
+
+            const saveButton =
+                this.querySelector(".modal-save");
+
+            saveButton.disabled = true;
+
+            saveButton.innerHTML = `
+                <i class="fas fa-spinner fa-spin mr-1"></i>
+                Saving...
+            `;
+
+            const scrollPosition = window.scrollY;
+
+            try {
+
+                const response = await fetch(
+                    `/edit_task/${encodeURIComponent(editingTaskId)}`,
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                            "X-Requested-With": "XMLHttpRequest"
+                        },
+
+                        body: JSON.stringify({
+                            title: title,
+                            description: description
+                        })
+                    }
+                );
+
+                const responseText =
+                    await response.text();
+
+                let data;
+
+                try {
+
+                    data =
+                        responseText
+                            ? JSON.parse(responseText)
+                            : {};
+
+                } catch (jsonError) {
+
+                    console.error(
+                        "Edit task server response:",
+                        responseText
+                    );
+
+                    throw new Error(
+                        "The server returned an invalid response."
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    data.status !== "success"
+                ) {
+
+                    throw new Error(
+                        data.message ||
+                        "Unable to update task."
+                    );
+                }
+
+                /*
+                 * Preserve the exact page position after
+                 * the successful reload.
+                 */
+                sessionStorage.setItem(
+                    "taskScrollPosition",
+                    String(scrollPosition)
+                );
+
+                closeEdit();
+
+                window.location.reload();
+
+            } catch (error) {
+
+                console.error(
+                    "EDIT TASK ERROR:",
+                    error
+                );
+
+                showToast(
+                    "error",
+                    error.message ||
+                    "Unable to update task."
+                );
+
+            } finally {
+
+                saveButton.disabled = false;
+
+                saveButton.innerHTML = `
+                    <i class="fas fa-save mr-1"></i>
+                    Save Changes
+                `;
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   CLOSE MODAL WHEN CLICKING BACKDROP
+   ========================================================= */
+
+document.addEventListener(
+    "click",
+    function (event) {
+
+        const modal =
+            document.getElementById(
+                "editModal"
+            );
+
+
+        if (
+            event.target === modal
+        ) {
+
+            closeEdit();
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   ESCAPE KEY
+   ========================================================= */
+
+document.addEventListener(
+    "keydown",
+    function (event) {
+
+        if (
+            event.key === "Escape"
+        ) {
+
+            const modal =
+                document.getElementById(
+                    "editModal"
+                );
+
+
+            if (
+                modal &&
+                modal.classList.contains("show")
+            ) {
+
+                closeEdit();
+
+            }
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+function showToast(
+    type,
+    message
+) {
+
+    const toast =
+        document.getElementById(
+            "toast"
+        );
+
+
+    const icon =
+        document.getElementById(
+            "toastIcon"
+        );
+
+
+    const messageElement =
+        document.getElementById(
+            "toastMessage"
+        );
+
+
+    toast.classList.remove(
+        "success",
+        "error",
+        "show"
+    );
+
+
+    if (
+        type === "success"
+    ) {
+
+        toast.classList.add(
+            "success"
+        );
+
+
+        icon.className =
+            "fas fa-circle-check";
+
+    } else {
+
+        toast.classList.add(
+            "error"
+        );
+
+
+        icon.className =
+            "fas fa-circle-exclamation";
+
+    }
+
+
+    messageElement.textContent =
+        message;
+
+
+    toast.classList.add(
+        "show"
+    );
+
+
+    setTimeout(
+        function () {
+
+            toast.classList.remove(
+                "show"
+            );
+
+        },
+        3500
+    );
+
+}
+
+
+/* =====================================================
+   COLLAPSIBLE DISCUSSIONS + EXACT REPLY TARGET
+   ===================================================== */
+
+function setupDiscussionUI() {
+
+    document.querySelectorAll(".discussion-stack").forEach(function(stack) {
+
+        const body = stack.querySelector(".discussion-body");
+        const toggle = stack.querySelector(".discussion-toggle");
+        const count = stack.querySelector(".discussion-count");
+
+        if (!body || !toggle) return;
+
+        const comments = body.querySelectorAll(".comment-node");
+
+        if (count) {
+            count.textContent = comments.length;
+        }
+
+        const previewText = stack.querySelector(".discussion-preview-text");
+
+        if (previewText && comments.length > 0) {
+            const firstMessage = comments[0].querySelector(".comment-message");
+
+            if (firstMessage && firstMessage.textContent.trim()) {
+                previewText.textContent =
+                    firstMessage.textContent.trim();
+            }
+        }
+
+        toggle.addEventListener("click", function() {
+
+            const open = body.classList.toggle("is-open");
+
+            toggle.classList.toggle("is-open", open);
+
+            toggle.querySelector(".toggle-text").textContent =
+                open ? "Hide Discussion" : "Show Discussion";
+
+            toggle.querySelector("i").className =
+                open
+                    ? "fas fa-chevron-up"
+                    : "fas fa-chevron-down";
+        });
+    });
+
+
+    /*
+     * Reply buttons
+     */
+    document.querySelectorAll(".reply-trigger").forEach(function(button) {
+
+        button.addEventListener("click", function() {
+
+            const node = button.closest(".comment-node");
+
+            if (!node) return;
+
+            const composer =
+                node.querySelector(".inline-reply");
+
+            if (!composer) return;
+
+            /*
+             * Close any other open reply composer.
+             */
+            document
+                .querySelectorAll(".inline-reply.is-open")
+                .forEach(function(other) {
+
+                    if (other !== composer) {
+                        other.classList.remove("is-open");
+
+                        const otherButton =
+                            other.closest(".comment-node")
+                                 ?.querySelector(".reply-trigger");
+
+                        if (otherButton) {
+                            otherButton.innerHTML =
+                                '<i class="fas fa-reply"></i> Reply';
+                        }
+                    }
+                });
+
+
+            const isOpen =
+                composer.classList.toggle("is-open");
+
+            if (isOpen) {
+
+                button.innerHTML =
+                    '<i class="fas fa-xmark"></i> Cancel Reply';
+
+                node.classList.add("comment-highlight");
+
+                setTimeout(function() {
+                    node.classList.remove("comment-highlight");
+                }, 1800);
+
+
+                const textarea =
+                    composer.querySelector("textarea");
+
+                if (textarea) {
+                    textarea.focus();
+                }
+
+            } else {
+
+                button.innerHTML =
+                    '<i class="fas fa-reply"></i> Reply';
+
+            }
+
+        });
+
+    });
+
+
+    /*
+     * Cancel reply buttons
+     */
+    document.querySelectorAll(".cancel-reply").forEach(function(button) {
+
+        button.addEventListener("click", function() {
+
+            const composer =
+                button.closest(".inline-reply");
+
+            if (!composer) return;
+
+            composer.classList.remove("is-open");
+
+            const node =
+                composer.closest(".comment-node");
+
+            const replyButton =
+                node?.querySelector(".reply-trigger");
+
+            if (replyButton) {
+                replyButton.innerHTML =
+                    '<i class="fas fa-reply"></i> Reply';
+            }
+
+            const textarea =
+                composer.querySelector("textarea");
+
+            if (textarea) {
+                textarea.value = "";
+            }
+
+        });
+
+    });
+
+
+    /*
+     * Automatically open the discussion when a reply
+     * composer is requested.
+     */
+    document.querySelectorAll(".discussion-body").forEach(function(body) {
+
+        body.addEventListener("click", function(event) {
+
+            const replyButton =
+                event.target.closest(".reply-trigger");
+
+            if (!replyButton) return;
+
+            if (!body.classList.contains("is-open")) {
+
+                body.classList.add("is-open");
+
+                const stack =
+                    body.closest(".discussion-stack");
+
+                const toggle =
+                    stack?.querySelector(".discussion-toggle");
+
+                if (toggle) {
+
+                    toggle.classList.add("is-open");
+
+                    toggle.querySelector(".toggle-text").textContent =
+                        "Hide Discussion";
+
+                    toggle.querySelector("i").className =
+                        "fas fa-chevron-up";
+                }
+            }
+
+        });
+
+    });
+
+}
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    setupDiscussionUI
+);
+
+
+
+    /* =========================================================
+    DISCUSSION SUBMIT — KEEP SCROLL POSITION
+    ========================================================= */
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        function () {
+
+            const discussionForms =
+                document.querySelectorAll(
+                    '.reply-form, .inline-reply-form'
+                );
+
+
+            discussionForms.forEach(
+                function (form) {
+
+                    form.addEventListener(
+                        "submit",
+                        async function (event) {
+
+                            event.preventDefault();
+
+
+                            /*
+                            * Remember exactly where the
+                            * user currently is.
+                            */
+
+                            const scrollY =
+                                window.scrollY;
+
+
+                            const formData =
+                                new FormData(form);
+
+
+                            const submitButton =
+                                form.querySelector(
+                                    'button[type="submit"]'
+                                );
+
+
+                            if (submitButton) {
+
+                                submitButton.disabled =
+                                    true;
+
+                                submitButton.dataset.originalText =
+                                    submitButton.innerHTML;
+
+                                submitButton.innerHTML = `
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    Sending...
+                                `;
+
+                            }
+
+
+                            try {
+
+                                const response =
+                                    await fetch(
+                                        form.action,
+                                        {
+                                            method: "POST",
+
+                                            body: formData,
+
+                                            headers: {
+                                                "X-Requested-With":
+                                                    "XMLHttpRequest",
+
+                                                "Accept":
+                                                    "application/json"
+                                            }
+                                        }
+                                    );
+
+
+                                if (!response.ok) {
+
+                                    throw new Error(
+                                        "Unable to post discussion."
+                                    );
+
+                                }
+
+
+                                /*
+                                * Instead of allowing Flask's
+                                * redirect to move us to the top,
+                                * reload the current page after
+                                * saving the scroll position.
+                                */
+
+                                sessionStorage.setItem(
+                                    "tasksScrollPosition",
+                                    String(scrollY)
+                                );
+
+
+                                window.location.reload();
+
+
+                            } catch (error) {
+
+                                console.error(
+                                    "Discussion error:",
+                                    error
+                                );
+
+
+                                alert(
+                                    "Unable to post your discussion. Please try again."
+                                );
+
+
+                                if (submitButton) {
+
+                                    submitButton.disabled =
+                                        false;
+
+                                    submitButton.innerHTML =
+                                        submitButton.dataset.originalText;
+
+                                }
+
+                            }
+
+                        }
+                    );
+
+                }
+            );
+
+        }
+    );
+
+
+    /* =========================================================
+    RESTORE SCROLL POSITION AFTER RELOAD
+    ========================================================= */
+
+    window.addEventListener(
+        "load",
+        function () {
+
+            const savedScroll =
+                sessionStorage.getItem(
+                    "tasksScrollPosition"
+                );
+
+
+            if (
+                savedScroll !== null
+            ) {
+
+                sessionStorage.removeItem(
+                    "tasksScrollPosition"
+                );
+
+
+                setTimeout(
+                    function () {
+
+                        window.scrollTo(
+                            0,
+                            parseInt(
+                                savedScroll,
+                                10
+                            )
+                        );
+
+                    },
+                    100
+                );
+
+            }
+
+        }
+    );
+
+</script>
 
 </body>
+
 </html>
