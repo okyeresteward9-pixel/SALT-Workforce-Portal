@@ -1503,28 +1503,31 @@ def admin_tasks():
             tasks.created_by,
             tasks.assigned_to,
             tasks.carried_forward,
+            tasks.task_scope,
+            tasks.created_at,
             employees.name AS employee_name
 
         FROM tasks
 
-        LEFT JOIN employees 
+        LEFT JOIN employees
         ON tasks.assigned_to = employees.id
-    """
 
+        WHERE
+            tasks.task_scope IN ('admin_board', 'personal')
+            OR tasks.task_scope IS NULL
+    """
 
 
     params = []
 
 
-
     if status:
 
         base_query += """
-            WHERE tasks.status=%s
+            AND tasks.status=%s
         """
 
         params.append(status)
-
 
 
     base_query += """
@@ -1532,12 +1535,10 @@ def admin_tasks():
     """
 
 
-
     c.execute(
         base_query,
         params
     )
-
 
     tasks = c.fetchall()
 
@@ -1579,7 +1580,6 @@ def admin_tasks():
     pending_count = c.fetchone()['count']
 
 
-
     c.execute("""
         SELECT COUNT(*) AS count
         FROM tasks
@@ -1587,7 +1587,6 @@ def admin_tasks():
     """)
 
     progress_count = c.fetchone()['count']
-
 
 
     c.execute("""
@@ -1599,13 +1598,14 @@ def admin_tasks():
     completed_count = c.fetchone()['count']
 
 
-
     conn.close()
 
 
+    # ----------------------------
+    # TODAY
+    # ----------------------------
 
-    today = date.today().isoformat()
-
+    today = date.today()
 
 
     return render_template(
@@ -1683,32 +1683,116 @@ def admin_reply_task(id):
 
     return redirect('/admin/tasks')
 
-@app.route('/delete_task/<int:task_id>')
+@app.route('/delete_task/<int:task_id>', methods=['POST'])
 def delete_task_route(task_id):
 
-    if 'role' not in session or session['role'] != 'admin':
-        return "Access Denied"
+    if 'user_id' not in session:
+        return jsonify({
+            "status": "error",
+            "message": "Please log in."
+        }), 401
 
+    if session.get('role') != 'admin':
+        return jsonify({
+            "status": "error",
+            "message": "Access Denied"
+        }), 403
 
     conn = get_db()
-    c = conn.cursor()
+
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
+
+    try:
+
+        # -----------------------------
+        # CHECK TASK
+        # -----------------------------
+
+        c.execute("""
+            SELECT id, title
+            FROM tasks
+            WHERE id=%s
+        """, (task_id,))
+
+        task = c.fetchone()
+
+        if not task:
+
+            conn.close()
+
+            return jsonify({
+                "status": "error",
+                "message": "Task not found."
+            }), 404
 
 
-    # 🔥 only delete admin board tasks
-    c.execute("""
-        DELETE FROM tasks
-        WHERE id=%s
-        AND task_scope='admin_board'
-    """,
-    (task_id,))
+        # -----------------------------
+        # DELETE COMMENTS
+        # -----------------------------
+
+        c.execute("""
+            DELETE FROM task_comments
+            WHERE task_id=%s
+        """, (task_id,))
 
 
-    conn.commit()
+        # -----------------------------
+        # DELETE TASK
+        # -----------------------------
 
-    conn.close()
+        c.execute("""
+            DELETE FROM tasks
+            WHERE id=%s
+        """, (task_id,))
 
 
-    return redirect('/admin/tasks')
+        if c.rowcount == 0:
+
+            conn.rollback()
+            conn.close()
+
+            return jsonify({
+                "status": "error",
+                "message": "Task could not be deleted."
+            }), 500
+
+
+        # -----------------------------
+        # COMMIT
+        # -----------------------------
+
+        conn.commit()
+
+        conn.close()
+
+
+        # -----------------------------
+        # JSON RESPONSE
+        # -----------------------------
+
+        return jsonify({
+            "status": "success",
+            "message": "Task deleted successfully.",
+            "task_id": task_id
+        }), 200
+
+
+    except Exception as e:
+
+        conn.rollback()
+        conn.close()
+
+        print(
+            "DELETE TASK ERROR:",
+            e
+        )
+
+        return jsonify({
+            "status": "error",
+            "message": "Unable to delete task."
+        }), 500
 
 @app.route('/admin/assign_task', methods=['GET','POST'])
 def assign_task():
@@ -3088,8 +3172,15 @@ def reply_task(id):
     ))
 
     conn.commit()
-
     conn.close()
+
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+
+        return jsonify({
+            "status": "success"
+        })
+
 
     return redirect("/tasks")
 
