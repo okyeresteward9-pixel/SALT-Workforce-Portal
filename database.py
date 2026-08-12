@@ -32,18 +32,42 @@ def allowed_file(filename):
 
 
 def get_db():
+
     database_url = os.environ.get("DATABASE_URL")
 
     if database_url:
-        return psycopg2.connect(
+
+        conn = psycopg2.connect(
             database_url,
             cursor_factory=RealDictCursor
         )
 
-    return psycopg2.connect(
-        host="localhost",
-        database="salt_portal",
-        user="salt_user",
-        password="ChooseAStrongpassword",
-        cursor_factory=RealDictCursor
+    else:
+
+        conn = psycopg2.connect(
+            host="localhost",
+            database="salt_portal",
+            user="salt_user",
+            password="ChooseAStrongpassword",
+            cursor_factory=RealDictCursor
+        )
+
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT
+            current_database() AS database_name,
+            current_user AS database_user,
+            current_schema() AS schema_name
+    """)
+
+    info = c.fetchone()
+
+    print(
+        "DATABASE CONNECTION:",
+        info
     )
+
+    c.close()
+
+    return conn
