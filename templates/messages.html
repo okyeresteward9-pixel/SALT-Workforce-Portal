@@ -15,6 +15,9 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
     <style>
 
         html,
@@ -36,13 +39,238 @@
 
     </style>
 
+
+<style>
+    /* =========================================================
+       SALTY CHAT UI UPGRADE
+       ========================================================= */
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    .user-item {
+        border: 1px solid transparent;
+    }
+
+    .user-item:hover {
+        border-color: #dbeafe;
+        transform: translateX(2px);
+    }
+
+    .user-item.active {
+        background: linear-gradient(
+            135deg,
+            #eff6ff,
+            #f8fbff
+        );
+        border-color: #bfdbfe;
+        box-shadow: inset 3px 0 0 #2563eb;
+    }
+
+    #users-list {
+        scrollbar-gutter: stable;
+    }
+
+    #users-list::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    #users-list::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 999px;
+    }
+
+    #search-users {
+        font-size: 14px;
+    }
+
+    #search-users::placeholder {
+        color: #9ca3af;
+    }
+
+    .search-wrapper {
+        position: relative;
+    }
+
+    .chat-header {
+        min-height: 78px;
+    }
+
+    #chat-box {
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    #chat-form {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    #message-input {
+        min-width: 0;
+    }
+
+    #preview-container {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    #typing-indicator {
+        min-height: 28px;
+        background: rgba(248,250,252,.92);
+    }
+
+    #edit-modal > div {
+        width: min(92vw, 430px);
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    @media (max-width: 767px) {
+
+        html,
+        body {
+            height: 100dvh;
+        }
+
+        #sidebar {
+            width: min(88vw, 360px);
+        }
+
+        main {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .chat-header {
+            min-height: 68px;
+            padding: 12px 14px !important;
+        }
+
+        .chat-header h2 {
+            max-width: 52vw;
+            font-size: 15px;
+        }
+
+        #chat-box {
+            padding: 14px !important;
+            gap: 12px !important;
+        }
+
+        #typing-indicator {
+            padding: 5px 14px !important;
+            font-size: 11px;
+        }
+
+        #chat-form {
+            gap: 7px;
+        }
+
+        #message-input {
+            font-size: 14px;
+        }
+
+        #emoji-btn {
+            font-size: 19px;
+            margin-right: 2px;
+        }
+
+        #file-input + * {
+            display: none;
+        }
+
+        #chat-form > label {
+            width: 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            background: #eff6ff;
+            font-size: 18px;
+        }
+
+        #chat-form > button[type="submit"] {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 42px;
+        }
+
+        #preview-container {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        #emoji-picker {
+            right: 12px !important;
+            bottom: 86px !important;
+            width: min(92vw, 330px) !important;
+        }
+
+        #edit-modal {
+            padding: 14px;
+        }
+    }
+
+    @media (max-width: 420px) {
+
+        #sidebar {
+            width: 92vw;
+        }
+
+        .chat-header .relative > div:first-child,
+        .chat-header .relative > div:first-child {
+            width: 42px !important;
+            height: 42px !important;
+        }
+
+        .chat-header .relative > div:last-child {
+            width: 13px !important;
+            height: 13px !important;
+        }
+
+        #message-input::placeholder {
+            font-size: 12px;
+        }
+    }
+
+    @media (min-width: 768px) {
+
+        #sidebar {
+            position: relative;
+            transform: translateX(0) !important;
+        }
+
+        #overlay {
+            display: none !important;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+        *,
+        *::before,
+        *::after {
+            scroll-behavior: auto !important;
+            transition-duration: .01ms !important;
+            animation-duration: .01ms !important;
+        }
+    }
+</style>
+
 </head>
 
 <body class="bg-[#f4f7fb]">
 
     <!-- OVERLAY -->
     <div id="overlay"
-    class="hidden fixed inset-0 bg-black/40 z-40 md:hidden"></div>
+    class="hidden fixed inset-0 bg-slate-950/45 backdrop-blur-[2px] z-40 md:hidden"
+    aria-hidden="true"></div>
 
     <!-- EMOJI PICKER -->
     <div id="emoji-picker"
@@ -71,10 +299,10 @@
     <div class="flex h-screen overflow-hidden">
 
         <!-- SIDEBAR -->
-        <div id="sidebar"
+        <aside id="sidebar"
         class="fixed md:relative
         inset-y-0 left-0
-        w-80
+        w-[min(88vw,360px)] md:w-80
         bg-white
         border-r
         flex flex-col
@@ -128,12 +356,18 @@
             <!-- SEARCH -->
             <div class="px-4 pt-4">
 
-                <input
-                    type="text"
-                    id="search-users"
+                <div class="relative">
+
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+
+                    <input
+                        type="text"
+                        id="search-users"
                     placeholder="Search users..."
-                    class="w-full bg-gray-100 border border-transparent focus:border-blue-400 focus:ring-4 focus:ring-blue-100 rounded-2xl px-4 py-3 text-sm outline-none transition"
+                    class="w-full bg-gray-100 border border-transparent focus:border-blue-400 focus:ring-4 focus:ring-blue-100 rounded-2xl pl-10 pr-4 py-3 text-sm outline-none transition"
                 >
+
+                </div>
 
             </div>
 
@@ -144,7 +378,9 @@
                 {% for user in users %}
 
                 <a href="/messages/{{ user.id }}"
-                   class="user-item group flex items-center gap-4 p-4 rounded-2xl hover:bg-blue-50 transition-all duration-200">
+                   class="user-item group flex items-center gap-4 p-3 md:p-4 rounded-2xl hover:bg-blue-50 transition-all duration-200"
+                   data-user-name="{{ user.name|lower|e }}"
+                   data-user-email="{{ user.email|default('', true)|lower|e }}">
 
                     <!-- AVATAR -->
                     <div class="relative">
@@ -187,7 +423,20 @@
 
             </div>
 
-        </div>
+            <div id="no-users-found"
+                 class="hidden px-5 py-10 text-center">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl mb-3">
+                    <i class="fas fa-user-slash"></i>
+                </div>
+                <p class="font-semibold text-gray-700">
+                    No users found
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                    Try another name or search term.
+                </p>
+            </div>
+
+        </aside>
 
         <!-- CHAT AREA -->
         <main class="flex-1 min-w-0 flex flex-col bg-gradient-to-b from-gray-50 to-white">
@@ -201,9 +450,12 @@
 
                     <!-- MOBILE MENU -->
                     <button id="menu-btn"
-                            class="md:hidden z-[100] text-3xl text-gray-700">
+                            type="button"
+                            aria-label="Open conversations"
+                            aria-expanded="false"
+                            class="md:hidden w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-lg hover:bg-blue-100 transition">
 
-                        ☰
+                        <i class="fas fa-bars"></i>
 
                     </button>
 
@@ -417,6 +669,351 @@
 
 
 {% endif %}
+
+
+<script>
+/* =========================================================
+   SALTY CHAT — USER SEARCH + MOBILE SIDEBAR
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const searchInput =
+        document.getElementById("search-users");
+
+    const usersList =
+        document.getElementById("users-list");
+
+    const noUsersFound =
+        document.getElementById("no-users-found");
+
+    const sidebar =
+        document.getElementById("sidebar");
+
+    const overlay =
+        document.getElementById("overlay");
+
+    const menuBtn =
+        document.getElementById("menu-btn");
+
+
+    /* =====================================================
+       USER SEARCH
+       ===================================================== */
+
+    if (searchInput && usersList) {
+
+        const userItems =
+            Array.from(
+                usersList.querySelectorAll(".user-item")
+            );
+
+
+        function filterUsers() {
+
+            const query =
+                searchInput.value
+                    .trim()
+                    .toLowerCase();
+
+
+            let visibleCount = 0;
+
+
+            userItems.forEach(function (item) {
+
+                const name =
+                    item.dataset.userName || "";
+
+                const email =
+                    item.dataset.userEmail || "";
+
+                const text =
+                    item.textContent
+                        .toLowerCase();
+
+
+                const matches =
+                    !query ||
+                    name.includes(query) ||
+                    email.includes(query) ||
+                    text.includes(query);
+
+
+                item.classList.toggle(
+                    "hidden",
+                    !matches
+                );
+
+
+                if (matches) {
+                    visibleCount++;
+                }
+
+            });
+
+
+            if (noUsersFound) {
+
+                noUsersFound.classList.toggle(
+                    "hidden",
+                    visibleCount !== 0
+                );
+
+            }
+
+        }
+
+
+        searchInput.addEventListener(
+            "input",
+            filterUsers
+        );
+
+
+        /* Support Ctrl/Cmd + K to focus search. */
+
+        document.addEventListener(
+            "keydown",
+            function (event) {
+
+                if (
+                    (event.ctrlKey || event.metaKey) &&
+                    event.key.toLowerCase() === "k"
+                ) {
+
+                    event.preventDefault();
+
+                    searchInput.focus();
+
+                    searchInput.select();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    /* =====================================================
+       MOBILE SIDEBAR
+       ===================================================== */
+
+    function openSidebar() {
+
+        if (!sidebar) {
+            return;
+        }
+
+        sidebar.classList.remove(
+            "-translate-x-full"
+        );
+
+        sidebar.classList.add(
+            "translate-x-0"
+        );
+
+
+        if (overlay) {
+
+            overlay.classList.remove(
+                "hidden"
+            );
+
+        }
+
+
+        if (menuBtn) {
+
+            menuBtn.setAttribute(
+                "aria-expanded",
+                "true"
+            );
+
+        }
+
+        document.body.classList.add(
+            "overflow-hidden"
+        );
+
+    }
+
+
+    function closeSidebar() {
+
+        if (!sidebar) {
+            return;
+        }
+
+        if (window.innerWidth >= 768) {
+            return;
+        }
+
+        sidebar.classList.remove(
+            "translate-x-0"
+        );
+
+        sidebar.classList.add(
+            "-translate-x-full"
+        );
+
+
+        if (overlay) {
+
+            overlay.classList.add(
+                "hidden"
+            );
+
+        }
+
+
+        if (menuBtn) {
+
+            menuBtn.setAttribute(
+                "aria-expanded",
+                "false"
+            );
+
+        }
+
+        document.body.classList.remove(
+            "overflow-hidden"
+        );
+
+    }
+
+
+    if (menuBtn) {
+
+        menuBtn.addEventListener(
+            "click",
+            function (event) {
+
+                event.preventDefault();
+
+                if (
+                    sidebar &&
+                    sidebar.classList.contains(
+                        "translate-x-0"
+                    )
+                ) {
+
+                    closeSidebar();
+
+                } else {
+
+                    openSidebar();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    if (overlay) {
+
+        overlay.addEventListener(
+            "click",
+            closeSidebar
+        );
+
+    }
+
+
+    /* Close after choosing a conversation on mobile. */
+
+    if (usersList) {
+
+        usersList.addEventListener(
+            "click",
+            function (event) {
+
+                const userLink =
+                    event.target.closest(
+                        ".user-item"
+                    );
+
+
+                if (userLink) {
+
+                    closeSidebar();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    /* Escape closes the mobile sidebar. */
+
+    document.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (
+                event.key === "Escape" &&
+                window.innerWidth < 768
+            ) {
+
+                closeSidebar();
+
+            }
+
+        }
+    );
+
+
+    /* Keep the sidebar state correct when resizing. */
+
+    window.addEventListener(
+        "resize",
+        function () {
+
+            if (window.innerWidth >= 768) {
+
+                if (overlay) {
+                    overlay.classList.add("hidden");
+                }
+
+                document.body.classList.remove(
+                    "overflow-hidden"
+                );
+
+                if (sidebar) {
+
+                    sidebar.classList.remove(
+                        "-translate-x-full"
+                    );
+
+                    sidebar.classList.add(
+                        "translate-x-0"
+                    );
+
+                }
+
+            } else if (
+                sidebar &&
+                !sidebar.classList.contains(
+                    "translate-x-0"
+                )
+            ) {
+
+                sidebar.classList.add(
+                    "-translate-x-full"
+                );
+
+            }
+
+        }
+    );
+
+});
+</script>
 
 </body>
 </html>
