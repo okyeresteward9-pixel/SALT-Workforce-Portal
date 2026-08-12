@@ -1635,17 +1635,14 @@ def admin_tasks():
 
     # =========================================================
     # STATISTICS
-    # Only count tasks that belong on the admin board
     # =========================================================
 
     c.execute("""
         SELECT COUNT(*) AS count
+
         FROM tasks
+
         WHERE status = 'Pending'
-        AND (
-            task_scope = 'admin_board'
-            OR task_scope IS NULL
-        )
     """)
 
     pending_count = c.fetchone()["count"]
@@ -1653,12 +1650,10 @@ def admin_tasks():
 
     c.execute("""
         SELECT COUNT(*) AS count
+
         FROM tasks
+
         WHERE status = 'In Progress'
-        AND (
-            task_scope = 'admin_board'
-            OR task_scope IS NULL
-        )
     """)
 
     progress_count = c.fetchone()["count"]
@@ -1666,15 +1661,16 @@ def admin_tasks():
 
     c.execute("""
         SELECT COUNT(*) AS count
+
         FROM tasks
+
         WHERE status = 'Completed'
-        AND (
-            task_scope = 'admin_board'
-            OR task_scope IS NULL
-        )
     """)
 
     completed_count = c.fetchone()["count"]
+
+
+    conn.close()
 
 
     # =========================================================
