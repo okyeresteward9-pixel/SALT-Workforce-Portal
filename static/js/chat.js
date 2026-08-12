@@ -2,9 +2,9 @@ class ChatApp {
 
     constructor() {
 
-        // -----------------------------
+        // =====================================================
         // ELEMENTS
-        // -----------------------------
+        // =====================================================
 
         this.chatBox = document.getElementById("chat-box");
         this.form = document.getElementById("chat-form");
@@ -42,9 +42,13 @@ class ChatApp {
         this.searchInput =
             document.getElementById("search-users");
 
-        // -----------------------------
+        this.noUsersFound =
+            document.getElementById("no-users-found");
+
+
+        // =====================================================
         // USER
-        // -----------------------------
+        // =====================================================
 
         this.currentUser =
             window.CURRENT_USER;
@@ -52,15 +56,21 @@ class ChatApp {
         this.receiver =
             window.RECEIVER_ID;
 
-        // -----------------------------
-        // STORAGE
-        // -----------------------------
+
+        // =====================================================
+        // STATE
+        // =====================================================
 
         this.messages = new Map();
 
-        // -----------------------------
+        this.isSending = false;
+
+        this.typingTimer = null;
+
+
+        // =====================================================
         // SOCKET
-        // -----------------------------
+        // =====================================================
 
         this.socket = io();
 
@@ -68,9 +78,10 @@ class ChatApp {
 
     }
 
-    // =====================================
+
+    // =====================================================
     // INITIALIZE
-    // =====================================
+    // =====================================================
 
     init() {
 
@@ -80,506 +91,908 @@ class ChatApp {
 
         this.loadMessages();
 
+        this.highlightCurrentUser();
+
     }
 
-    // =====================================
+
+    // =====================================================
     // SOCKET
-    // =====================================
+    // =====================================================
 
     initSocket() {
 
         this.socket.on("connect", () => {
 
-            console.log("Connected:", this.socket.id);
+            console.log(
+                "SALTY connected:",
+                this.socket.id
+            );
 
-            this.socket.emit("join_chat", {
+            this.socket.emit(
+                "join_chat",
+                {
+                    user_id: this.receiver
+                }
+            );
 
-                user_id: this.receiver
-
-            });
+            this.setStatus(
+                "Active",
+                "text-green-500"
+            );
 
         });
 
-        // this.socket.emit("online");
-        
-        this.socket.on(
 
+        this.socket.on("disconnect", () => {
+
+            this.setStatus(
+                "Reconnecting...",
+                "text-amber-500"
+            );
+
+        });
+
+
+        this.socket.on(
+            "connect_error",
+            (error) => {
+
+                console.error(
+                    "SALTY socket error:",
+                    error
+                );
+
+                this.setStatus(
+                    "Connection problem",
+                    "text-red-500"
+                );
+
+            }
+        );
+
+
+        this.socket.on(
             "user_online",
-        
-            data=>{
-        
-                if(
-        
-                    data.user_id ==
-        
-                    this.receiver
-        
-                ){
-        
+            data => {
+
+                if (
+                    Number(data.user_id) ===
+                    Number(this.receiver)
+                ) {
+
                     this.setStatus(
-        
                         "🟢 Online",
-        
                         "text-green-500"
-        
                     );
-        
+
                 }
-        
+
             }
-        
         );
+
 
         this.socket.on(
-
             "user_offline",
-        
-            data=>{
-        
-                if(
-        
-                    data.user_id ==
-        
-                    this.receiver
-        
-                ){
-        
+            data => {
+
+                if (
+                    Number(data.user_id) ===
+                    Number(this.receiver)
+                ) {
+
                     this.setStatus(
-        
                         "Last seen just now",
-        
                         "text-gray-500"
-        
                     );
-        
+
                 }
-        
+
             }
-        
         );
 
-        this.socket.on("new_message", (chat) => {
 
-            console.log("Incoming:", chat);
+        this.socket.on(
+            "new_message",
+            chat => {
 
-            this.append(chat);
+                console.log(
+                    "Incoming:",
+                    chat
+                );
 
-        });
+                this.append(chat);
 
-        this.socket.on("message_updated", (chat) => {
+            }
+        );
 
-            console.log("Updated:", chat);
 
-            this.update(chat);
+        this.socket.on(
+            "message_updated",
+            chat => {
 
-        });
+                console.log(
+                    "Updated:",
+                    chat
+                );
+
+                this.update(chat);
+
+            }
+        );
 
     }
 
 
-    setStatus(text,color){
+    // =====================================================
+    // STATUS
+    // =====================================================
+
+    setStatus(text, color) {
 
         const status =
-    
             document.getElementById(
-    
                 "chat-status"
-    
             );
-    
-        if(!status) return;
-    
+
+        if (!status) {
+            return;
+        }
+
         status.className =
-    
             `text-sm font-medium ${color}`;
-    
-        status.innerHTML = text;
-    
+
+        status.textContent = text;
+
     }
-    // =====================================
-    // LOAD ALL MESSAGES
-    // =====================================
+
+
+    // =====================================================
+    // LOAD MESSAGES
+    // =====================================================
 
     async loadMessages() {
 
-        try{
+        if (
+            !this.chatBox ||
+            !this.receiver
+        ) {
+            return;
+        }
+
+
+        try {
 
             const response =
-                await fetch(`/get_messages/${this.receiver}`);
+                await fetch(
+                    `/get_messages/${encodeURIComponent(this.receiver)}`,
+                    {
+                        headers: {
+                            "Accept": "application/json"
+                        }
+                    }
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    `Unable to load messages (${response.status})`
+                );
+
+            }
+
 
             const messages =
                 await response.json();
+
 
             this.chatBox.innerHTML = "";
 
             this.messages.clear();
 
-            messages.forEach(chat => {
 
-                this.append(chat);
+            messages.forEach(
+                chat => {
+
+                    this.append(
+                        chat,
+                        false
+                    );
+
+                }
+            );
+
+
+            this.scrollBottom(
+                true,
+                "auto"
+            );
+
+
+            this.setStatus(
+                "Active",
+                "text-green-500"
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Load messages error:",
+                error
+            );
+
+
+            this.chatBox.innerHTML = `
+
+                <div class="flex h-full items-center justify-center p-6 text-center">
+
+                    <div>
+
+                        <div class="text-3xl mb-3">
+                            ⚠️
+                        </div>
+
+                        <p class="font-semibold text-gray-700">
+                            Unable to load messages
+                        </p>
+
+                        <p class="text-sm text-gray-400 mt-1">
+                            Please refresh and try again.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            `;
+
+
+            this.setStatus(
+                "Unable to connect",
+                "text-red-500"
+            );
+
+        }
+
+    }
+
+
+    // =====================================================
+    // SCROLL
+    // =====================================================
+
+    isNearBottom() {
+
+        if (!this.chatBox) {
+            return true;
+        }
+
+
+        return (
+            this.chatBox.scrollHeight -
+            this.chatBox.scrollTop -
+            this.chatBox.clientHeight
+        ) < 150;
+
+    }
+
+
+    scrollBottom(
+        force = false,
+        behavior = "smooth"
+    ) {
+
+        if (!this.chatBox) {
+            return;
+        }
+
+
+        if (
+            force ||
+            this.isNearBottom()
+        ) {
+
+            this.chatBox.scrollTo({
+
+                top:
+                    this.chatBox.scrollHeight,
+
+                behavior:
+                    behavior
 
             });
 
-            this.scrollBottom(true);
-
-        }
-
-        catch(error){
-
-            console.error(error);
-
         }
 
     }
 
-    // =====================================
-    // SCROLL
-    // =====================================
 
-    scrollBottom(force=false){
+    // =====================================================
+    // ESCAPE HTML
+    // =====================================================
 
-        const nearBottom =
+    escapeHTML(value) {
 
-            this.chatBox.scrollHeight -
-
-            this.chatBox.scrollTop -
-
-            this.chatBox.clientHeight < 150;
-
-        if(force || nearBottom){
-
-            this.chatBox.scrollTop =
-
-                this.chatBox.scrollHeight;
-
-        }
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
 
     }
 
-    // =====================================
+
+    // =====================================================
     // FILE HTML
-    // =====================================
+    // =====================================================
 
-    renderFile(chat){
+    renderFile(chat) {
 
-        if(!chat.file_path){
-    
+        if (!chat.file_path) {
             return "";
-    
-        }
-    
-        const image =
-            /\.(jpg|jpeg|png|gif|webp)$/i
-            .test(chat.file_name || "");
-    
-        if(image){
-    
-            return `
-    
-            <a href="${chat.file_path}"
-               target="_blank">
-    
-                <img
-    
-                    src="${chat.file_path}"
-    
-                    class="mt-3 rounded-2xl max-w-[240px] shadow-lg hover:scale-[1.02] transition">
-    
-            </a>
-    
-            `;
-    
-        }
-    
-        return `
-    
-        <a
-            href="${chat.file_path}"
-            target="_blank"
-            class="flex items-center gap-3 mt-3 bg-gray-100 hover:bg-gray-200 rounded-2xl p-3">
-    
-            <div class="text-3xl">
-    
-                📄
-    
-            </div>
-    
-            <div class="overflow-hidden">
-    
-                <div class="font-semibold truncate">
-    
-                    ${chat.file_name}
-    
-                </div>
-    
-                <div class="text-xs text-gray-500">
-    
-                    Click to download
-    
-                </div>
-    
-            </div>
-    
-        </a>
-    
-        `;
-    
-    }
-
-    // =====================================
-    // RENDER MESSAGE
-    // =====================================
-
-    render(chat){
-
-        const mine =
-            chat.sender_id == this.currentUser;
-    
-        const safeMessage =
-            (chat.message || "")
-            .replace(/'/g,"\\'")
-            .replace(/"/g,"&quot;");
-    
-        let menu = "";
-    
-        if(mine && !chat.deleted){
-    
-            menu = `
-    
-            <div class="absolute top-2 -left-12">
-    
-                <button
-                    onclick="toggleMenu(${chat.id})"
-                    class="w-8 h-8 rounded-full bg-white text-gray-700 shadow border hover:bg-gray-100 transition">
-    
-                    ⋮
-    
-                </button>
-    
-                <div
-                    id="menu-${chat.id}"
-                    class="hidden absolute top-10 left-0 bg-white rounded-2xl shadow-xl border overflow-hidden z-50 min-w-[180px]">
-    
-                    <button
-                        onclick="editMessage(${chat.id})"
-                        class="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-100">
-    
-                        ✏
-                        <span>Edit</span>
-    
-                    </button>
-    
-                    <button
-                        onclick="copyMessage(${chat.id})"
-                        class="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-100">
-    
-                        📋
-                        <span>Copy</span>
-    
-                    </button>
-    
-                    <hr>
-    
-                    <button
-                        onclick="deleteMessage(${chat.id})"
-                        class="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50">
-    
-                        🗑
-                        <span>Delete</span>
-    
-                    </button>
-    
-                </div>
-    
-            </div>
-    
-            `;
-    
-        }
-    
-        return `
-    
-        <div class="relative">
-    
-            ${menu}
-    
-            <div class="${
-                mine
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white ml-auto"
-                : "bg-white border border-gray-200 text-gray-800"
-            } px-5 py-3 rounded-3xl max-w-md shadow">
-    
-                <div class="break-words">
-    
-                    ${
-                        chat.deleted
-                        ? "<i class='opacity-70'>This message was deleted</i>"
-                        : (chat.message || "")
-                    }
-    
-                    ${
-                        chat.deleted
-                        ? ""
-                        : this.renderFile(chat)
-                    }
-    
-                </div>
-    
-                ${
-                    chat.edited
-                    ? `
-                    <div class="text-[10px] italic opacity-60 mt-1">
-    
-                        edited
-    
-                    </div>
-                    `
-                    : ""
-                }
-    
-                <div class="flex justify-end items-center gap-2 mt-2 text-[10px] opacity-70">
-
-                ${(() => {
-
-                    console.log("created_at:", chat.created_at);
-
-                    const d = new Date(chat.created_at);
-
-                    console.log("parsed:", d);
-
-                    if (isNaN(d.getTime())) {
-
-                        return "<span style='color:red'>Invalid</span>";
-
-                    }
-
-                    return new Intl.DateTimeFormat([], {
-                        hour: "2-digit",
-                        minute: "2-digit"
-                    }).format(d);
-
-                })()}
-                ${
-                    mine
-                        ? (
-                            chat.seen
-                                ? "<span class='text-cyan-300'>✔✔</span>"
-                                : "<span>✔</span>"
-                        )
-                        : ""
-                }
-    
-                </div>
-    
-            </div>
-    
-        </div>
-    
-        `;
-    
-    }
-
-    // =====================================
-    // ADD MESSAGE
-    // =====================================
-
-    append(chat){
-
-        if(this.messages.has(chat.id)){
-
-            return;
-
         }
 
-        this.messages.set(chat.id, chat);
 
-        const wrapper =
-
-            document.createElement("div");
-
-        wrapper.id =
-
-            "msg-" + chat.id;
-
-        wrapper.className =
-
-            chat.sender_id == this.currentUser
-
-            ? "flex justify-end mb-4"
-
-            : "flex justify-start mb-4";
-
-        wrapper.innerHTML =
-
-            this.render(chat);
-
-        this.chatBox.appendChild(wrapper);
-
-        this.scrollBottom();
-
-    }
-
-    // =====================================
-    // UPDATE MESSAGE
-    // =====================================
-
-    update(chat){
-
-        this.messages.set(chat.id, chat);
-
-        const wrapper =
-
-            document.getElementById(
-
-                "msg-"+chat.id
-
+        const filePath =
+            this.escapeHTML(
+                chat.file_path
             );
 
-        if(!wrapper){
 
-            this.append(chat);
+        const fileName =
+            this.escapeHTML(
+                chat.file_name ||
+                "Attachment"
+            );
+
+
+        const image =
+            /\.(jpg|jpeg|png|gif|webp)$/i
+                .test(
+                    chat.file_name || ""
+                );
+
+
+        if (image) {
+
+            return `
+
+                <a
+                    href="${filePath}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="block mt-3"
+                >
+
+                    <img
+                        src="${filePath}"
+                        alt="${fileName}"
+                        loading="lazy"
+                        class="max-w-[240px] max-h-[280px] object-cover rounded-2xl shadow-lg border border-white/20 hover:scale-[1.02] transition"
+                    >
+
+                </a>
+
+            `;
+
+        }
+
+
+        return `
+
+            <a
+                href="${filePath}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex items-center gap-3 mt-3 bg-gray-100 hover:bg-gray-200 rounded-2xl p-3 transition"
+            >
+
+                <div class="text-2xl">
+                    📄
+                </div>
+
+
+                <div class="overflow-hidden min-w-0">
+
+                    <div class="font-semibold truncate">
+                        ${fileName}
+                    </div>
+
+                    <div class="text-xs text-gray-500">
+                        Click to open
+                    </div>
+
+                </div>
+
+            </a>
+
+        `;
+
+    }
+
+
+    // =====================================================
+    // MESSAGE TIME
+    // =====================================================
+
+    formatTime(value) {
+
+        if (!value) {
+            return "";
+        }
+
+
+        const date =
+            value instanceof Date
+                ? value
+                : new Date(value);
+
+
+        if (
+            Number.isNaN(
+                date.getTime()
+            )
+        ) {
+
+            return "";
+
+        }
+
+
+        return new Intl.DateTimeFormat(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        ).format(date);
+
+    }
+
+
+    // =====================================================
+    // RENDER MESSAGE
+    // =====================================================
+
+    render(chat) {
+
+        const mine =
+            Number(chat.sender_id) ===
+            Number(this.currentUser);
+
+
+        const deleted =
+            Boolean(chat.deleted);
+
+
+        let menu = "";
+
+
+        if (
+            mine &&
+            !deleted
+        ) {
+
+            menu = `
+
+                <div
+                    class="absolute top-1 -left-11 message-menu-wrapper"
+                >
+
+                    <button
+                        type="button"
+                        onclick="toggleMenu(${Number(chat.id)})"
+                        aria-label="Message options"
+                        class="w-8 h-8 rounded-full bg-white text-gray-700 shadow border hover:bg-gray-100 transition"
+                    >
+                        ⋮
+                    </button>
+
+
+                    <div
+                        id="menu-${Number(chat.id)}"
+                        class="hidden absolute top-9 left-0 bg-white rounded-2xl shadow-xl border overflow-hidden z-50 min-w-[170px]"
+                    >
+
+                        <button
+                            type="button"
+                            onclick="editMessage(${Number(chat.id)})"
+                            class="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-100 text-left"
+                        >
+                            ✏
+                            <span>Edit</span>
+                        </button>
+
+
+                        <button
+                            type="button"
+                            onclick="copyMessage(${Number(chat.id)})"
+                            class="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-100 text-left"
+                        >
+                            📋
+                            <span>Copy</span>
+                        </button>
+
+
+                        <hr>
+
+
+                        <button
+                            type="button"
+                            onclick="deleteMessage(${Number(chat.id)})"
+                            class="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 text-left"
+                        >
+                            🗑
+                            <span>Delete</span>
+                        </button>
+
+                    </div>
+
+                </div>
+
+            `;
+
+        }
+
+
+        const messageText =
+            deleted
+
+                ? "<i class='opacity-70'>This message was deleted</i>"
+
+                : this.escapeHTML(
+                    chat.message || ""
+                ).replace(
+                    /\n/g,
+                    "<br>"
+                );
+
+
+        const edited =
+            chat.edited
+
+                ? `
+
+                    <div class="text-[10px] italic opacity-60 mt-1">
+                        edited
+                    </div>
+
+                `
+
+                : "";
+
+
+        const time =
+            this.formatTime(
+                chat.created_at
+            );
+
+
+        const ticks =
+            mine
+
+                ? (
+                    chat.seen
+
+                        ? "<span class='text-cyan-300'>✔✔</span>"
+
+                        : "<span>✔</span>"
+                )
+
+                : "";
+
+
+        return `
+
+            <div class="relative">
+
+                ${menu}
+
+
+                <div class="${
+                    mine
+
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white ml-auto"
+
+                        : "bg-white border border-gray-200 text-gray-800"
+
+                } px-4 md:px-5 py-3 rounded-3xl max-w-[85%] md:max-w-md shadow-sm">
+
+
+                    <div class="break-words leading-relaxed">
+
+                        ${messageText}
+
+                        ${
+                            deleted
+                                ? ""
+                                : this.renderFile(chat)
+                        }
+
+                    </div>
+
+
+                    ${edited}
+
+
+                    <div class="flex justify-end items-center gap-2 mt-2 text-[10px] opacity-70">
+
+                        ${time}
+
+                        ${ticks}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        `;
+
+    }
+
+
+    // =====================================================
+    // APPEND MESSAGE
+    // =====================================================
+
+    append(
+        chat,
+        scroll = true
+    ) {
+
+        if (
+            !chat ||
+            chat.id === undefined ||
+            chat.id === null
+        ) {
 
             return;
 
         }
 
-        wrapper.innerHTML =
 
+        if (
+            this.messages.has(
+                chat.id
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        const shouldScroll =
+            this.isNearBottom();
+
+
+        this.messages.set(
+            chat.id,
+            chat
+        );
+
+
+        const wrapper =
+            document.createElement(
+                "div"
+            );
+
+
+        wrapper.id =
+            "msg-" + chat.id;
+
+
+        wrapper.className =
+            Number(chat.sender_id) ===
+            Number(this.currentUser)
+
+                ? "flex justify-end mb-4"
+
+                : "flex justify-start mb-4";
+
+
+        wrapper.innerHTML =
+            this.render(chat);
+
+
+        this.chatBox.appendChild(
+            wrapper
+        );
+
+
+        if (
+            scroll &&
+            shouldScroll
+        ) {
+
+            this.scrollBottom(
+                true
+            );
+
+        }
+
+    }
+
+
+    // =====================================================
+    // UPDATE MESSAGE
+    // =====================================================
+
+    update(chat) {
+
+        if (!chat) {
+            return;
+        }
+
+
+        this.messages.set(
+            chat.id,
+            chat
+        );
+
+
+        const wrapper =
+            document.getElementById(
+                "msg-" + chat.id
+            );
+
+
+        if (!wrapper) {
+
+            this.append(
+                chat
+            );
+
+            return;
+
+        }
+
+
+        wrapper.innerHTML =
             this.render(chat);
 
     }
-        // =====================================
+
+
+    // =====================================================
     // SEND MESSAGE
-    // =====================================
+    // =====================================================
 
     async send() {
 
-        const formData = new FormData(this.form);
+        if (
+            this.isSending ||
+            !this.form
+        ) {
+
+            return;
+
+        }
+
+
+        const message =
+            (
+                this.messageInput?.value ||
+                ""
+            ).trim();
+
+
+        const hasFile =
+            Boolean(
+                this.fileInput?.files?.length
+            );
+
+
+        if (
+            !message &&
+            !hasFile
+        ) {
+
+            return;
+
+        }
+
+
+        const sendButton =
+            this.form.querySelector(
+                "button[type='submit']"
+            );
+
+
+        const originalButtonHTML =
+            sendButton
+                ? sendButton.innerHTML
+                : "";
+
+
+        this.isSending = true;
+
+
+        if (sendButton) {
+
+            sendButton.disabled = true;
+
+            sendButton.innerHTML =
+                `<i class="fas fa-spinner fa-spin"></i>`;
+
+            sendButton.classList.add(
+                "opacity-70"
+            );
+
+        }
+
 
         try {
 
-            const response = await fetch(
+            const formData =
+                new FormData(
+                    this.form
+                );
 
-                `/messages/${this.receiver}`,
 
-                {
-                    method: "POST",
-                    body: formData
-                }
+            const response =
+                await fetch(
+                    `/messages/${encodeURIComponent(this.receiver)}`,
+                    {
+                        method: "POST",
+                        body: formData,
+                        headers: {
+                            "Accept": "application/json"
+                        }
+                    }
+                );
 
-            );
 
-            const data = await response.json();
+            const contentType =
+                response.headers.get(
+                    "content-type"
+                ) || "";
 
-            if(!data.success || !data.message){
 
-                console.error(data);
-            
-                return;
-            
+            if (
+                !contentType.includes(
+                    "application/json"
+                )
+            ) {
+
+                const serverText =
+                    await response.text();
+
+
+                console.error(
+                    "Unexpected server response:",
+                    serverText
+                );
+
+
+                throw new Error(
+                    "The server returned an unexpected response."
+                );
+
             }
 
-            // Clear input
+
+            const data =
+                await response.json();
+
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
+                throw new Error(
+                    data.message ||
+                    "Message could not be sent."
+                );
+
+            }
+
 
             this.messageInput.value = "";
 
@@ -587,462 +1000,1191 @@ class ChatApp {
 
             this.hidePreview();
 
-            // Don't append here.
-            // Socket.IO will deliver it.
+            this.scrollBottom(
+                true
+            );
 
         }
 
         catch (error) {
 
-            console.error(error);
+            console.error(
+                "Send message error:",
+                error
+            );
+
+
+            this.showToast(
+                error.message ||
+                "Unable to send message."
+            );
+
+        }
+
+        finally {
+
+            this.isSending = false;
+
+
+            if (sendButton) {
+
+                sendButton.disabled = false;
+
+                sendButton.innerHTML =
+                    originalButtonHTML;
+
+                sendButton.classList.remove(
+                    "opacity-70"
+                );
+
+            }
 
         }
 
     }
 
-    // =====================================
+
+    // =====================================================
     // FILE PREVIEW
-    // =====================================
+    // =====================================================
 
     showPreview(file) {
 
-        if (!file) return;
-
-        this.previewContainer.classList.remove("hidden");
-
-        if (file.type.startsWith("image/")) {
-
-            this.previewImage.classList.remove("hidden");
-
-            this.previewFile.classList.add("hidden");
-
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-
-                this.previewImage.src = e.target.result;
-
-            };
-
-            reader.readAsDataURL(file);
-
-        }
-
-        else {
-
-            this.previewImage.classList.add("hidden");
-
-            this.previewFile.classList.remove("hidden");
-
-            this.previewFile.innerHTML = `
-
-                📎 <strong>${file.name}</strong>
-
-                <br>
-
-                ${(file.size / 1024).toFixed(1)} KB
-
-            `;
-
-        }
-
-    }
-
-    hidePreview() {
-
-        this.fileInput.value = "";
-
-        this.previewContainer.classList.add("hidden");
-
-        this.previewImage.classList.add("hidden");
-
-        this.previewFile.classList.add("hidden");
-
-        this.previewImage.src = "";
-
-        this.previewFile.innerHTML = "";
-
-    }
-
-    // =====================================
-    // EMOJI
-    // =====================================
-
-    toggleEmoji() {
-
-        this.emojiPicker.classList.toggle("hidden");
-
-    }
-
-    insertEmoji(emoji) {
-
-        this.messageInput.value += emoji;
-
-        this.messageInput.focus();
-
-        this.emojiPicker.classList.add("hidden");
-
-    }
-
-    // =====================================
-    // SIDEBAR
-    // =====================================
-
-    openSidebar() {
-
-        this.sidebar.classList.remove("-translate-x-full");
-
-        this.overlay.classList.remove("hidden");
-
-    }
-
-    closeSidebar() {
-
-        this.sidebar.classList.add("-translate-x-full");
-
-        this.overlay.classList.add("hidden");
-
-    }
-
-    // =====================================
-    // SEARCH USERS
-    // =====================================
-
-    searchUsers(text) {
-
-        document
-            .querySelectorAll(".user-item")
-            .forEach(user => {
-
-                user.style.display =
-
-                    user.innerText
-                        .toLowerCase()
-                        .includes(text.toLowerCase())
-
-                    ? "flex"
-
-                    : "none";
-
-            });
-
-    }
-
-    // =====================================
-    // EVENTS
-    // =====================================
-
-    initEvents() {
-
-        if (!this.form) return;
-
-        // SEND
-
-        this.form.addEventListener("submit", (e) => {
-
-            e.preventDefault();
-
-            this.send();
-
-        });
-
-        // ENTER
-
-        this.messageInput.addEventListener("keydown", (e) => {
-
-            if (e.key === "Enter" && !e.shiftKey) {
-
-                e.preventDefault();
-
-                this.send();
-
-            }
-
-        });
-
-        // FILE
-
-        this.fileInput?.addEventListener("change", (e) => {
-
-            this.showPreview(e.target.files[0]);
-
-        });
-
-        // REMOVE PREVIEW
-
-        this.removePreview?.addEventListener("click", () => {
-
-            this.hidePreview();
-
-        });
-
-        // EMOJI
-
-        this.emojiBtn?.addEventListener("click", () => {
-
-            this.toggleEmoji();
-
-        });
-
-        document.querySelectorAll(".emoji").forEach(item => {
-
-            item.addEventListener("click", () => {
-
-                this.insertEmoji(item.innerText);
-
-            });
-
-        });
-
-        // SEARCH
-
-        this.searchInput?.addEventListener("keyup", (e) => {
-
-            this.searchUsers(e.target.value);
-
-        });
-
-        // SIDEBAR
-
-        this.menuBtn?.addEventListener("click", () => {
-
-            this.openSidebar();
-
-        });
-
-        this.overlay?.addEventListener("click", () => {
-
-            this.closeSidebar();
-
-        });
-
-    }
-        // =====================================
-    // TOGGLE MESSAGE MENU
-    // =====================================
-
-    toggleMenu(messageId) {
-
-        document.querySelectorAll("[id^='menu-']").forEach(menu => {
-
-            if (menu.id !== `menu-${messageId}`) {
-
-                menu.classList.add("hidden");
-
-            }
-
-        });
-
-        const menu = document.getElementById(`menu-${messageId}`);
-
-        if (menu) {
-
-            menu.classList.toggle("hidden");
-
-        }
-
-    }
-
-    // =====================================
-    // EDIT MESSAGE
-    // =====================================
-
-    async editMessage(messageId) {
-
-        const chat = this.messages.get(messageId);
-
-        if (!chat) return;
-
-        const newMessage = prompt(
-
-            "Edit message",
-
-            chat.message || ""
-
-        );
-
-        if (newMessage === null) return;
-
-        if (newMessage.trim() === "") return;
-
-        const formData = new FormData();
-
-        formData.append(
-
-            "message",
-
-            newMessage
-
-        );
-
-        try {
-
-            const response = await fetch(
-
-                `/edit_message/${messageId}`,
-
-                {
-
-                    method: "POST",
-
-                    body: formData
-
-                }
-
-            );
-
-            const data = await response.json();
-
-            if (data.success) {
-
-                this.update(data.message);
-
-            }
-
-        }
-
-        catch (err) {
-
-            console.error(err);
-
-        }
-
-    }
-
-    // =====================================
-    // DELETE MESSAGE
-    // =====================================
-
-    async deleteMessage(messageId) {
-
-        if (!confirm("Delete this message?")) {
+        if (
+            !file ||
+            !this.previewContainer
+        ) {
 
             return;
 
         }
 
-        try {
 
-            const response = await fetch(
+        this.previewContainer.classList.remove(
+            "hidden"
+        );
 
-                `/delete_message/${messageId}`,
 
-                {
+        if (
+            file.type.startsWith(
+                "image/"
+            )
+        ) {
 
-                    method: "POST"
-
-                }
-
+            this.previewImage?.classList.remove(
+                "hidden"
             );
 
-            const data = await response.json();
+            this.previewFile?.classList.add(
+                "hidden"
+            );
 
-            if (data.success) {
 
-                this.update(data.message);
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                event => {
+
+                    if (this.previewImage) {
+
+                        this.previewImage.src =
+                            event.target.result;
+
+                    }
+
+                };
+
+
+            reader.readAsDataURL(
+                file
+            );
+
+        }
+
+        else {
+
+            this.previewImage?.classList.add(
+                "hidden"
+            );
+
+            this.previewFile?.classList.remove(
+                "hidden"
+            );
+
+
+            if (this.previewFile) {
+
+                this.previewFile.innerHTML = `
+
+                    📎 <strong>
+                        ${this.escapeHTML(file.name)}
+                    </strong>
+
+                    <br>
+
+                    <span class="text-xs text-gray-500">
+                        ${(file.size / 1024).toFixed(1)} KB
+                    </span>
+
+                `;
 
             }
 
         }
 
-        catch (err) {
+    }
 
-            console.error(err);
+
+    hidePreview() {
+
+        if (this.fileInput) {
+
+            this.fileInput.value = "";
+
+        }
+
+
+        this.previewContainer?.classList.add(
+            "hidden"
+        );
+
+        this.previewImage?.classList.add(
+            "hidden"
+        );
+
+        this.previewFile?.classList.add(
+            "hidden"
+        );
+
+
+        if (this.previewImage) {
+
+            this.previewImage.src = "";
+
+        }
+
+
+        if (this.previewFile) {
+
+            this.previewFile.innerHTML = "";
 
         }
 
     }
 
-    // =====================================
-    // COPY MESSAGE
-    // =====================================
 
-    copyMessage(messageId){
+    // =====================================================
+    // EMOJI
+    // =====================================================
 
-        const chat = this.messages.get(messageId);
-    
-        if(!chat) return;
-    
-        navigator.clipboard.writeText(
-    
-            chat.message || ""
-    
+    toggleEmoji() {
+
+        this.emojiPicker?.classList.toggle(
+            "hidden"
         );
-    
-        alert("Copied");
-    
+
     }
 
-} // ===== END OF CLASS =====
+
+    insertEmoji(emoji) {
+
+        if (!this.messageInput) {
+            return;
+        }
 
 
-// =====================================
+        const start =
+            this.messageInput.selectionStart ??
+            this.messageInput.value.length;
+
+
+        const end =
+            this.messageInput.selectionEnd ??
+            this.messageInput.value.length;
+
+
+        this.messageInput.value =
+
+            this.messageInput.value.slice(
+                0,
+                start
+            ) +
+
+            emoji +
+
+            this.messageInput.value.slice(
+                end
+            );
+
+
+        this.messageInput.focus();
+
+
+        const cursor =
+            start +
+            emoji.length;
+
+
+        this.messageInput.setSelectionRange(
+            cursor,
+            cursor
+        );
+
+
+        this.emojiPicker?.classList.add(
+            "hidden"
+        );
+
+    }
+
+
+    // =====================================================
+    // SIDEBAR
+    // =====================================================
+
+    openSidebar() {
+
+        if (!this.sidebar) {
+            return;
+        }
+
+
+        this.sidebar.classList.remove(
+            "-translate-x-full"
+        );
+
+
+        this.sidebar.classList.add(
+            "translate-x-0"
+        );
+
+
+        this.overlay?.classList.remove(
+            "hidden"
+        );
+
+
+        this.menuBtn?.setAttribute(
+            "aria-expanded",
+            "true"
+        );
+
+
+        document.body.classList.add(
+            "overflow-hidden"
+        );
+
+    }
+
+
+    closeSidebar() {
+
+        if (!this.sidebar) {
+            return;
+        }
+
+
+        if (
+            window.innerWidth >= 768
+        ) {
+
+            return;
+
+        }
+
+
+        this.sidebar.classList.remove(
+            "translate-x-0"
+        );
+
+
+        this.sidebar.classList.add(
+            "-translate-x-full"
+        );
+
+
+        this.overlay?.classList.add(
+            "hidden"
+        );
+
+
+        this.menuBtn?.setAttribute(
+            "aria-expanded",
+            "false"
+        );
+
+
+        document.body.classList.remove(
+            "overflow-hidden"
+        );
+
+    }
+
+
+    // =====================================================
+    // SEARCH USERS
+    // =====================================================
+
+    searchUsers(text) {
+
+        const query =
+            String(text || "")
+                .trim()
+                .toLowerCase();
+
+
+        const users =
+            Array.from(
+                document.querySelectorAll(
+                    ".user-item"
+                )
+            );
+
+
+        let visible = 0;
+
+
+        users.forEach(
+            user => {
+
+                const name =
+                    (
+                        user.dataset.userName ||
+                        ""
+                    ).toLowerCase();
+
+
+                const email =
+                    (
+                        user.dataset.userEmail ||
+                        ""
+                    ).toLowerCase();
+
+
+                const content =
+                    user.innerText.toLowerCase();
+
+
+                const match =
+                    !query ||
+                    name.includes(query) ||
+                    email.includes(query) ||
+                    content.includes(query);
+
+
+                user.classList.toggle(
+                    "hidden",
+                    !match
+                );
+
+
+                if (match) {
+
+                    visible++;
+
+                }
+
+            }
+        );
+
+
+        this.noUsersFound?.classList.toggle(
+            "hidden",
+            visible !== 0
+        );
+
+    }
+
+
+    // =====================================================
+    // ACTIVE USER
+    // =====================================================
+
+    highlightCurrentUser() {
+
+        const currentPath =
+            window.location.pathname;
+
+
+        document
+            .querySelectorAll(
+                ".user-item"
+            )
+            .forEach(
+                item => {
+
+                    const href =
+                        item.getAttribute(
+                            "href"
+                        );
+
+
+                    item.classList.toggle(
+                        "active",
+                        href === currentPath
+                    );
+
+                }
+            );
+
+    }
+
+
+    // =====================================================
+    // TOAST
+    // =====================================================
+
+    showToast(message) {
+
+        let toast =
+            document.getElementById(
+                "salty-toast"
+            );
+
+
+        if (!toast) {
+
+            toast =
+                document.createElement(
+                    "div"
+                );
+
+
+            toast.id =
+                "salty-toast";
+
+
+            toast.className = `
+
+                fixed
+
+                left-1/2
+
+                -translate-x-1/2
+
+                bottom-6
+
+                z-[100]
+
+                max-w-[90vw]
+
+                rounded-2xl
+
+                bg-gray-900
+
+                text-white
+
+                px-5
+
+                py-3
+
+                text-sm
+
+                shadow-2xl
+
+            `;
+
+
+            document.body.appendChild(
+                toast
+            );
+
+        }
+
+
+        toast.textContent =
+            message;
+
+
+        toast.classList.remove(
+            "hidden"
+        );
+
+
+        clearTimeout(
+            this.toastTimer
+        );
+
+
+        this.toastTimer =
+            setTimeout(
+                () => {
+
+                    toast.classList.add(
+                        "hidden"
+                    );
+
+                },
+                3000
+            );
+
+    }
+
+
+    // =====================================================
+    // EVENTS
+    // =====================================================
+
+    initEvents() {
+
+        // SEND
+
+        this.form?.addEventListener(
+            "submit",
+            event => {
+
+                event.preventDefault();
+
+                this.send();
+
+            }
+        );
+
+
+        // ENTER
+
+        this.messageInput?.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.key === "Enter" &&
+                    !event.shiftKey
+                ) {
+
+                    event.preventDefault();
+
+                    this.send();
+
+                }
+
+            }
+        );
+
+
+        // FILE
+
+        this.fileInput?.addEventListener(
+            "change",
+            event => {
+
+                this.showPreview(
+                    event.target.files?.[0]
+                );
+
+            }
+        );
+
+
+        // REMOVE FILE
+
+        this.removePreview?.addEventListener(
+            "click",
+            () => {
+
+                this.hidePreview();
+
+            }
+        );
+
+
+        // EMOJI
+
+        this.emojiBtn?.addEventListener(
+            "click",
+            event => {
+
+                event.stopPropagation();
+
+                this.toggleEmoji();
+
+            }
+        );
+
+
+        document
+            .querySelectorAll(
+                ".emoji"
+            )
+            .forEach(
+                item => {
+
+                    item.addEventListener(
+                        "click",
+                        () => {
+
+                            this.insertEmoji(
+                                item.innerText
+                            );
+
+                        }
+                    );
+
+                }
+            );
+
+
+        // SEARCH
+
+        this.searchInput?.addEventListener(
+            "input",
+            event => {
+
+                this.searchUsers(
+                    event.target.value
+                );
+
+            }
+        );
+
+
+        // CTRL + K SEARCH
+
+        document.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    (event.ctrlKey ||
+                     event.metaKey) &&
+                    event.key.toLowerCase() === "k"
+                ) {
+
+                    event.preventDefault();
+
+                    this.searchInput?.focus();
+
+                    this.searchInput?.select();
+
+                }
+
+            }
+        );
+
+
+        // MOBILE SIDEBAR
+
+        this.menuBtn?.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                this.openSidebar();
+
+            }
+        );
+
+
+        this.overlay?.addEventListener(
+            "click",
+            () => {
+
+                this.closeSidebar();
+
+            }
+        );
+
+
+        // ESCAPE
+
+        document.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.key === "Escape" &&
+                    window.innerWidth < 768
+                ) {
+
+                    this.closeSidebar();
+
+                }
+
+            }
+        );
+
+
+        // CLOSE EMOJI
+
+        document.addEventListener(
+            "click",
+            event => {
+
+                if (
+                    !event.target.closest(
+                        "#emoji-picker"
+                    ) &&
+                    !event.target.closest(
+                        "#emoji-btn"
+                    )
+                ) {
+
+                    this.emojiPicker?.classList.add(
+                        "hidden"
+                    );
+
+                }
+
+            }
+        );
+
+
+        // CLOSE MESSAGE MENUS
+
+        document.addEventListener(
+            "click",
+            event => {
+
+                if (
+                    !event.target.closest(
+                        ".message-menu-wrapper"
+                    )
+                ) {
+
+                    document
+                        .querySelectorAll(
+                            "[id^='menu-']"
+                        )
+                        .forEach(
+                            menu => {
+
+                                menu.classList.add(
+                                    "hidden"
+                                );
+
+                            }
+                        );
+
+                }
+
+            }
+        );
+
+
+        // CLOSE SIDEBAR AFTER USER SELECTION
+
+        document
+            .getElementById(
+                "users-list"
+            )
+            ?.addEventListener(
+                "click",
+                event => {
+
+                    const link =
+                        event.target.closest(
+                            ".user-item"
+                        );
+
+
+                    if (link) {
+
+                        this.closeSidebar();
+
+                    }
+
+                }
+            );
+
+
+        // RESIZE
+
+        window.addEventListener(
+            "resize",
+            () => {
+
+                if (
+                    window.innerWidth >= 768
+                ) {
+
+                    this.overlay?.classList.add(
+                        "hidden"
+                    );
+
+
+                    document.body.classList.remove(
+                        "overflow-hidden"
+                    );
+
+
+                    this.sidebar?.classList.remove(
+                        "-translate-x-full"
+                    );
+
+
+                    this.sidebar?.classList.add(
+                        "translate-x-0"
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    // =====================================================
+    // TOGGLE MESSAGE MENU
+    // =====================================================
+
+    toggleMenu(messageId) {
+
+        document
+            .querySelectorAll(
+                "[id^='menu-']"
+            )
+            .forEach(
+                menu => {
+
+                    if (
+                        menu.id !==
+                        `menu-${messageId}`
+                    ) {
+
+                        menu.classList.add(
+                            "hidden"
+                        );
+
+                    }
+
+                }
+            );
+
+
+        const menu =
+            document.getElementById(
+                `menu-${messageId}`
+            );
+
+
+        if (menu) {
+
+            menu.classList.toggle(
+                "hidden"
+            );
+
+        }
+
+    }
+
+
+    // =====================================================
+    // EDIT MESSAGE
+    // =====================================================
+
+    async editMessage(messageId) {
+
+        const chat =
+            this.messages.get(
+                messageId
+            );
+
+
+        if (!chat) {
+            return;
+        }
+
+
+        const newMessage =
+            prompt(
+                "Edit message",
+                chat.message || ""
+            );
+
+
+        if (
+            newMessage === null
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+            !newMessage.trim()
+        ) {
+
+            this.showToast(
+                "Message cannot be empty."
+            );
+
+            return;
+
+        }
+
+
+        const formData =
+            new FormData();
+
+
+        formData.append(
+            "message",
+            newMessage.trim()
+        );
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `/edit_message/${encodeURIComponent(messageId)}`,
+                    {
+                        method: "POST",
+                        body: formData,
+                        headers: {
+                            "Accept": "application/json"
+                        }
+                    }
+                );
+
+
+            const data =
+                await this.readJSON(
+                    response
+                );
+
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
+                throw new Error(
+                    data.message ||
+                    "Unable to edit message."
+                );
+
+            }
+
+
+            this.update(
+                data.message
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Edit message error:",
+                error
+            );
+
+
+            this.showToast(
+                error.message ||
+                "Unable to edit message."
+            );
+
+        }
+
+    }
+
+
+    // =====================================================
+    // DELETE MESSAGE
+    // =====================================================
+
+    async deleteMessage(messageId) {
+
+        if (
+            !confirm(
+                "Delete this message?"
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `/delete_message/${encodeURIComponent(messageId)}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Accept": "application/json"
+                        }
+                    }
+                );
+
+
+            const data =
+                await this.readJSON(
+                    response
+                );
+
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
+                throw new Error(
+                    data.message ||
+                    "Unable to delete message."
+                );
+
+            }
+
+
+            this.update(
+                data.message
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Delete message error:",
+                error
+            );
+
+
+            this.showToast(
+                error.message ||
+                "Unable to delete message."
+            );
+
+        }
+
+    }
+
+
+    // =====================================================
+    // COPY MESSAGE
+    // =====================================================
+
+    async copyMessage(messageId) {
+
+        const chat =
+            this.messages.get(
+                messageId
+            );
+
+
+        if (!chat) {
+            return;
+        }
+
+
+        if (
+            !chat.message
+        ) {
+
+            this.showToast(
+                "There is no text to copy."
+            );
+
+            return;
+
+        }
+
+
+        try {
+
+            await navigator.clipboard.writeText(
+                chat.message
+            );
+
+
+            this.showToast(
+                "Message copied."
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Copy error:",
+                error
+            );
+
+
+            this.showToast(
+                "Unable to copy message."
+            );
+
+        }
+
+    }
+
+}
+
+
+// =========================================================
 // START CHAT
-// =====================================
+// =========================================================
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
 
-    if (!window.RECEIVER_ID) {
+        if (
+            !window.RECEIVER_ID
+        ) {
 
-        return;
+            return;
+
+        }
+
+
+        window.chat =
+            new ChatApp();
 
     }
-
-    window.chat = new ChatApp();
-
-});
+);
 
 
-// =====================================
+// =========================================================
 // GLOBAL FUNCTIONS
-// (called from HTML)
-// =====================================
+// =========================================================
 
-window.toggleMenu = function(id) {
+window.toggleMenu =
+    function(id) {
 
-    window.chat.toggleMenu(id);
+        window.chat?.toggleMenu(
+            id
+        );
 
-};
-
-window.editMessage = function(id) {
-
-    window.chat.editMessage(id);
-
-};
-
-window.deleteMessage = function(id) {
-
-    window.chat.deleteMessage(id);
-
-};
-
-window.copyMessage = function(id) {
-
-    window.chat.copyMessage(id);
-
-};
+    };
 
 
-// =====================================
-// CLOSE MENUS WHEN CLICKING OUTSIDE
-// =====================================
+window.editMessage =
+    function(id) {
 
-document.addEventListener("click", function(e){
+        window.chat?.editMessage(
+            id
+        );
 
-    if (
+    };
 
-        !e.target.closest("[id^='menu-']") &&
 
-        !e.target.closest("button")
+window.deleteMessage =
+    function(id) {
 
-    ){
+        window.chat?.deleteMessage(
+            id
+        );
 
-        document.querySelectorAll("[id^='menu-']").forEach(menu=>{
+    };
 
-            menu.classList.add("hidden");
 
-        });
+window.copyMessage =
+    function(id) {
 
-    }
+        window.chat?.copyMessage(
+            id
+        );
 
-});
+    };
