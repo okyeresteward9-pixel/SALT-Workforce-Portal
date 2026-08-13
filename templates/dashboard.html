@@ -323,6 +323,155 @@
             box-shadow: 0 4px 14px rgba(15,76,151,.16);
         }
 
+
+        /* =========================================================
+           DASHBOARD PROFILE PICTURE
+           ========================================================= */
+
+        .profile-avatar-button {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            margin: 0;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #eaf4ff;
+            cursor: pointer;
+            display: block;
+            flex: 0 0 44px;
+            box-shadow: 0 4px 14px rgba(15,76,151,.16);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+        .profile-avatar-button:hover {
+            transform: scale(1.06);
+            box-shadow: 0 7px 20px rgba(15,76,151,.24);
+        }
+
+        .profile-avatar-button:focus-visible {
+            outline: 3px solid rgba(23,105,194,.28);
+            outline-offset: 3px;
+        }
+
+        .dashboard-profile-image {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+
+        /* =========================================================
+           PROFILE IMAGE FULL VIEWER
+           ========================================================= */
+
+        .profile-image-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 12000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(3,18,38,.78);
+            backdrop-filter: blur(7px);
+            -webkit-backdrop-filter: blur(7px);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .2s ease, visibility .2s ease;
+        }
+
+        .profile-image-modal.open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .profile-image-modal-content {
+            position: relative;
+            width: min(520px, 92vw);
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            padding: 18px;
+            border-radius: 22px;
+            background: #ffffff;
+            box-shadow: 0 25px 70px rgba(0,0,0,.30);
+            transform: scale(.94);
+            transition: transform .22s ease;
+        }
+
+        .profile-image-modal.open .profile-image-modal-content {
+            transform: scale(1);
+        }
+
+        .profile-image-large {
+            width: min(440px, 80vw);
+            height: min(440px, 70vh);
+            object-fit: contain;
+            border-radius: 16px;
+            background: #f3f7fb;
+            display: block;
+        }
+
+        .profile-image-modal-name {
+            margin: 0;
+            color: #17365f;
+            font-size: 15px;
+            font-weight: 850;
+            text-align: center;
+        }
+
+        .profile-image-modal-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 38px;
+            height: 38px;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,.94);
+            color: #17365f;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 16px;
+            box-shadow: 0 4px 14px rgba(0,0,0,.12);
+            z-index: 2;
+        }
+
+        .profile-image-modal-close:hover {
+            background: #1769c2;
+            color: #ffffff;
+        }
+
+        @media (max-width: 520px) {
+            .profile-avatar-button {
+                width: 40px;
+                height: 40px;
+                flex-basis: 40px;
+            }
+
+            .profile-image-modal {
+                padding: 12px;
+            }
+
+            .profile-image-modal-content {
+                width: 94vw;
+                padding: 12px;
+                border-radius: 18px;
+            }
+
+            .profile-image-large {
+                width: 84vw;
+                height: 65vh;
+            }
+        }
+
         /* -------------------------
            CONTENT
            ------------------------- */
@@ -1148,6 +1297,40 @@
 </div>
 
 
+
+<!-- PROFILE IMAGE VIEWER -->
+<div
+    id="profileImageModal"
+    class="profile-image-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Profile picture viewer"
+>
+    <div class="profile-image-modal-content">
+
+        <button
+            type="button"
+            class="profile-image-modal-close"
+            id="profileImageModalClose"
+            aria-label="Close profile picture"
+        >
+            <i class="fas fa-times"></i>
+        </button>
+
+        <img
+            id="profileImageLarge"
+            class="profile-image-large"
+            src=""
+            alt="Profile picture"
+        >
+
+        <p id="profileImageModalName" class="profile-image-modal-name">
+            {{ name }}
+        </p>
+
+    </div>
+</div>
+
 <div class="wrapper">
 
     <!-- Sidebar -->
@@ -1309,13 +1492,28 @@
 
                 </div>
         
-                <div class="profile-avatar">
+                <!-- PROFILE AVATAR -->
+                <button
+                    type="button"
+                    class="profile-avatar profile-avatar-button"
+                    id="dashboardProfileAvatar"
+                    title="View profile picture"
+                    aria-label="View profile picture"
+                >
                     {% if user and user.profile_pic %}
-                    <img src="{{ url_for('static', filename='profiles/' + user.profile_pic) }}">
+                        <img
+                            src="{{ user.profile_pic }}"
+                            alt="{{ user.name }} profile picture"
+                            class="dashboard-profile-image"
+                        >
                     {% else %}
-                        <img src="{{ url_for('static', filename='default.png') }}">
+                        <img
+                            src="{{ url_for('static', filename='default.png') }}"
+                            alt="Default profile picture"
+                            class="dashboard-profile-image"
+                        >
                     {% endif %}
-                </div>
+                </button>
         
             </div>
         
@@ -2412,6 +2610,92 @@ document.addEventListener("DOMContentLoaded", function () {
 
         dateEl.querySelector("span").textContent = formatted;
     }
+});
+</script>
+
+
+<script>
+/* =========================================================
+   PROFILE PICTURE VIEWER
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const avatar = document.getElementById("dashboardProfileAvatar");
+    const modal = document.getElementById("profileImageModal");
+    const largeImage = document.getElementById("profileImageLarge");
+    const closeButton = document.getElementById("profileImageModalClose");
+
+    if (!avatar || !modal || !largeImage) {
+        return;
+    }
+
+    const avatarImage = avatar.querySelector("img");
+
+    function openProfileImage() {
+
+        if (!avatarImage || !avatarImage.src) {
+            return;
+        }
+
+        largeImage.src = avatarImage.src;
+        largeImage.alt = avatarImage.alt || "Profile picture";
+
+        modal.classList.add("open");
+
+        // Prevent dashboard from scrolling behind the viewer
+        document.body.style.overflow = "hidden";
+
+        if (closeButton) {
+            closeButton.focus();
+        }
+    }
+
+    function closeProfileImage() {
+
+        modal.classList.remove("open");
+
+        document.body.style.overflow = "";
+    }
+
+    avatar.addEventListener("click", openProfileImage);
+
+    if (closeButton) {
+
+        closeButton.addEventListener("click", function (event) {
+
+            event.stopPropagation();
+
+            closeProfileImage();
+
+        });
+    }
+
+    // Click the dark background to close
+    modal.addEventListener("click", function (event) {
+
+        if (event.target === modal) {
+
+            closeProfileImage();
+
+        }
+
+    });
+
+    // ESC closes the viewer
+    document.addEventListener("keydown", function (event) {
+
+        if (
+            event.key === "Escape" &&
+            modal.classList.contains("open")
+        ) {
+
+            closeProfileImage();
+
+        }
+
+    });
+
 });
 </script>
 
