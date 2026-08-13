@@ -20,6 +20,9 @@ from routes.chat import (
     chat_bp,
     register_chat_socketio
 )
+from cloudinary import uploader
+import cloudinary
+import cloudinary_config
 
 app = Flask(__name__)
 app.register_blueprint(chat_bp)
@@ -289,6 +292,54 @@ def init_db():
         pass
 
     try:
+        c.execute("ALTER TABLE employees ADD COLUMN position TEXT")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE employees ADD COLUMN profile_pic_public_id TEXT")
+    except:
+        pass
+    # -------------------------
+    # TASK VIEW VISIBILITY
+    # -------------------------
+
+    try:
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN admin_deleted BOOLEAN DEFAULT FALSE
+        """)
+    except:
+        pass
+
+    try:
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN employee_deleted BOOLEAN DEFAULT FALSE
+        """)
+    except:
+        pass
+
+    # Make sure existing tasks are visible
+    try:
+        c.execute("""
+            UPDATE tasks
+            SET admin_deleted = FALSE
+            WHERE admin_deleted IS NULL
+        """)
+    except:
+        pass
+
+    try:
+        c.execute("""
+            UPDATE tasks
+            SET employee_deleted = FALSE
+            WHERE employee_deleted IS NULL
+        """)
+    except:
+        pass
+
+    try:
         c.execute("""
             ALTER TABLE task_comments
             ADD COLUMN visibility TEXT DEFAULT 'public'
@@ -384,121 +435,216 @@ def profile_settings():
     conn = get_db()
     c = conn.cursor(cursor_factory=RealDictCursor)
 
+    user_id = session['user_id']
+
+    # ==========================================
+    # UPDATE PROFILE
+    # ==========================================
+
     if request.method == 'POST':
 
         # -------------------------
-        # 📥 FORM DATA
+        # FORM DATA
         # -------------------------
-        name = request.form.get('name')
-        phone = request.form.get('phone')
-        theme = request.form.get('theme')
 
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
-        current_password = request.form.get('current_password')
+        name = request.form.get('name', '').strip()
+        phone = request.form.get('phone', '').strip()
+        theme = request.form.get('theme', 'light')
+        position = request.form.get('position', '').strip()
+
+        new_password = request.form.get(
+            'new_password',
+            ''
+        ).strip()
+
+        confirm_password = request.form.get(
+            'confirm_password',
+            ''
+        ).strip()
+
+        current_password = request.form.get(
+            'current_password',
+            ''
+        ).strip()
 
 
-        # -------------------------
-        # 🖼️ IMAGE UPLOAD
-        # -------------------------
+        # ==========================================
+        # GET CURRENT USER
+        # ==========================================
+
+        c.execute(
+            """
+            SELECT
+                password,
+                department,
+                profile_pic,
+                profile_pic_public_id
+            FROM employees
+            WHERE id=%s
+            """,
+            (user_id,)
+        )
+
+        current_user = c.fetchone()
+
+        if not current_user:
+            conn.close()
+
+            flash(
+                "User account not found.",
+                "error"
+            )
+
+            return redirect('/settings/profile')
+
+
+        # ==========================================
+        # PROFILE PICTURE
+        # ==========================================
+
+        profile_url = None
+        profile_public_id = None
+
         file = request.files.get('image')
-        profile_path = None
 
         if file and file.filename:
 
-            ext = file.filename.rsplit('.', 1)[-1].lower()
+            filename = secure_filename(
+                file.filename
+            )
 
-            if ext not in ALLOWED_EXTENSIONS:
+            if not filename:
+                conn.close()
+
                 flash(
-                    "Invalid file type. Only PNG, JPG, JPEG allowed.",
+                    "Invalid profile picture.",
                     "error"
                 )
+
                 return redirect('/settings/profile')
 
 
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-
-            upload_folder = os.path.join(
-                base_dir,
-                "static",
-                "profiles"
-            )
-
-            os.makedirs(upload_folder, exist_ok=True)
+            ext = filename.rsplit(
+                '.',
+                1
+            )[-1].lower()
 
 
-            filename = f"{session['user_id']}_{int(time.time())}.{ext}"
+            if ext not in ALLOWED_EXTENSIONS:
 
-            file_path = os.path.join(
-                upload_folder,
-                filename
-            )
+                conn.close()
 
-            file.save(file_path)
+                flash(
+                    "Invalid file type. Only PNG, JPG and JPEG are allowed.",
+                    "error"
+                )
 
-            profile_path = filename
+                return redirect('/settings/profile')
 
 
+            try:
 
-        # -------------------------
-        # 🏢 DEPARTMENT CONTROL
-        # -------------------------
+                # -------------------------
+                # UPLOAD TO CLOUDINARY
+                # -------------------------
+
+                result = uploader.upload(
+                    file,
+                    folder="salt_portal/profiles",
+                    public_id=f"user_{user_id}",
+                    resource_type="image",
+                    overwrite=True
+                )
+
+
+                profile_url = result.get(
+                    "secure_url"
+                )
+
+                profile_public_id = result.get(
+                    "public_id"
+                )
+
+
+                if not profile_url:
+
+                    raise Exception(
+                        "Cloudinary did not return a secure URL."
+                    )
+
+
+            except Exception as e:
+
+                print(
+                    "Cloudinary profile upload error:",
+                    e
+                )
+
+                conn.close()
+
+                flash(
+                    "Unable to upload profile picture. Please try again.",
+                    "error"
+                )
+
+                return redirect('/settings/profile')
+
+
+        # ==========================================
+        # DEPARTMENT CONTROL
+        # ==========================================
+
         if session.get("role") == "admin":
 
-            department = request.form.get('department')
+            department = request.form.get(
+                'department',
+                ''
+            ).strip()
 
         else:
 
-            c.execute(
-                """
-                SELECT department 
-                FROM employees 
-                WHERE id=%s
-                """,
-                (session['user_id'],)
+            department = current_user.get(
+                'department'
             )
 
-            department = c.fetchone()['department']
 
+        # ==========================================
+        # PASSWORD VALIDATION
+        # ==========================================
 
-
-        # -------------------------
-        # 🔐 PASSWORD VALIDATION
-        # -------------------------
         update_password = False
         hashed_password = None
 
 
-        if new_password and new_password.strip() != "":
+        if new_password:
 
-            if not current_password or current_password.strip() == "":
+            if not current_password:
+
+                conn.close()
+
                 flash(
-                    "Please enter your current password",
+                    "Please enter your current password.",
                     "error"
                 )
+
                 return redirect('/settings/profile')
 
 
             if new_password != confirm_password:
 
+                conn.close()
+
                 flash(
-                    "Passwords do not match",
+                    "Passwords do not match.",
                     "error"
                 )
+
                 return redirect('/settings/profile')
 
 
-            c.execute(
-                """
-                SELECT password 
-                FROM employees 
-                WHERE id=%s
-                """,
-                (session['user_id'],)
+            stored_password = current_user.get(
+                'password'
             )
-
-
-            stored_password = c.fetchone()['password']
 
 
             if not check_password_hash(
@@ -506,26 +652,33 @@ def profile_settings():
                 current_password
             ):
 
+                conn.close()
+
                 flash(
-                    "Current password is incorrect",
+                    "Current password is incorrect.",
                     "error"
                 )
+
                 return redirect('/settings/profile')
 
 
-            hashed_password = generate_password_hash(new_password)
+            hashed_password = generate_password_hash(
+                new_password
+            )
 
             update_password = True
 
 
+        # ==========================================
+        # BUILD UPDATE QUERY
+        # ==========================================
 
-        # -------------------------
-        # 🧠 BUILD UPDATE QUERY
-        # -------------------------
         query = """
             UPDATE employees
-            SET name=%s,
+            SET
+                name=%s,
                 phone=%s,
+                position=%s,
                 department=%s,
                 theme=%s
         """
@@ -533,45 +686,103 @@ def profile_settings():
         params = [
             name,
             phone,
+            position,
             department,
             theme
         ]
 
 
+        # -------------------------
+        # PASSWORD
+        # -------------------------
+
         if update_password:
 
-            query += ", password=%s"
-            params.append(hashed_password)
+            query += """
+                ,
+                password=%s
+            """
+
+            params.append(
+                hashed_password
+            )
 
 
+        # -------------------------
+        # PROFILE PICTURE
+        # -------------------------
 
-        if profile_path:
+        if profile_url:
 
-            query += ", profile_pic=%s"
-            params.append(profile_path)
+            query += """
+                ,
+                profile_pic=%s,
+                profile_pic_public_id=%s
+            """
+
+            params.extend([
+                profile_url,
+                profile_public_id
+            ])
 
 
+        query += """
+            WHERE id=%s
+        """
 
-        query += " WHERE id=%s"
+        params.append(
+            user_id
+        )
 
-        params.append(session['user_id'])
 
+        # ==========================================
+        # SAVE DATABASE
+        # ==========================================
 
         c.execute(
             query,
             tuple(params)
         )
 
-
-
-        # -------------------------
-        # 💾 SAVE
-        # -------------------------
         conn.commit()
+
+
+        # ==========================================
+        # DELETE OLD CLOUDINARY IMAGE
+        # ==========================================
+
+        if profile_url:
+
+            old_public_id = current_user.get(
+                'profile_pic_public_id'
+            )
+
+            if old_public_id:
+
+                try:
+
+                    uploader.destroy(
+                        old_public_id,
+                        resource_type="image"
+                    )
+
+                except Exception as e:
+
+                    print(
+                        "Old profile image deletion error:",
+                        e
+                    )
+
+
         conn.close()
 
 
+        # ==========================================
+        # UPDATE SESSION
+        # ==========================================
+
         session['name'] = name
+        session['position'] = position
 
 
         flash(
@@ -579,25 +790,25 @@ def profile_settings():
             "success"
         )
 
-        return redirect('/settings/profile')
+        return redirect(
+            '/settings/profile'
+        )
 
 
+    # ==========================================
+    # LOAD PROFILE
+    # ==========================================
 
-    # -------------------------
-    # 📤 GET USER DATA
-    # -------------------------
     c.execute(
         """
-        SELECT * 
-        FROM employees 
+        SELECT *
+        FROM employees
         WHERE id=%s
         """,
-        (session['user_id'],)
+        (user_id,)
     )
 
-
     user = c.fetchone()
-
 
     conn.close()
 
@@ -1491,11 +1702,26 @@ def admin_tasks():
 
 
     # =========================================================
-    # LOAD TASKS
+    # LOAD ALL TASKS VISIBLE TO ADMIN
+    #
+    # IMPORTANT:
+    # We do NOT filter by task_scope.
+    #
+    # Self tasks
+    # Assigned tasks
+    # Admin-created tasks
+    # Employee-created tasks
+    #
+    # ALL can appear on the Admin Task Board.
+    #
+    # admin_deleted only controls whether the admin has
+    # removed the task from THEIR view.
     # =========================================================
 
     base_query = """
+
         SELECT
+
             tasks.id,
             tasks.title,
             tasks.description,
@@ -1509,18 +1735,23 @@ def admin_tasks():
             tasks.carried_forward,
             tasks.task_scope,
             tasks.created_at,
+
+            tasks.admin_deleted,
+            tasks.employee_deleted,
+
             employees.name AS employee_name
 
         FROM tasks
 
         LEFT JOIN employees
+
             ON tasks.assigned_to = employees.id
 
-        WHERE
-            (
-                tasks.task_scope = 'admin_board'
-                OR tasks.task_scope IS NULL
-            )
+        WHERE COALESCE(
+            tasks.admin_deleted,
+            FALSE
+        ) = FALSE
+
     """
 
 
@@ -1534,14 +1765,22 @@ def admin_tasks():
     if status:
 
         base_query += """
+
             AND tasks.status = %s
+
         """
 
         params.append(status)
 
 
+    # =========================================================
+    # ORDER
+    # =========================================================
+
     base_query += """
+
         ORDER BY tasks.id DESC
+
     """
 
 
@@ -1557,11 +1796,7 @@ def admin_tasks():
     # =========================================================
     # NORMALIZE DEADLINES
     #
-    # Convert every deadline to a Python date.
-    # This prevents:
-    #
-    # datetime.date < string
-    #
+    # Keeps your existing date handling safe.
     # =========================================================
 
     for task in tasks:
@@ -1571,24 +1806,37 @@ def admin_tasks():
 
         if deadline:
 
-            if isinstance(deadline, datetime):
+            if isinstance(
+                deadline,
+                datetime
+            ):
 
-                task["deadline_date"] = deadline.date()
+                task["deadline_date"] = (
+                    deadline.date()
+                )
 
 
-            elif isinstance(deadline, date):
+            elif isinstance(
+                deadline,
+                date
+            ):
 
                 task["deadline_date"] = deadline
 
 
-            elif isinstance(deadline, str):
+            elif isinstance(
+                deadline,
+                str
+            ):
 
                 try:
 
-                    task["deadline_date"] = datetime.strptime(
-                        deadline[:10],
-                        "%Y-%m-%d"
-                    ).date()
+                    task["deadline_date"] = (
+                        datetime.strptime(
+                            deadline[:10],
+                            "%Y-%m-%d"
+                        ).date()
+                    )
 
                 except (
                     ValueError,
@@ -1596,6 +1844,7 @@ def admin_tasks():
                 ):
 
                     task["deadline_date"] = None
+
 
             else:
 
@@ -1607,18 +1856,21 @@ def admin_tasks():
 
 
     # =========================================================
-    # COMMENTS
+    # COMMENTS / DISCUSSIONS
     # =========================================================
 
     for task in tasks:
 
         c.execute("""
+
             SELECT *
+
             FROM task_comments
 
             WHERE task_id = %s
 
             ORDER BY created_at ASC
+
         """,
         (
             task["id"],
@@ -1628,46 +1880,77 @@ def admin_tasks():
         comments = c.fetchall()
 
 
-        task["comments"] = build_comment_tree(
-            comments
+        task["comments"] = (
+            build_comment_tree(
+                comments
+            )
         )
 
 
     # =========================================================
     # STATISTICS
+    #
+    # Count only tasks visible to Admin.
     # =========================================================
 
     c.execute("""
+
         SELECT COUNT(*) AS count
 
         FROM tasks
 
         WHERE status = 'Pending'
+
+        AND COALESCE(
+            admin_deleted,
+            FALSE
+        ) = FALSE
+
     """)
 
-    pending_count = c.fetchone()["count"]
+    pending_count = (
+        c.fetchone()["count"]
+    )
 
 
     c.execute("""
+
         SELECT COUNT(*) AS count
 
         FROM tasks
 
         WHERE status = 'In Progress'
+
+        AND COALESCE(
+            admin_deleted,
+            FALSE
+        ) = FALSE
+
     """)
 
-    progress_count = c.fetchone()["count"]
+    progress_count = (
+        c.fetchone()["count"]
+    )
 
 
     c.execute("""
+
         SELECT COUNT(*) AS count
 
         FROM tasks
 
         WHERE status = 'Completed'
+
+        AND COALESCE(
+            admin_deleted,
+            FALSE
+        ) = FALSE
+
     """)
 
-    completed_count = c.fetchone()["count"]
+    completed_count = (
+        c.fetchone()["count"]
+    )
 
 
     conn.close()
@@ -1685,6 +1968,7 @@ def admin_tasks():
     # =========================================================
 
     return render_template(
+
         "admin_tasks.html",
 
         tasks=tasks,
@@ -1696,6 +1980,7 @@ def admin_tasks():
         completed_count=completed_count,
 
         today=today
+
     )
 
 
@@ -1761,20 +2046,41 @@ def admin_reply_task(id):
 
     return redirect('/admin/tasks')
 
-@app.route('/delete_task/<int:task_id>', methods=['POST'])
+@app.route(
+    '/delete_task/<int:task_id>',
+    methods=['POST']
+)
 def delete_task_route(task_id):
 
+    # =====================================================
+    # AUTHENTICATION
+    # =====================================================
+
     if 'user_id' not in session:
+
         return jsonify({
+
             "status": "error",
+
             "message": "Please log in."
+
         }), 401
 
+
+    # =====================================================
+    # ADMIN ONLY
+    # =====================================================
+
     if session.get('role') != 'admin':
+
         return jsonify({
+
             "status": "error",
+
             "message": "Access Denied"
+
         }), 403
+
 
     conn = get_db()
 
@@ -1782,94 +2088,108 @@ def delete_task_route(task_id):
         cursor_factory=RealDictCursor
     )
 
+
     try:
 
-        # -----------------------------
+        # =================================================
         # CHECK TASK
-        # -----------------------------
+        # =================================================
 
         c.execute("""
-            SELECT id, title
+
+            SELECT
+                id,
+                title,
+                admin_deleted
+
             FROM tasks
-            WHERE id=%s
-        """, (task_id,))
+
+            WHERE id = %s
+
+        """,
+        (
+            task_id,
+        ))
+
 
         task = c.fetchone()
+
 
         if not task:
 
             conn.close()
 
             return jsonify({
+
                 "status": "error",
+
                 "message": "Task not found."
+
             }), 404
 
 
-        # -----------------------------
-        # DELETE COMMENTS
-        # -----------------------------
+        # =================================================
+        # HIDE FROM ADMIN VIEW ONLY
+        #
+        # DO NOT DELETE THE TASK.
+        # DO NOT DELETE COMMENTS.
+        # =================================================
 
         c.execute("""
-            DELETE FROM task_comments
-            WHERE task_id=%s
-        """, (task_id,))
 
+            UPDATE tasks
 
-        # -----------------------------
-        # DELETE TASK
-        # -----------------------------
+            SET admin_deleted = TRUE
 
-        c.execute("""
-            DELETE FROM tasks
-            WHERE id=%s
-        """, (task_id,))
+            WHERE id = %s
 
+        """,
+        (
+            task_id,
+        ))
 
-        if c.rowcount == 0:
-
-            conn.rollback()
-            conn.close()
-
-            return jsonify({
-                "status": "error",
-                "message": "Task could not be deleted."
-            }), 500
-
-
-        # -----------------------------
-        # COMMIT
-        # -----------------------------
 
         conn.commit()
 
         conn.close()
 
 
-        # -----------------------------
-        # JSON RESPONSE
-        # -----------------------------
+        # =================================================
+        # AJAX RESPONSE
+        # =================================================
 
         return jsonify({
+
             "status": "success",
-            "message": "Task deleted successfully.",
+
+            "message":
+                "Task removed from the Admin Task Board.",
+
             "task_id": task_id
+
         }), 200
 
 
     except Exception as e:
 
         conn.rollback()
+
         conn.close()
 
+
         print(
-            "DELETE TASK ERROR:",
+            "ADMIN DELETE TASK ERROR:",
             e
         )
 
+
         return jsonify({
+
             "status": "error",
-            "message": "Unable to delete task."
+
+            "message":
+                "Unable to remove task."
+
         }), 500
 
 @app.route('/admin/assign_task', methods=['GET','POST'])
@@ -1895,7 +2215,7 @@ def assign_task():
 
         assigned_to = request.form['assigned_to']
 
-        deadline = request.form['deadline']
+        deadline = request.form.get('deadline') or None
 
 
 
@@ -3073,67 +3393,136 @@ def tasks():
     if 'user_id' not in session:
         return redirect('/')
 
+
     conn = get_db()
-    c = conn.cursor(cursor_factory=RealDictCursor)
+
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
+
 
     today = datetime.now().date()
 
-    # ======================================
+
+    # =====================================================
     # AUTO CARRY FORWARD OVERDUE TASKS
-    # ======================================
+    # =====================================================
 
     c.execute("""
+
         SELECT
+
             id,
             deadline,
             status
+
         FROM tasks
-        WHERE assigned_to=%s
+
+        WHERE assigned_to = %s
+
         AND status <> 'Completed'
-    """, (session['user_id'],))
+
+        AND COALESCE(
+            employee_deleted,
+            FALSE
+        ) = FALSE
+
+    """,
+    (
+        session['user_id'],
+    ))
+
 
     pending_tasks = c.fetchall()
 
+
     for task in pending_tasks:
 
-        if task["deadline"]:
+        deadline = task["deadline"]
 
-            deadline = task["deadline"]
 
-            if isinstance(deadline, datetime):
+        if deadline:
+
+            if isinstance(
+                deadline,
+                datetime
+            ):
+
                 deadline = deadline.date()
 
-            elif isinstance(deadline, str):
-                deadline = datetime.strptime(
-                    deadline,
-                    "%Y-%m-%d"
-                ).date()
 
-            if deadline < today:
+            elif isinstance(
+                deadline,
+                date
+            ):
 
-                new_deadline = deadline + timedelta(days=7)
+                pass
+
+
+            elif isinstance(
+                deadline,
+                str
+            ):
+
+                try:
+
+                    deadline = datetime.strptime(
+                        deadline[:10],
+                        "%Y-%m-%d"
+                    ).date()
+
+                except (
+                    ValueError,
+                    TypeError
+                ):
+
+                    deadline = None
+
+
+            else:
+
+                deadline = None
+
+
+            if (
+                deadline
+                and deadline < today
+            ):
+
+                new_deadline = (
+                    deadline +
+                    timedelta(days=7)
+                )
+
 
                 c.execute("""
+
                     UPDATE tasks
 
                     SET
-                        deadline=%s,
-                        carried_forward=TRUE
 
-                    WHERE id=%s
+                        deadline = %s,
+
+                        carried_forward = TRUE
+
+                    WHERE id = %s
+
                 """,
                 (
                     new_deadline,
                     task["id"]
                 ))
 
+
     conn.commit()
 
-    # ======================================
-    # LOAD TASKS
-    # ======================================
+
+    # =====================================================
+    # LOAD EMPLOYEE TASKS
+    # =====================================================
 
     c.execute("""
+
         SELECT
 
             id,
@@ -3148,54 +3537,79 @@ def tasks():
             assigned_to,
             carried_forward,
             completed_at,
-            created_at
+            created_at,
+            admin_deleted,
+            employee_deleted
 
         FROM tasks
 
-        WHERE assigned_to=%s
+        WHERE assigned_to = %s
 
         AND status <> 'Completed'
 
+        AND COALESCE(
+            employee_deleted,
+            FALSE
+        ) = FALSE
+
         ORDER BY id DESC
+
     """,
     (
         session['user_id'],
     ))
 
+
     tasks_list = c.fetchall()
 
-    # ======================================
-    # COMMENTS
-    # ======================================
+
+    # =====================================================
+    # COMMENTS / DISCUSSIONS
+    # =====================================================
 
     for task in tasks_list:
 
         c.execute("""
+
             SELECT *
 
             FROM task_comments
 
-            WHERE task_id=%s
+            WHERE task_id = %s
 
-            AND visibility='public'
+            AND visibility = 'public'
 
             ORDER BY created_at ASC
+
         """,
         (
             task["id"],
         ))
 
+
         comments = c.fetchall()
 
-        task["comments"] = build_comment_tree(comments)
+
+        task["comments"] = (
+            build_comment_tree(
+                comments
+            )
+        )
+
 
     conn.close()
 
+
     return render_template(
+
         "tasks.html",
+
         tasks=tasks_list,
+
         name=session["name"],
+
         role=session["role"]
+
     )
 
 @app.route('/reply_task/<int:id>', methods=['POST'])
