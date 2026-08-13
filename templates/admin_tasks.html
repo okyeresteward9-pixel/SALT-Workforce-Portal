@@ -992,7 +992,9 @@
     tbody tr {
 
         transition:
-            background .15s ease;
+            background .15s ease,
+            opacity .25s ease,
+            transform .25s ease;
     }
 
 
@@ -2603,7 +2605,7 @@
 
                     {% for task in tasks %}
 
-                    <tr>
+                    <tr id="task-row-{{ task.id }}">
 
 
                         <!-- ID -->
@@ -2647,7 +2649,13 @@
 
                                 <div class="employee-avatar">
 
-                                    {{ task.employee_name[0]|upper }}
+                                    {% if task.employee_name %}
+                                        {{ task.employee_name[0]|upper }}
+                                    {% elif task.created_by == task.assigned_to %}
+                                        A
+                                    {% else %}
+                                        ?
+                                    {% endif %}
 
                                 </div>
 
@@ -2656,7 +2664,13 @@
 
                                     <div class="employee-name">
 
-                                        {{ task.employee_name }}
+                                        {% if task.employee_name %}
+                                            {{ task.employee_name }}
+                                        {% elif task.created_by == task.assigned_to %}
+                                            Self
+                                        {% else %}
+                                            Unassigned
+                                        {% endif %}
 
                                     </div>
 
@@ -3130,7 +3144,7 @@
                                     type="button"
                                     class="delete-button"
                                     data-task-id="{{ task.id }}"
-                                    onclick="deleteTask(this)"
+                                    
                                 >
                                     <i class="fas fa-trash-alt"></i>
                                     Delete
@@ -3223,531 +3237,906 @@
      ========================================================= -->
 
 <script>
+(function () {
+    "use strict";
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
+    /* =========================================================
+       HELPERS
+       ========================================================= */
 
-        const toggleBtn =
-            document.getElementById(
-                "toggle-btn"
+    function showToast(message, type) {
+        type = type || "success";
+
+        const oldToast = document.getElementById("salt-task-toast");
+        if (oldToast) oldToast.remove();
+
+        const toast = document.createElement("div");
+        toast.id = "salt-task-toast";
+
+        toast.style.cssText = `
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            z-index: 99999;
+            max-width: 380px;
+            padding: 13px 16px;
+            border-radius: 12px;
+            color: #fff;
+            background: ${type === "error" ? "#dc2626" : "#1558b0"};
+            box-shadow: 0 12px 32px rgba(15,43,91,.22);
+            font-size: 13px;
+            font-weight: 700;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity .2s ease, transform .2s ease;
+        `;
+
+        const icon = type === "error"
+            ? "fa-circle-exclamation"
+            : "fa-circle-check";
+
+        toast.innerHTML = `
+            <i class="fas ${icon} mr-2"></i>
+            <span></span>
+        `;
+
+        toast.querySelector("span").textContent = message;
+        document.body.appendChild(toast);
+
+        requestAnimationFrame(function () {
+            toast.style.opacity = "1";
+            toast.style.transform = "translateY(0)";
+        });
+
+        setTimeout(function () {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateY(10px)";
+
+            setTimeout(function () {
+                toast.remove();
+            }, 220);
+        }, 2800);
+    }
+
+
+    async function jsonFetch(url, options) {
+        const response = await fetch(url, {
+            credentials: "same-origin",
+            ...options
+        });
+
+        const contentType =
+            response.headers.get("content-type") || "";
+
+        if (!contentType.includes("application/json")) {
+            throw new Error(
+                "The server returned a page instead of JSON. Please check the Flask route."
             );
-
-        const sidebar =
-            document.getElementById(
-                "sidebar"
-            );
-
-
-        if (
-            !toggleBtn ||
-            !sidebar
-        ) {
-            return;
         }
 
+        const data = await response.json();
 
-        toggleBtn.addEventListener(
-            "click",
-            function () {
-
-                if (
-                    window.innerWidth <= 850
-                ) {
-
-                    sidebar.classList.toggle(
-                        "mobile-open"
-                    );
-
-                } else {
-
-                    sidebar.classList.toggle(
-                        "collapsed"
-                    );
-
-                }
-
-            }
-        );
-
-
-        /* Close mobile sidebar
-           after selecting a page */
-
-        sidebar
-            .querySelectorAll("a")
-            .forEach(
-                function (link) {
-
-                    link.addEventListener(
-                        "click",
-                        function () {
-
-                            if (
-                                window.innerWidth <= 850
-                            ) {
-
-                                sidebar.classList.remove(
-                                    "mobile-open"
-                                );
-
-                            }
-
-                        }
-                    );
-
-                }
+        if (!response.ok || data.status !== "success") {
+            throw new Error(
+                data.message || "The request could not be completed."
             );
+        }
+
+        return data;
+    }
 
 
-        /* Close mobile sidebar
-           when clicking outside */
+    /* =========================================================
+       MOBILE / DESKTOP SIDEBAR
+       ========================================================= */
 
-           document.addEventListener(
-            "click",
-            function (event) {
+    function setupSidebar() {
+        const toggleBtn =
+            document.getElementById("toggle-btn");
 
-                if (
-                    window.innerWidth > 850
-                ) {
-                    return;
-                }
+        const sidebar =
+            document.getElementById("sidebar");
 
+        if (!toggleBtn || !sidebar) return;
 
-                if (
-                    sidebar.contains(event.target)
-                    ||
-                    toggleBtn.contains(event.target)
-                ) {
-                    return;
-                }
+        if (toggleBtn.dataset.ready === "1") return;
 
+        toggleBtn.dataset.ready = "1";
 
-                sidebar.classList.remove(
-                    "mobile-open"
-                );
+        toggleBtn.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
 
+            if (window.innerWidth <= 850) {
+                sidebar.classList.toggle("mobile-open");
+            } else {
+                sidebar.classList.toggle("collapsed");
             }
-        );
+        });
 
+        document.addEventListener("click", function (event) {
+            if (window.innerWidth > 850) return;
 
-        /* =====================================================
-           DELETE TASK WITHOUT PAGE RELOAD
-           ===================================================== */
-
-        window.deleteTask = async function (button) {
-
-            const taskId =
-                button.dataset.taskId;
-
-
-            const confirmed = confirm(
-                "Are you sure you want to delete this task?"
-            );
-
-
-            if (!confirmed) {
+            if (
+                sidebar.contains(event.target) ||
+                toggleBtn.contains(event.target)
+            ) {
                 return;
             }
 
-
-            /* Prevent double-click */
-
-            button.disabled = true;
-
-            button.innerHTML = `
-                <i class="fas fa-spinner fa-spin"></i>
-                Deleting...
-            `;
-
-
-            try {
-
-                const response = await fetch(
-                    `/delete_task/${taskId}`,
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "X-Requested-With":
-                                "XMLHttpRequest"
-                        }
-                    }
-                );
-
-
-                const data =
-                    await response.json();
-
-
-                if (
-                    !response.ok ||
-                    data.status !== "success"
-                ) {
-
-                    throw new Error(
-                        data.message ||
-                        "Unable to delete task."
-                    );
-
-                }
-
-
-                /* Find the task row */
-
-                const row =
-                    button.closest("tr");
-
-
-                if (row) {
-
-                    row.style.transition =
-                        "opacity .25s ease, transform .25s ease";
-
-                    row.style.opacity = "0";
-
-                    row.style.transform =
-                        "translateX(15px)";
-
-
-                    setTimeout(
-                        function () {
-
-                            row.remove();
-
-                            updateTaskCounts();
-
-                        },
-                        250
-                    );
-
-                }
-
-
-            } catch (error) {
-
-                console.error(
-                    "Delete task error:",
-                    error
-                );
-
-
-                alert(
-                    error.message ||
-                    "Something went wrong while deleting the task."
-                );
-
-
-                button.disabled = false;
-
-
-                button.innerHTML = `
-                    <i class="fas fa-trash-alt"></i>
-                    Delete
-                `;
-
-            }
-
-        };
-
-
-        /* =====================================================
-           UPDATE TASK STATISTICS
-           ===================================================== */
-
-        function updateTaskCounts() {
-
-            const rows =
-                document.querySelectorAll(
-                    "table tbody tr"
-                );
-
-
-            let pending = 0;
-
-            let progress = 0;
-
-            let completed = 0;
-
-
-            rows.forEach(
-                function (row) {
-
-                    const status =
-                        row.querySelector(
-                            ".status-badge"
-                        );
-
-
-                    if (!status) {
-                        return;
-                    }
-
-
-                    const text =
-                        status.textContent
-                            .trim()
-                            .toLowerCase();
-
-
-                    if (
-                        text.includes("pending")
-                    ) {
-
-                        pending++;
-
-                    }
-
-                    else if (
-                        text.includes("in progress")
-                    ) {
-
-                        progress++;
-
-                    }
-
-                    else if (
-                        text.includes("completed")
-                    ) {
-
-                        completed++;
-
-                    }
-
-                }
-            );
-
-
-            const values =
-                document.querySelectorAll(
-                    ".stat-value"
-                );
-
-
-            if (values.length >= 3) {
-
-                values[0].textContent =
-                    pending;
-
-                values[1].textContent =
-                    progress;
-
-                values[2].textContent =
-                    completed;
-
-            }
-
-        }
-
+            sidebar.classList.remove("mobile-open");
+        });
     }
 
-);
 
+    /* =========================================================
+       TASK COUNTS
+       ========================================================= */
 
-/* =====================================================
-   COLLAPSIBLE DISCUSSIONS + EXACT REPLY TARGET
-   ===================================================== */
+    function updateTaskCounts() {
+        const rows =
+            document.querySelectorAll(
+                "table tbody tr[id^='task-row-']"
+            );
 
-function setupDiscussionUI() {
+        let pending = 0;
+        let progress = 0;
+        let completed = 0;
 
-    document.querySelectorAll(".discussion-stack").forEach(function(stack) {
+        rows.forEach(function (row) {
+            const badge =
+                row.querySelector(".status-badge");
 
-        const body = stack.querySelector(".discussion-body");
-        const toggle = stack.querySelector(".discussion-toggle");
-        const count = stack.querySelector(".discussion-count");
+            if (!badge) return;
 
-        if (!body || !toggle) return;
+            const status =
+                badge.textContent
+                    .trim()
+                    .toLowerCase();
 
-        const comments = body.querySelectorAll(".comment-node");
-
-        if (count) {
-            count.textContent = comments.length;
-        }
-
-        const previewText = stack.querySelector(".discussion-preview-text");
-
-        if (previewText && comments.length > 0) {
-            const firstMessage = comments[0].querySelector(".comment-message");
-
-            if (firstMessage && firstMessage.textContent.trim()) {
-                previewText.textContent =
-                    firstMessage.textContent.trim();
+            if (status.includes("pending")) {
+                pending++;
+            } else if (status.includes("in progress")) {
+                progress++;
+            } else if (status.includes("completed")) {
+                completed++;
             }
-        }
-
-        toggle.addEventListener("click", function() {
-
-            const open = body.classList.toggle("is-open");
-
-            toggle.classList.toggle("is-open", open);
-
-            toggle.querySelector(".toggle-text").textContent =
-                open ? "Hide Discussion" : "Show Discussion";
-
-            toggle.querySelector("i").className =
-                open
-                    ? "fas fa-chevron-up"
-                    : "fas fa-chevron-down";
         });
-    });
+
+        const values =
+            document.querySelectorAll(".stat-value");
+
+        if (values.length >= 3) {
+            values[0].textContent = pending;
+            values[1].textContent = progress;
+            values[2].textContent = completed;
+        }
+    }
 
 
-    /*
-     * Reply buttons
-     */
-    document.querySelectorAll(".reply-trigger").forEach(function(button) {
+    function showNoTasksMessage() {
+        const tableCard =
+            document.querySelector(".table-card");
 
-        button.addEventListener("click", function() {
+        if (!tableCard) return;
 
-            const node = button.closest(".comment-node");
+        const tableScroll =
+            tableCard.querySelector(".table-scroll");
 
-            if (!node) return;
+        if (!tableScroll) return;
 
-            const composer =
-                node.querySelector(".inline-reply");
+        tableScroll.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-folder-open"></i>
+                </div>
 
-            if (!composer) return;
+                <h2>No Tasks Available</h2>
 
-            /*
-             * Close any other open reply composer.
-             */
-            document
-                .querySelectorAll(".inline-reply.is-open")
-                .forEach(function(other) {
+                <p>
+                    All tasks in the current view have been removed.
+                </p>
 
-                    if (other !== composer) {
-                        other.classList.remove("is-open");
+                <a
+                    href="/admin/assign_task"
+                    class="btn-primary mt-5"
+                >
+                    <i class="fas fa-plus"></i>
+                    Assign New Task
+                </a>
+            </div>
+        `;
+    }
 
-                        const otherButton =
-                            other.closest(".comment-node")
-                                 ?.querySelector(".reply-trigger");
 
-                        if (otherButton) {
-                            otherButton.innerHTML =
-                                '<i class="fas fa-reply"></i> Reply';
+    /* =========================================================
+       DELETE
+       - No form submission
+       - No page reload
+       - Removes only the Admin view
+       ========================================================= */
+
+    function setupDeleteButtons() {
+        document.querySelectorAll(".delete-button").forEach(function (button) {
+            if (button.dataset.ready === "1") return;
+
+            button.dataset.ready = "1";
+
+            button.addEventListener("click", async function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const taskId =
+                    button.dataset.taskId;
+
+                if (!taskId) {
+                    showToast(
+                        "Task ID is missing.",
+                        "error"
+                    );
+                    return;
+                }
+
+                const confirmed = window.confirm(
+                    "Remove this task from the Admin Task Board?\n\nThe task will remain available to the employee."
+                );
+
+                if (!confirmed) return;
+
+                const originalHTML =
+                    button.innerHTML;
+
+                button.disabled = true;
+                button.innerHTML = `
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Removing...
+                `;
+
+                try {
+                    const data = await jsonFetch(
+                        `/delete_task/${taskId}`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "X-Requested-With":
+                                    "XMLHttpRequest",
+                                "Accept":
+                                    "application/json"
+                            }
+                        }
+                    );
+
+                    const row =
+                        document.getElementById(
+                            `task-row-${taskId}`
+                        );
+
+                    if (row) {
+                        row.style.transition =
+                            "opacity .25s ease, transform .25s ease";
+
+                        row.style.opacity = "0";
+                        row.style.transform =
+                            "translateX(18px)";
+
+                        setTimeout(function () {
+                            row.remove();
+                            updateTaskCounts();
+
+                            if (
+                                document.querySelectorAll(
+                                    "table tbody tr[id^='task-row-']"
+                                ).length === 0
+                            ) {
+                                showNoTasksMessage();
+                            }
+                        }, 250);
+                    }
+
+                    showToast(
+                        data.message ||
+                        "Task removed from the Admin Task Board.",
+                        "success"
+                    );
+
+                } catch (error) {
+                    console.error(
+                        "Admin task delete error:",
+                        error
+                    );
+
+                    showToast(
+                        error.message ||
+                        "Unable to remove task.",
+                        "error"
+                    );
+
+                    button.disabled = false;
+                    button.innerHTML = originalHTML;
+                }
+            });
+        });
+    }
+
+
+    /* =========================================================
+       DISCUSSION SHOW / HIDE
+       ========================================================= */
+
+    function setupDiscussionToggles() {
+        document.querySelectorAll(".discussion-toggle")
+            .forEach(function (button) {
+
+                if (button.dataset.ready === "1") return;
+
+                button.dataset.ready = "1";
+
+                button.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const stack =
+                        button.closest(".discussion-stack");
+
+                    if (!stack) return;
+
+                    const body =
+                        stack.querySelector(".discussion-body");
+
+                    if (!body) return;
+
+                    const open =
+                        body.classList.toggle("is-open");
+
+                    button.classList.toggle(
+                        "is-open",
+                        open
+                    );
+
+                    const text =
+                        button.querySelector(".toggle-text");
+
+                    const icon =
+                        button.querySelector("i");
+
+                    if (text) {
+                        text.textContent =
+                            open
+                                ? "Hide Discussion"
+                                : "Show Discussion";
+                    }
+
+                    if (icon) {
+                        icon.className =
+                            open
+                                ? "fas fa-chevron-up"
+                                : "fas fa-chevron-down";
+                    }
+                });
+            });
+    }
+
+
+    /* =========================================================
+       REPLY COMPOSERS
+       ========================================================= */
+
+    function setupReplyButtons() {
+        document.querySelectorAll(".reply-trigger")
+            .forEach(function (button) {
+
+                if (button.dataset.ready === "1") return;
+
+                button.dataset.ready = "1";
+
+                button.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const node =
+                        button.closest(".comment-node");
+
+                    if (!node) return;
+
+                    const composer =
+                        node.querySelector(
+                            ":scope > .comment-wrap .inline-reply"
+                        ) ||
+                        node.querySelector(".inline-reply");
+
+                    if (!composer) return;
+
+                    const body =
+                        button.closest(".discussion-body");
+
+                    if (body && !body.classList.contains("is-open")) {
+                        body.classList.add("is-open");
+
+                        const stack =
+                            body.closest(".discussion-stack");
+
+                        const toggle =
+                            stack?.querySelector(
+                                ".discussion-toggle"
+                            );
+
+                        if (toggle) {
+                            toggle.classList.add("is-open");
+
+                            const toggleText =
+                                toggle.querySelector(
+                                    ".toggle-text"
+                                );
+
+                            if (toggleText) {
+                                toggleText.textContent =
+                                    "Hide Discussion";
+                            }
+
+                            const icon =
+                                toggle.querySelector("i");
+
+                            if (icon) {
+                                icon.className =
+                                    "fas fa-chevron-up";
+                            }
+                        }
+                    }
+
+                    const isOpen =
+                        composer.classList.toggle("is-open");
+
+                    button.innerHTML = isOpen
+                        ? '<i class="fas fa-times"></i> Close Reply'
+                        : '<i class="fas fa-reply"></i> Reply';
+
+                    if (isOpen) {
+                        const textarea =
+                            composer.querySelector("textarea");
+
+                        if (textarea) {
+                            setTimeout(function () {
+                                textarea.focus();
+                            }, 50);
                         }
                     }
                 });
+            });
+    }
 
 
-            const isOpen =
-                composer.classList.toggle("is-open");
+    function setupCancelReplyButtons() {
+        document.querySelectorAll(".cancel-reply")
+            .forEach(function (button) {
 
-            if (isOpen) {
+                if (button.dataset.ready === "1") return;
 
-                button.innerHTML =
-                    '<i class="fas fa-xmark"></i> Cancel Reply';
+                button.dataset.ready = "1";
 
-                node.classList.add("comment-highlight");
+                button.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
 
-                setTimeout(function() {
-                    node.classList.remove("comment-highlight");
-                }, 1800);
+                    const composer =
+                        button.closest(".inline-reply");
 
+                    if (!composer) return;
+
+                    composer.classList.remove("is-open");
+
+                    const node =
+                        composer.closest(".comment-node");
+
+                    const replyButton =
+                        node?.querySelector(".reply-trigger");
+
+                    if (replyButton) {
+                        replyButton.innerHTML =
+                            '<i class="fas fa-reply"></i> Reply';
+                    }
+
+                    const textarea =
+                        composer.querySelector("textarea");
+
+                    if (textarea) {
+                        textarea.value = "";
+                    }
+                });
+            });
+    }
+
+
+    /* =========================================================
+       ADD DISCUSSION / REPLY
+       - Intercept all admin reply forms
+       - No redirect
+       - Preserve scroll position
+       ========================================================= */
+
+    function setupDiscussionForms() {
+        document.querySelectorAll(
+            ".inline-reply-form, .discussion-composer .reply-form"
+        ).forEach(function (form) {
+
+            if (form.dataset.ready === "1") return;
+
+            form.dataset.ready = "1";
+
+            form.addEventListener("submit", async function (event) {
+                event.preventDefault();
+                event.stopPropagation();
 
                 const textarea =
-                    composer.querySelector("textarea");
+                    form.querySelector("textarea");
 
-                if (textarea) {
-                    textarea.focus();
+                if (!textarea || !textarea.value.trim()) {
+                    return;
                 }
 
-            } else {
+                const submitButton =
+                    form.querySelector(
+                        'button[type="submit"]'
+                    );
 
-                button.innerHTML =
-                    '<i class="fas fa-reply"></i> Reply';
+                const message =
+                    textarea.value.trim();
 
-            }
+                const scrollPosition =
+                    window.scrollY;
 
-        });
+                const originalHTML =
+                    submitButton
+                        ? submitButton.innerHTML
+                        : "";
 
-    });
-
-
-    /*
-     * Cancel reply buttons
-     */
-    document.querySelectorAll(".cancel-reply").forEach(function(button) {
-
-        button.addEventListener("click", function() {
-
-            const composer =
-                button.closest(".inline-reply");
-
-            if (!composer) return;
-
-            composer.classList.remove("is-open");
-
-            const node =
-                composer.closest(".comment-node");
-
-            const replyButton =
-                node?.querySelector(".reply-trigger");
-
-            if (replyButton) {
-                replyButton.innerHTML =
-                    '<i class="fas fa-reply"></i> Reply';
-            }
-
-            const textarea =
-                composer.querySelector("textarea");
-
-            if (textarea) {
-                textarea.value = "";
-            }
-
-        });
-
-    });
-
-
-    /*
-     * Automatically open the discussion when a reply
-     * composer is requested.
-     */
-    document.querySelectorAll(".discussion-body").forEach(function(body) {
-
-        body.addEventListener("click", function(event) {
-
-            const replyButton =
-                event.target.closest(".reply-trigger");
-
-            if (!replyButton) return;
-
-            if (!body.classList.contains("is-open")) {
-
-                body.classList.add("is-open");
-
-                const stack =
-                    body.closest(".discussion-stack");
-
-                const toggle =
-                    stack?.querySelector(".discussion-toggle");
-
-                if (toggle) {
-
-                    toggle.classList.add("is-open");
-
-                    toggle.querySelector(".toggle-text").textContent =
-                        "Hide Discussion";
-
-                    toggle.querySelector("i").className =
-                        "fas fa-chevron-up";
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = `
+                        <i class="fas fa-spinner fa-spin"></i>
+                        Sending...
+                    `;
                 }
-            }
 
+                try {
+                    const data = await jsonFetch(
+                        form.action,
+                        {
+                            method: "POST",
+                            headers: {
+                                "X-Requested-With":
+                                    "XMLHttpRequest",
+                                "Accept":
+                                    "application/json"
+                            },
+                            body: new FormData(form)
+                        }
+                    );
+
+                    /*
+                     * We deliberately do not reload the page.
+                     * Add the new comment to the visible discussion.
+                     */
+                    const stack =
+                        form.closest(".discussion-stack");
+
+                    const body =
+                        stack?.querySelector(".discussion-body");
+
+                    if (body) {
+                        const empty =
+                            body.querySelector(
+                                ".empty-discussion"
+                            );
+
+                        if (empty) empty.remove();
+
+                        const node =
+                            document.createElement(
+                                "div"
+                            );
+
+                        node.className =
+                            "comment-node";
+
+                        node.dataset.commentId =
+                            data.comment_id || "";
+
+                        node.innerHTML = `
+                            <div class="comment-wrap">
+                                <div class="comment admin-comment">
+                                    <div class="comment-head">
+                                        <div class="comment-role comment-admin">
+                                            <i class="fas fa-shield-halved mr-1"></i>
+                                            Admin
+                                        </div>
+
+                                        <div class="comment-date">
+                                            Just now
+                                        </div>
+                                    </div>
+
+                                    <div class="comment-message"></div>
+
+                                    <button
+                                        type="button"
+                                        class="reply-trigger"
+                                    >
+                                        <i class="fas fa-reply"></i>
+                                        Reply
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+
+                        node.querySelector(
+                            ".comment-message"
+                        ).textContent = message;
+
+                        body.appendChild(node);
+
+                        body.classList.add("is-open");
+
+                        const toggle =
+                            stack.querySelector(
+                                ".discussion-toggle"
+                            );
+
+                        if (toggle) {
+                            toggle.classList.add("is-open");
+
+                            const toggleText =
+                                toggle.querySelector(
+                                    ".toggle-text"
+                                );
+
+                            if (toggleText) {
+                                toggleText.textContent =
+                                    "Hide Discussion";
+                            }
+
+                            const icon =
+                                toggle.querySelector("i");
+
+                            if (icon) {
+                                icon.className =
+                                    "fas fa-chevron-up";
+                            }
+                        }
+
+                        const count =
+                            stack.querySelector(
+                                ".discussion-count"
+                            );
+
+                        if (count) {
+                            count.textContent =
+                                body.querySelectorAll(
+                                    ".comment-node"
+                                ).length;
+                        }
+
+                        const preview =
+                            stack.querySelector(
+                                ".discussion-preview-text"
+                            );
+
+                        if (preview) {
+                            preview.textContent =
+                                message;
+                        }
+
+                        /*
+                         * Re-enable Reply on the newly-created node.
+                         */
+                        setupReplyButtons();
+                    }
+
+                    textarea.value = "";
+
+                    showToast(
+                        data.message ||
+                        "Discussion posted successfully.",
+                        "success"
+                    );
+
+                    requestAnimationFrame(function () {
+                        window.scrollTo(
+                            0,
+                            scrollPosition
+                        );
+                    });
+
+                } catch (error) {
+                    console.error(
+                        "Discussion error:",
+                        error
+                    );
+
+                    showToast(
+                        error.message ||
+                        "Unable to post discussion.",
+                        "error"
+                    );
+
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML =
+                            originalHTML;
+                    }
+                }
+            });
         });
-
-    });
-
-}
+    }
 
 
-document.addEventListener(
-    "DOMContentLoaded",
-    setupDiscussionUI
-);
+    /* =========================================================
+       FILTER BUTTONS
+       - No full page navigation
+       - Replace only the task/stat sections
+       ========================================================= */
 
+    function setupAjaxFilters() {
+        document.querySelectorAll(
+            '.filter-buttons a[href*="/admin/tasks"]'
+        ).forEach(function (link) {
+
+            if (link.dataset.ready === "1") return;
+
+            link.dataset.ready = "1";
+
+            link.addEventListener("click", async function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const url = link.href;
+                const scrollPosition = window.scrollY;
+
+                try {
+                    const response = await fetch(
+                        url,
+                        {
+                            method: "GET",
+                            credentials: "same-origin",
+                            headers: {
+                                "X-Requested-With":
+                                    "XMLHttpRequest",
+                                "Accept":
+                                    "text/html"
+                            }
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(
+                            "Unable to load the selected tasks."
+                        );
+                    }
+
+                    const html =
+                        await response.text();
+
+                    const doc =
+                        new DOMParser().parseFromString(
+                            html,
+                            "text/html"
+                        );
+
+                    const currentTable =
+                        document.querySelector(
+                            ".table-card"
+                        );
+
+                    const newTable =
+                        doc.querySelector(
+                            ".table-card"
+                        );
+
+                    if (currentTable && newTable) {
+                        currentTable.replaceWith(
+                            newTable
+                        );
+                    }
+
+                    const currentStats =
+                        document.querySelector(
+                            ".stats-grid"
+                        );
+
+                    const newStats =
+                        doc.querySelector(
+                            ".stats-grid"
+                        );
+
+                    if (currentStats && newStats) {
+                        currentStats.replaceWith(
+                            newStats
+                        );
+                    }
+
+                    /*
+                     * Update active filter state.
+                     */
+                    document.querySelectorAll(
+                        ".filter-buttons a"
+                    ).forEach(function (item) {
+                        item.classList.remove("active");
+                    });
+
+                    const matchingLink =
+                        document.querySelector(
+                            `.filter-buttons a[href="${new URL(url, window.location.origin).pathname}${new URL(url, window.location.origin).search}"]`
+                        );
+
+                    if (matchingLink) {
+                        matchingLink.classList.add("active");
+                    }
+
+                    /*
+                     * Reconnect listeners because the table
+                     * has been replaced.
+                     */
+                    setupDeleteButtons();
+                    setupDiscussionToggles();
+                    setupReplyButtons();
+                    setupCancelReplyButtons();
+                    setupDiscussionForms();
+
+                    window.history.pushState(
+                        {},
+                        "",
+                        url
+                    );
+
+                    requestAnimationFrame(function () {
+                        window.scrollTo(
+                            0,
+                            scrollPosition
+                        );
+                    });
+
+                } catch (error) {
+                    console.error(
+                        "Task filter error:",
+                        error
+                    );
+
+                    showToast(
+                        error.message ||
+                        "Unable to load tasks.",
+                        "error"
+                    );
+                }
+            });
+        });
+    }
+
+
+    /* =========================================================
+       INITIALIZE
+       ========================================================= */
+
+    function initializeTaskBoard() {
+        setupSidebar();
+        setupDeleteButtons();
+        setupDiscussionToggles();
+        setupReplyButtons();
+        setupCancelReplyButtons();
+        setupDiscussionForms();
+        setupAjaxFilters();
+    }
+
+
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            initializeTaskBoard
+        );
+    } else {
+        initializeTaskBoard();
+    }
+
+})();
 </script>
 
 </body>
