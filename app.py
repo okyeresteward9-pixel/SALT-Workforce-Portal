@@ -750,28 +750,19 @@ def profile_settings():
         # ==========================================
         # DELETE OLD CLOUDINARY IMAGE
         # ==========================================
+        #
+        # IMPORTANT:
+        # We use the same public_id with overwrite=True.
+        # Therefore, Cloudinary has already replaced the
+        # old image. DO NOT destroy it here.
+        #
 
         if profile_url:
 
-            old_public_id = current_user.get(
-                'profile_pic_public_id'
+            print(
+                "Profile image uploaded successfully:",
+                profile_public_id
             )
-
-            if old_public_id:
-
-                try:
-
-                    uploader.destroy(
-                        old_public_id,
-                        resource_type="image"
-                    )
-
-                except Exception as e:
-
-                    print(
-                        "Old profile image deletion error:",
-                        e
-                    )
 
 
         conn.close()
