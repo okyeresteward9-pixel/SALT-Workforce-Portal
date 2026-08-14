@@ -1167,6 +1167,141 @@
             }
         }
 
+        /* =========================================================
+           REAL-TIME NOTIFICATIONS
+           ========================================================= */
+
+        .notification-actions {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .notification-actions button {
+            border: 0;
+            background: transparent;
+            color: #1769c2;
+            font-size: 10px;
+            font-weight: 800;
+            cursor: pointer;
+            padding: 7px 8px;
+            border-radius: 8px;
+            transition: all .2s ease;
+            white-space: nowrap;
+        }
+
+        .notification-actions button:hover {
+            background: #eaf4ff;
+        }
+
+        .notification-actions #clearAllNotifications {
+            color: #c83b3b;
+        }
+
+        .notification-actions #clearAllNotifications:hover {
+            background: #fff0f0;
+        }
+
+        .notification-toast-container {
+            position: fixed;
+            top: 90px;
+            right: 24px;
+            z-index: 20000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .notification-toast {
+            width: min(360px, calc(100vw - 30px));
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 15px;
+            background: #ffffff;
+            border: 1px solid #dce7f3;
+            border-left: 4px solid #1769c2;
+            border-radius: 14px;
+            box-shadow: 0 15px 40px rgba(11,63,128,.18);
+            pointer-events: auto;
+            animation: notificationToastIn .35s ease forwards;
+        }
+
+        .notification-toast-icon {
+            width: 36px;
+            height: 36px;
+            flex: 0 0 36px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            background: #eaf4ff;
+            color: #1769c2;
+            font-size: 14px;
+        }
+
+        .notification-toast-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .notification-toast-title {
+            margin: 0 0 3px;
+            color: #17365f;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .notification-toast-message {
+            color: #50657d;
+            font-size: 12px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .notification-toast-close {
+            width: 26px;
+            height: 26px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: #8a9aad;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+        }
+
+        .notification-toast-close:hover {
+            background: #f1f5f9;
+            color: #17365f;
+        }
+
+        .notification-toast.removing {
+            animation: notificationToastOut .3s ease forwards;
+        }
+
+        @keyframes notificationToastIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes notificationToastOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+        }
+
         /* -------------------------
            RESPONSIVE
            ------------------------- */
@@ -1267,6 +1402,19 @@
 </head>
 
 <body>
+
+<!-- REAL-TIME NOTIFICATION AUDIO + TOAST -->
+<audio
+    id="notificationSound"
+    src="{{ url_for('static', filename='sounds/notification.mp3') }}"
+    preload="auto">
+</audio>
+
+<div
+    id="notificationToastContainer"
+    class="notification-toast-container">
+</div>
+
 
 <!-- 💬 FLOAT BUTTON -->
 <div id="chatToggle" onclick="toggleChat()">🗣️</div>
@@ -1473,9 +1621,27 @@
                                 <p>Latest updates</p>
                             </div>
 
-                            <button id="markAllRead">
-                                Mark all read
-                            </button>
+                            <div class="notification-actions">
+
+                                <button
+                                    type="button"
+                                    id="markAllRead"
+                                    title="Mark all notifications as read"
+                                >
+                                    <i class="fas fa-check-double"></i>
+                                    Mark all read
+                                </button>
+
+                                <button
+                                    type="button"
+                                    id="clearAllNotifications"
+                                    title="Clear all notifications"
+                                >
+                                    <i class="fas fa-trash"></i>
+                                    Clear all
+                                </button>
+
+                            </div>
 
                         </div>
 
@@ -1911,6 +2077,8 @@
 <!-- Marker Cluster JS -->
 <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
 <script>
 
     var employees = {{ employee_locations | default([]) | tojson }};
@@ -2237,170 +2405,575 @@ data: [{{ tasks_completed }}, {{ tasks_pending }}]
 </script>
 
 <script>
+/* =========================================================
+   🔔 SALT REAL-TIME NOTIFICATIONS
+   Frontend only — backend Socket.IO event will be added next.
+   ========================================================= */
 
-    document.addEventListener("DOMContentLoaded", () => {
-    
-        const notificationBtn =
-            document.getElementById("notificationBtn");
-    
-        const dropdown =
-            document.getElementById("notificationDropdown");
-    
-        const notificationList =
-            document.getElementById("notificationList");
-    
-        const markAllRead =
-            document.getElementById("markAllRead");
-    
-        const badge =
-            document.getElementById("notificationBadge");
-    
-        /* =========================
-           TOGGLE DROPDOWN
-        ========================= */
-    
-        if (!notificationBtn || !dropdown || !notificationList || !markAllRead) {
+document.addEventListener("DOMContentLoaded", function () {
+
+    const notificationBtn =
+        document.getElementById("notificationBtn");
+
+    const dropdown =
+        document.getElementById("notificationDropdown");
+
+    const notificationList =
+        document.getElementById("notificationList");
+
+    const markAllRead =
+        document.getElementById("markAllRead");
+
+    const clearAll =
+        document.getElementById("clearAllNotifications");
+
+    const notificationSound =
+        document.getElementById("notificationSound");
+
+    const toastContainer =
+        document.getElementById("notificationToastContainer");
+
+    if (!notificationBtn || !dropdown || !notificationList) {
+        return;
+    }
+
+    let soundUnlocked = false;
+
+    /* ---------------------------------------------------------
+       Sound unlock — required by Chrome autoplay policy.
+       --------------------------------------------------------- */
+
+    function unlockNotificationSound() {
+
+        if (soundUnlocked || !notificationSound) {
             return;
         }
 
-        notificationBtn.addEventListener("click", async (e) => {
-    
-            e.stopPropagation();
-    
-            dropdown.classList.toggle("hidden");
-    
-            if (!dropdown.classList.contains("hidden")) {
-    
-                loadNotifications();
-            }
+        notificationSound.volume = 0;
+
+        const promise = notificationSound.play();
+
+        if (promise !== undefined) {
+
+            promise
+                .then(function () {
+
+                    notificationSound.pause();
+                    notificationSound.currentTime = 0;
+                    notificationSound.volume = 1;
+                    soundUnlocked = true;
+
+                })
+                .catch(function () {
+
+                    notificationSound.volume = 1;
+
+                });
+        }
+    }
+
+    document.addEventListener(
+        "click",
+        unlockNotificationSound,
+        { once: true }
+    );
+
+    /* ---------------------------------------------------------
+       Sound
+       --------------------------------------------------------- */
+
+    function playNotificationSound() {
+
+        if (!notificationSound) {
+            return;
+        }
+
+        notificationSound.currentTime = 0;
+        notificationSound.volume = 1;
+
+        notificationSound.play().catch(function (error) {
+            console.log("Notification sound blocked:", error);
         });
-    
-        /* =========================
-           LOAD NOTIFICATIONS
-        ========================= */
-    
-        async function loadNotifications(){
-    
+    }
+
+    /* ---------------------------------------------------------
+       Badge
+       --------------------------------------------------------- */
+
+    function updateBadge(count) {
+
+        let badge =
+            document.getElementById("notificationBadge");
+
+        if (count <= 0) {
+
+            if (badge) {
+                badge.textContent = "";
+                badge.style.display = "none";
+            }
+
+            return;
+        }
+
+        if (!badge) {
+
+            badge = document.createElement("span");
+
+            badge.id = "notificationBadge";
+            badge.className = "notification-badge";
+
+            notificationBtn.appendChild(badge);
+        }
+
+        badge.textContent = count;
+        badge.style.display = "flex";
+    }
+
+    /* ---------------------------------------------------------
+       Toast
+       --------------------------------------------------------- */
+
+    function escapeHtml(value) {
+
+        const div = document.createElement("div");
+
+        div.textContent = value || "";
+
+        return div.innerHTML;
+    }
+
+    function removeToast(toast) {
+
+        if (!toast || !toast.isConnected) {
+            return;
+        }
+
+        toast.classList.add("removing");
+
+        setTimeout(function () {
+
+            if (toast.isConnected) {
+                toast.remove();
+            }
+
+        }, 300);
+    }
+
+    function showNotificationToast(message) {
+
+        if (!toastContainer) {
+            return;
+        }
+
+        const toast =
+            document.createElement("div");
+
+        toast.className =
+            "notification-toast";
+
+        toast.innerHTML = `
+            <div class="notification-toast-icon">
+                <i class="fas fa-bell"></i>
+            </div>
+
+            <div class="notification-toast-content">
+                <div class="notification-toast-title">
+                    New Notification
+                </div>
+
+                <div class="notification-toast-message">
+                    ${escapeHtml(message)}
+                </div>
+            </div>
+
+            <button
+                type="button"
+                class="notification-toast-close"
+                aria-label="Close notification"
+            >
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        toastContainer.prepend(toast);
+
+        const closeButton =
+            toast.querySelector(
+                ".notification-toast-close"
+            );
+
+        if (closeButton) {
+
+            closeButton.addEventListener(
+                "click",
+                function () {
+                    removeToast(toast);
+                }
+            );
+        }
+
+        setTimeout(function () {
+            removeToast(toast);
+        }, 6000);
+    }
+
+    /* ---------------------------------------------------------
+       Render notification list
+       --------------------------------------------------------- */
+
+    function renderNotifications(data) {
+
+        const unreadCount =
+            data.filter(function (note) {
+                return Number(note.is_read) === 0;
+            }).length;
+
+        updateBadge(unreadCount);
+
+        if (!data.length) {
+
             notificationList.innerHTML = `
                 <div class="empty-note">
-                    Loading...
+                    <i class="fas fa-bell-slash"></i>
+                    No notifications yet
                 </div>
             `;
-    
-            try{
-    
-                const response =
-                    await fetch("/api/notifications");
-    
-                const data =
-                    await response.json();
-    
-                if(data.length === 0){
-    
+
+            return;
+        }
+
+        notificationList.innerHTML = "";
+
+        data.forEach(function (note) {
+
+            const item =
+                document.createElement("div");
+
+            item.className =
+                "notification-item";
+
+            const dot =
+                document.createElement("div");
+
+            dot.className =
+                "notification-dot " +
+                (
+                    Number(note.is_read) === 0
+                        ? "unread"
+                        : "read"
+                );
+
+            const content =
+                document.createElement("div");
+
+            content.className =
+                "notification-content";
+
+            const message =
+                document.createElement("div");
+
+            message.className =
+                "notification-message";
+
+            message.textContent =
+                note.message;
+
+            const time =
+                document.createElement("div");
+
+            time.className =
+                "notification-time";
+
+            time.textContent =
+                note.created_at;
+
+            content.appendChild(message);
+            content.appendChild(time);
+
+            item.appendChild(dot);
+            item.appendChild(content);
+
+            notificationList.appendChild(item);
+        });
+    }
+
+    /* ---------------------------------------------------------
+       Load stored notifications
+       --------------------------------------------------------- */
+
+    async function loadNotifications() {
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/notifications",
+                    {
+                        cache: "no-store"
+                    }
+                );
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data =
+                await response.json();
+
+            renderNotifications(data);
+
+        } catch (error) {
+
+            console.error(
+                "Notification loading error:",
+                error
+            );
+        }
+    }
+
+    /* ---------------------------------------------------------
+       Socket.IO connection
+       --------------------------------------------------------- */
+
+    if (typeof io === "function") {
+
+        const socket = io();
+
+        socket.on("connect", function () {
+
+            console.log(
+                "🔌 Notification Socket connected:",
+                socket.id
+            );
+
+            socket.emit("join", {
+                room: "user_{{ session['user_id'] }}"
+            });
+        });
+
+        socket.on("disconnect", function () {
+
+            console.log(
+                "🔌 Notification Socket disconnected"
+            );
+        });
+
+        /* -----------------------------------------------------
+           NEW NOTIFICATION
+           ----------------------------------------------------- */
+
+        socket.on(
+            "new_notification",
+            function (notification) {
+
+                console.log(
+                    "🔔 New notification:",
+                    notification
+                );
+
+                playNotificationSound();
+
+                showNotificationToast(
+                    notification.message
+                );
+
+                const badge =
+                    document.getElementById(
+                        "notificationBadge"
+                    );
+
+                let currentCount = 0;
+
+                if (badge) {
+
+                    currentCount =
+                        parseInt(
+                            badge.textContent
+                        ) || 0;
+                }
+
+                updateBadge(
+                    currentCount + 1
+                );
+
+                /*
+                 * If notification dropdown is open,
+                 * refresh it immediately.
+                 */
+
+                if (
+                    !dropdown.classList.contains(
+                        "hidden"
+                    )
+                ) {
+
+                    loadNotifications();
+                }
+            }
+        );
+
+    } else {
+
+        console.error(
+            "Socket.IO client library not loaded."
+        );
+    }
+
+    /* ---------------------------------------------------------
+       Notification dropdown
+       --------------------------------------------------------- */
+
+    notificationBtn.addEventListener(
+        "click",
+        function (event) {
+
+            event.stopPropagation();
+
+            dropdown.classList.toggle("hidden");
+
+            if (
+                !dropdown.classList.contains("hidden")
+            ) {
+
+                loadNotifications();
+            }
+        }
+    );
+
+    /* ---------------------------------------------------------
+       Mark all read
+       --------------------------------------------------------- */
+
+    if (markAllRead) {
+
+        markAllRead.addEventListener(
+            "click",
+            async function (event) {
+
+                event.stopPropagation();
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/api/notifications/mark-read",
+                            {
+                                method: "POST"
+                            }
+                        );
+
+                    const data =
+                        await response.json();
+
+                    if (data.success) {
+
+                        updateBadge(0);
+
+                        await loadNotifications();
+                    }
+
+                } catch (error) {
+
+                    console.error(
+                        "Mark all read error:",
+                        error
+                    );
+                }
+            }
+        );
+    }
+
+    /* ---------------------------------------------------------
+       Clear all
+       --------------------------------------------------------- */
+
+    if (clearAll) {
+
+        clearAll.addEventListener(
+            "click",
+            async function (event) {
+
+                event.stopPropagation();
+
+                const confirmed =
+                    confirm(
+                        "Clear all notifications?\n\n" +
+                        "This action cannot be undone."
+                    );
+
+                if (!confirmed) {
+                    return;
+                }
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/api/notifications/clear-all",
+                            {
+                                method: "POST"
+                            }
+                        );
+
+                    const data =
+                        await response.json();
+
+                    if (!data.success) {
+
+                        alert(
+                            data.message ||
+                            "Unable to clear notifications."
+                        );
+
+                        return;
+                    }
+
+                    updateBadge(0);
+
                     notificationList.innerHTML = `
                         <div class="empty-note">
+                            <i class="fas fa-bell-slash"></i>
                             No notifications yet
                         </div>
                     `;
-    
-                    return;
+
+                } catch (error) {
+
+                    console.error(
+                        "Clear all error:",
+                        error
+                    );
                 }
-    
-                notificationList.innerHTML = "";
-    
-                data.forEach(note => {
-    
-                    notificationList.innerHTML += `
-    
-                        <div class="notification-item">
-    
-                            <div class="
-                                notification-dot
-                                ${note.is_read == 0 ? 'unread' : 'read'}
-                            "></div>
-    
-                            <div class="notification-content">
-    
-                                <div class="notification-message">
-                                    ${note.message}
-                                </div>
-    
-                                <div class="notification-time">
-                                    ${note.created_at}
-                                </div>
-    
-                            </div>
-    
-                        </div>
-    
-                    `;
-                });
-    
-            }catch(err){
-    
-                notificationList.innerHTML = `
-                    <div class="empty-note">
-                        Failed to load notifications
-                    </div>
-                `;
             }
-        }
-    
-        /* =========================
-           MARK ALL READ
-        ========================= */
-    
-        markAllRead.addEventListener("click", async () => {
-    
-            try{
-    
-                await fetch(
-                    "/api/notifications/mark-read",
-                    {
-                        method: "POST"
-                    }
-                );
-    
-                /* REMOVE BADGE */
-                if(badge){
-                    badge.style.display = "none";
-                }
-    
-                /* UPDATE DOTS */
-                document
-                    .querySelectorAll(".notification-dot")
-                    .forEach(dot => {
-    
-                        dot.classList.remove("unread");
-                        dot.classList.add("read");
-                    });
-    
-            }catch(err){
-                console.log(err);
-            }
-        });
-    
-        /* =========================
-           CLOSE OUTSIDE CLICK
-        ========================= */
-    
-        document.addEventListener("click", (e) => {
-    
-            if(
-                !notificationBtn.contains(e.target)
-                &&
-                !dropdown.contains(e.target)
-            ){
+        );
+    }
+
+    /* ---------------------------------------------------------
+       Close dropdown outside click
+       --------------------------------------------------------- */
+
+    document.addEventListener(
+        "click",
+        function (event) {
+
+            if (
+                !notificationBtn.contains(event.target) &&
+                !dropdown.contains(event.target)
+            ) {
+
                 dropdown.classList.add("hidden");
             }
-        });
-    
-    });
-    
+        }
+    );
+
+    /* ---------------------------------------------------------
+       Initial stored notifications
+       --------------------------------------------------------- */
+
+    loadNotifications();
+
+});
 </script>
-
-
-
 <script>
 /* =========================================================
    SALT INSTITUTIONAL SLIDESHOW

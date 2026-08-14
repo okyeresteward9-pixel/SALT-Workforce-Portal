@@ -1348,7 +1348,154 @@ def clockout():
 # -------------------------
 # Notifications helper
 # -------------------------
+def create_notification(user_id, message, created_at=None):
+    """
+    Create a persistent notification and immediately push it
+    to the user's Socket.IO room.
+
+    This is the single notification entry point for the portal.
+    It is intentionally generic so tasks, announcements,
+    comments, workflow events, and future features can all use
+    the same notification system.
+    """
+    if not user_id or not message:
+        return None
+
+    created_at = created_at or datetime.now()
+
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        c.execute("""
+            INSERT INTO notifications
+            (
+                user_id,
+                message,
+                is_read,
+                created_at
+            )
+            VALUES
+            (
+                %s,
+                %s,
+                FALSE,
+                %s
+            )
+            RETURNING id
+        """, (
+            int(user_id),
+            message,
+            created_at
+        ))
+
+        row = c.fetchone()
+        notification_id = row["id"]
+
+        conn.commit()
+
+        socketio.emit(
+            "new_notification",
+            {
+                "id": notification_id,
+                "message": message,
+                "created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "is_read": False
+            },
+            room=f"user_{int(user_id)}"
+        )
+
+        return notification_id
+
+    except Exception as e:
+        conn.rollback()
+        print("CREATE NOTIFICATION ERROR:", repr(e))
+        return None
+
+    finally:
+        conn.close()
+
+
+def notify_users(user_ids, message):
+    """
+    Send the same notification to multiple users.
+    Duplicate user IDs are ignored.
+    """
+    sent = []
+
+    for user_id in set(user_ids or []):
+        notification_id = create_notification(
+            user_id,
+            message
+        )
+
+        if notification_id is not None:
+            sent.append(notification_id)
+
+    return sent
+
+
+def notify_announcement(audience, message, exclude_user_id=None):
+    """
+    Notify users according to an announcement audience:
+      - everyone -> all employees
+      - staff    -> staff users only
+      - admin    -> admin users only
+    """
+    conn = get_db()
+    c = conn.cursor()
+
+    try:
+        if audience == "admin":
+            c.execute("""
+                SELECT id
+                FROM employees
+                WHERE role='admin'
+            """)
+        elif audience == "staff":
+            c.execute("""
+                SELECT id
+                FROM employees
+                WHERE role <> 'admin'
+            """)
+        else:
+            c.execute("""
+                SELECT id
+                FROM employees
+            """)
+
+        user_ids = [
+            row["id"]
+            for row in c.fetchall()
+            if row["id"] != exclude_user_id
+        ]
+
+    finally:
+        conn.close()
+
+    return notify_users(
+        user_ids,
+        message
+    )
+
+
 def get_notification_count(user_id):
+
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("""
+    SELECT COUNT(*) AS total
+    FROM notifications
+    WHERE user_id=%s AND is_read=FALSE
+    """, (user_id,))
+
+    count = c.fetchone()["total"]
+
+    conn.close()
+
+    return count
+
 
     conn = get_db()
     c = conn.cursor()
@@ -1428,6 +1575,59 @@ def mark_notifications_read():
 
     return jsonify({"success": True})
 
+# -------------------------
+# Clear all notifications
+# -------------------------
+@app.route('/api/notifications/clear-all', methods=['POST'])
+def clear_all_notifications():
+
+    if 'user_id' not in session:
+        return jsonify({
+            "success": False,
+            "message": "Unauthorized"
+        }), 401
+
+    conn = get_db()
+    c = conn.cursor()
+
+    try:
+
+        c.execute("""
+            DELETE FROM notifications
+            WHERE user_id=%s
+        """, (
+            session['user_id'],
+        ))
+
+        deleted_count = c.rowcount
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "deleted": deleted_count
+        })
+
+    except Exception as e:
+
+        conn.rollback()
+
+        print(
+            "CLEAR NOTIFICATIONS ERROR:",
+            e
+        )
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to clear notifications."
+        }), 500
+
+    finally:
+
+        conn.close()
+
+# -------------------------
+# Clear all notifications
 @app.route('/attendance')
 def attendance():
 
@@ -2029,11 +2229,24 @@ def admin_reply_task(id):
 
 
 
-    conn.commit()
+    # Find the employee who owns the task so the reply can
+    # trigger a real-time notification.
+    c.execute("""
+        SELECT assigned_to, title
+        FROM tasks
+        WHERE id=%s
+    """, (id,))
 
+    task_owner = c.fetchone()
+
+    conn.commit()
     conn.close()
 
-
+    if task_owner and task_owner[0] != session["user_id"]:
+        create_notification(
+            task_owner[0],
+            f"Admin replied to your task: {task_owner[1]}"
+        )
 
     return redirect('/admin/tasks')
 
@@ -2256,36 +2469,15 @@ def assign_task():
 
 
 
-        # 🔔 Notification
-
-        c.execute("""
-            INSERT INTO notifications
-            (
-                user_id,
-                message,
-                created_at
-            )
-
-            VALUES
-            (
-                %s,
-                %s,
-                %s
-            )
-
-        """,
-        (
-            assigned_to,
-            f"New Task Assigned: {title}",
-            datetime.now()
-        ))
-
-
-
         conn.commit()
 
         conn.close()
 
+        # 🔔 Persistent + real-time notification
+        create_notification(
+            assigned_to,
+            f"New Task Assigned: {title}"
+        )
 
         return redirect('/admin/tasks')
 
@@ -2707,6 +2899,13 @@ def admin_announcements():
 
         conn.commit()
         conn.close()
+
+        # 🔔 Notify the selected audience in real time.
+        notify_announcement(
+            audience,
+            f"New Announcement: {title}",
+            exclude_user_id=session['user_id']
+        )
 
         flash(
             "Announcement published successfully.",
@@ -3219,6 +3418,12 @@ def update_announcement(id):
 
         conn.commit()
 
+        # 🔔 Notify the selected audience about the update.
+        notify_announcement(
+            audience,
+            f"Announcement Updated: {title}",
+            exclude_user_id=session['user_id']
+        )
 
         return jsonify({
             "status": "success",
@@ -3654,9 +3859,23 @@ def reply_task(id):
         datetime.now()
     ))
 
+    # Find the task creator so they receive the reply notification.
+    c.execute("""
+        SELECT created_by, title
+        FROM tasks
+        WHERE id=%s
+    """, (id,))
+
+    task_owner = c.fetchone()
+
     conn.commit()
     conn.close()
 
+    if task_owner and task_owner[0] != session["user_id"]:
+        create_notification(
+            task_owner[0],
+            f"New reply on task: {task_owner[1]}"
+        )
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
 
@@ -3971,18 +4190,40 @@ def complete_task(id):
     c = conn.cursor()
 
     c.execute("""
+        SELECT created_by, title
+        FROM tasks
+        WHERE id=%s
+        AND assigned_to=%s
+    """, (
+        id,
+        session['user_id']
+    ))
+
+    task_owner = c.fetchone()
+
+    c.execute("""
         UPDATE tasks
         SET
             status='Completed',
             completed_at=%s
         WHERE id=%s
+        AND assigned_to=%s
     """, (
         datetime.now(),
-        id
+        id,
+        session['user_id']
     ))
 
     conn.commit()
     conn.close()
+
+    # 🔔 Notify the task creator when another employee
+    # completes their task.
+    if task_owner and task_owner[0] != session["user_id"]:
+        create_notification(
+            task_owner[0],
+            f"Task Completed: {task_owner[1]}"
+        )
 
     return redirect('/tasks')
 
@@ -4060,21 +4301,42 @@ def start_task(id):
     c = conn.cursor()
 
     c.execute("""
+        SELECT created_by, title
+        FROM tasks
+        WHERE id=%s
+        AND assigned_to=%s
+    """, (
+        id,
+        session['user_id']
+    ))
+
+    task_owner = c.fetchone()
+
+    c.execute("""
 
         UPDATE tasks
 
         SET status='In Progress'
 
         WHERE id=%s
+        AND assigned_to=%s
 
     """,
     (
         id,
+        session['user_id']
     ))
 
     conn.commit()
 
     conn.close()
+
+    # 🔔 Notify the task creator when an assigned task is started.
+    if task_owner and task_owner[0] != session["user_id"]:
+        create_notification(
+            task_owner[0],
+            f"Task Started: {task_owner[1]}"
+        )
 
     return redirect('/tasks')
 
@@ -4344,11 +4606,22 @@ def live_dashboard():
 @socketio.on("join")
 def on_join(data):
 
-    room = data["room"]
+    if 'user_id' not in session:
+        return
 
-    join_room(room)
+    expected_room = f"user_{session['user_id']}"
+    requested_room = data.get("room")
 
-    print(f"Joined room {room}")
+    # Only allow a client to join its own notification room.
+    if requested_room != expected_room:
+        return
+
+    join_room(expected_room)
+
+    print(
+        f"User {session['user_id']} joined notification room "
+        f"{expected_room}"
+    )
 
 @app.route('/logout')
 def logout():
