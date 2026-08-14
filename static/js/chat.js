@@ -76,6 +76,9 @@ class ChatApp {
 
         this.soundUnlocked = false;
 
+        this.receivedMessageIds =
+            new Set();
+
 
         // =====================================================
         // SOCKET
@@ -224,24 +227,59 @@ class ChatApp {
                     chat
                 );
 
-                // Do not notify the sender about their own message.
+                /*
+                 * The backend may emit the same message through both the
+                 * conversation room and the private user room.
+                 */
                 if (
-                    Number(chat.sender_id) !==
-                    Number(this.currentUser)
+                    chat.id !== undefined &&
+                    chat.id !== null
                 ) {
 
-                    this.playIncomingSound();
-                    this.showIncomingMessageToast(chat);
+                    const messageId =
+                        String(chat.id);
 
-                    const senderId =
-                        Number(chat.sender_id);
-
-                    // If this conversation is currently open,
-                    // the backend marks incoming messages as seen.
                     if (
-                        Number(this.receiver) !==
-                        senderId
+                        this.receivedMessageIds.has(
+                            messageId
+                        )
                     ) {
+                        return;
+                    }
+
+                    this.receivedMessageIds.add(
+                        messageId
+                    );
+                }
+
+                const senderId =
+                    Number(chat.sender_id);
+
+                const receiverId =
+                    Number(chat.receiver_id);
+
+                const currentUser =
+                    Number(this.currentUser);
+
+                const currentChat =
+                    Number(this.receiver);
+
+                const belongsToOpenChat =
+                    (
+                        senderId === currentChat &&
+                        receiverId === currentUser
+                    ) ||
+                    (
+                        senderId === currentUser &&
+                        receiverId === currentChat
+                    );
+
+                /*
+                 * Incoming message from another user.
+                 */
+                if (senderId !== currentUser) {
+
+                    if (senderId !== currentChat) {
 
                         this.updateSidebarUnread(
                             senderId,
@@ -255,10 +293,26 @@ class ChatApp {
 
                     }
 
+                    this.playIncomingSound();
+                    this.showIncomingMessageToast(chat);
                 }
 
-                this.append(chat);
+                /*
+                 * IMPORTANT:
+                 * If the message belongs to the conversation currently
+                 * open, render it immediately. No page reload.
+                 */
+                if (belongsToOpenChat) {
 
+                    this.append(
+                        chat,
+                        true
+                    );
+
+                    this.scrollBottom(
+                        true
+                    );
+                }
             }
         );
 
@@ -1020,7 +1074,7 @@ class ChatApp {
 
         const time =
             this.formatTime(
-                chat.created_at
+                this.formatChatTime(chat.created_at)
             );
 
 
@@ -1085,6 +1139,40 @@ class ChatApp {
 
         `;
 
+    }
+
+
+    formatChatTime(value) {
+
+        if (!value) {
+            return "";
+        }
+
+        const raw = String(value);
+
+        /*
+         * Backend now sends Ghana-local timestamps without a timezone
+         * suffix, so preserve those values exactly.
+         */
+        if (!/(?:Z|[+-]\\d{2}:?\\d{2})$/.test(raw)) {
+            return raw;
+        }
+
+        const date = new Date(raw);
+
+        if (Number.isNaN(date.getTime())) {
+            return raw;
+        }
+
+        return new Intl.DateTimeFormat(
+            "en-GB",
+            {
+                timeZone: "Africa/Accra",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            }
+        ).format(date);
     }
 
 
