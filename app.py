@@ -4186,46 +4186,182 @@ def complete_task(id):
     if 'user_id' not in session:
         return redirect('/')
 
+    user_id = session['user_id']
+
     conn = get_db()
-    c = conn.cursor()
 
-    c.execute("""
-        SELECT created_by, title
-        FROM tasks
-        WHERE id=%s
-        AND assigned_to=%s
-    """, (
-        id,
-        session['user_id']
-    ))
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
 
-    task_owner = c.fetchone()
+    try:
 
-    c.execute("""
-        UPDATE tasks
-        SET
-            status='Completed',
-            completed_at=%s
-        WHERE id=%s
-        AND assigned_to=%s
-    """, (
-        datetime.now(),
-        id,
-        session['user_id']
-    ))
+        # ==========================================
+        # GET TASK
+        # ==========================================
 
-    conn.commit()
-    conn.close()
+        c.execute("""
+            SELECT
+                id,
+                title,
+                created_by,
+                assigned_to,
+                status
+            FROM tasks
+            WHERE id = %s
+        """, (id,))
 
-    # 🔔 Notify the task creator when another employee
-    # completes their task.
-    if task_owner and task_owner[0] != session["user_id"]:
-        create_notification(
-            task_owner[0],
-            f"Task Completed: {task_owner[1]}"
+        task = c.fetchone()
+
+
+        if not task:
+
+            conn.close()
+
+            flash(
+                "Task not found.",
+                "error"
+            )
+
+            return redirect('/tasks')
+
+
+        # ==========================================
+        # CHECK OWNERSHIP
+        # ==========================================
+        #
+        # A user can complete:
+        #
+        # 1. A task assigned to them
+        # 2. A self-created task
+        #
+        # This also supports your current
+        # self-task structure.
+        # ==========================================
+
+        assigned_to = task.get(
+            "assigned_to"
         )
 
-    return redirect('/tasks')
+        created_by = task.get(
+            "created_by"
+        )
+
+
+        if (
+            assigned_to != user_id
+            and created_by != user_id
+        ):
+
+            conn.close()
+
+            flash(
+                "You are not authorized to complete this task.",
+                "error"
+            )
+
+            return redirect('/tasks')
+
+
+        # ==========================================
+        # ALREADY COMPLETED
+        # ==========================================
+
+        if task.get("status") == "Completed":
+
+            conn.close()
+
+            flash(
+                "This task is already completed.",
+                "info"
+            )
+
+            return redirect('/tasks')
+
+
+        # ==========================================
+        # COMPLETE TASK
+        # ==========================================
+
+        c.execute("""
+            UPDATE tasks
+            SET
+                status = 'Completed',
+                completed_at = %s
+            WHERE id = %s
+        """, (
+            datetime.now(),
+            id
+        ))
+
+
+        # ==========================================
+        # COMMIT
+        # ==========================================
+
+        conn.commit()
+
+
+        # ==========================================
+        # NOTIFY CREATOR
+        # ==========================================
+        #
+        # Only notify if another employee completed
+        # the task.
+        #
+        # Self-created task:
+        # created_by == user_id
+        # → no notification needed.
+        # ==========================================
+
+        if (
+            created_by
+            and created_by != user_id
+        ):
+
+            try:
+
+                create_notification(
+                    created_by,
+                    f"Task Completed: {task['title']}"
+                )
+
+            except Exception as notification_error:
+
+                print(
+                    "TASK COMPLETION NOTIFICATION ERROR:",
+                    notification_error
+                )
+
+
+        conn.close()
+
+
+        flash(
+            "Task completed successfully.",
+            "success"
+        )
+
+        return redirect('/tasks')
+
+
+    except Exception as e:
+
+        conn.rollback()
+
+        conn.close()
+
+        print(
+            "COMPLETE TASK ERROR:",
+            e
+        )
+
+        flash(
+            "Unable to complete task.",
+            "error"
+        )
+
+        return redirect('/tasks')
 
 @app.route('/tasks/create', methods=['POST'])
 def create_task():
@@ -4233,18 +4369,25 @@ def create_task():
     if 'user_id' not in session:
         return redirect('/')
 
-    title = request.form["title"]
+    title = request.form.get(
+        "title",
+        ""
+    ).strip()
 
-    description = request.form["description"]
+    description = request.form.get(
+        "description",
+        ""
+    ).strip()
 
-    deadline = request.form["deadline"]
+    deadline = request.form.get(
+        "deadline"
+    ) or None
 
     conn = get_db()
 
     c = conn.cursor()
 
     c.execute("""
-
         INSERT INTO tasks
         (
             title,
@@ -4257,7 +4400,6 @@ def create_task():
             original_deadline,
             carried_forward
         )
-
         VALUES
         (
             %s,
@@ -4270,9 +4412,7 @@ def create_task():
             %s,
             %s
         )
-
-    """,
-    (
+    """, (
         title,
         description,
         session["user_id"],
@@ -4285,8 +4425,12 @@ def create_task():
     ))
 
     conn.commit()
-
     conn.close()
+
+    flash(
+        "Task created successfully.",
+        "success"
+    )
 
     return redirect("/tasks")
 

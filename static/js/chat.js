@@ -67,6 +67,15 @@ class ChatApp {
 
         this.typingTimer = null;
 
+        // Chat notification UI
+        this.notificationSound =
+            document.getElementById("chatNotificationSound");
+
+        this.toastContainer =
+            document.getElementById("chat-notification-toast-container");
+
+        this.soundUnlocked = false;
+
 
         // =====================================================
         // SOCKET
@@ -88,6 +97,14 @@ class ChatApp {
         this.initSocket();
 
         this.initEvents();
+
+        this.initConversationNavigation();
+
+        this.updateChatHeader(
+            window.RECEIVER_NAME || ""
+        );
+
+        this.highlightCurrentUser();
 
         this.loadMessages();
 
@@ -119,6 +136,12 @@ class ChatApp {
             this.setStatus(
                 "Active",
                 "text-green-500"
+            );
+
+            // Opening this conversation marks its unread messages as seen
+            // on the backend, so remove the sidebar badge immediately.
+            this.clearSidebarUnread(
+                this.receiver
             );
 
         });
@@ -201,6 +224,39 @@ class ChatApp {
                     chat
                 );
 
+                // Do not notify the sender about their own message.
+                if (
+                    Number(chat.sender_id) !==
+                    Number(this.currentUser)
+                ) {
+
+                    this.playIncomingSound();
+                    this.showIncomingMessageToast(chat);
+
+                    const senderId =
+                        Number(chat.sender_id);
+
+                    // If this conversation is currently open,
+                    // the backend marks incoming messages as seen.
+                    if (
+                        Number(this.receiver) !==
+                        senderId
+                    ) {
+
+                        this.updateSidebarUnread(
+                            senderId,
+                            chat.message ||
+                            (
+                                chat.file_name
+                                    ? "📎 Attachment"
+                                    : "New message"
+                            )
+                        );
+
+                    }
+
+                }
+
                 this.append(chat);
 
             }
@@ -221,6 +277,298 @@ class ChatApp {
             }
         );
 
+    }
+
+
+    // =====================================================
+    // SIDEBAR UNREAD COUNTS
+    // =====================================================
+
+    updateSidebarUnread(senderId, message) {
+
+        const id = String(senderId);
+
+        const userItem =
+            document.querySelector(
+                `.user-item[data-user-id="${CSS.escape(id)}"]`
+            );
+
+        if (!userItem) {
+            return;
+        }
+
+        let badge =
+            userItem.querySelector(
+                ".chat-unread-badge"
+            );
+
+        let count = 0;
+
+        if (badge) {
+            count = parseInt(badge.textContent, 10) || 0;
+        }
+
+        count += 1;
+
+        if (!badge) {
+
+            badge =
+                document.createElement("span");
+
+            badge.className =
+                "chat-unread-badge";
+
+            badge.dataset.userId = id;
+
+            const info =
+                userItem.querySelector(
+                    ".flex-1.min-w-0"
+                );
+
+            const header =
+                info?.querySelector(
+                    ".flex.items-center.justify-between"
+                );
+
+            if (header) {
+
+                let actions =
+                    header.querySelector(
+                        ".flex.items-center.gap-2"
+                    );
+
+                if (!actions) {
+
+                    actions =
+                        document.createElement("div");
+
+                    actions.className =
+                        "flex items-center gap-2 flex-shrink-0";
+
+                    header.appendChild(actions);
+
+                }
+
+                actions.prepend(badge);
+            }
+        }
+
+        badge.textContent =
+            count > 99 ? "99+" : String(count);
+
+        userItem.classList.add(
+            "has-unread"
+        );
+
+        const preview =
+            userItem.querySelector(
+                ".chat-user-preview"
+            );
+
+        if (preview) {
+
+            preview.textContent =
+                message || "New message";
+
+            preview.classList.remove(
+                "text-gray-400"
+            );
+
+            preview.classList.add(
+                "text-gray-600",
+                "font-semibold"
+            );
+        }
+
+        // WhatsApp-style: conversation jumps to the top.
+        const usersList =
+            document.getElementById("users-list");
+
+        if (usersList) {
+            usersList.prepend(userItem);
+        }
+    }
+
+
+    clearSidebarUnread(userId) {
+
+        const id = String(userId);
+
+        const userItem =
+            document.querySelector(
+                `.user-item[data-user-id="${CSS.escape(id)}"]`
+            );
+
+        if (!userItem) {
+            return;
+        }
+
+        const badge =
+            userItem.querySelector(
+                ".chat-unread-badge"
+            );
+
+        if (badge) {
+            badge.remove();
+        }
+
+        userItem.classList.remove(
+            "has-unread"
+        );
+
+        const preview =
+            userItem.querySelector(
+                ".chat-user-preview"
+            );
+
+        if (preview) {
+
+            preview.classList.remove(
+                "text-gray-600",
+                "font-semibold"
+            );
+
+            preview.classList.add(
+                "text-gray-400"
+            );
+        }
+    }
+
+
+    updateChatHeader(userName) {
+
+        const title =
+            document.getElementById("chatReceiverName");
+
+        if (title) {
+            title.textContent =
+                userName || "Chat";
+        }
+    }
+
+
+    // =====================================================
+    // INSTANT CONVERSATION SWITCHING
+    // =====================================================
+
+    async switchConversation(userId, userName, userLink = null) {
+
+        const id = Number(userId);
+
+        if (!id || id === Number(this.currentUser)) {
+            return;
+        }
+
+        if (Number(this.receiver) === id) {
+            this.highlightCurrentUser();
+            return;
+        }
+
+        const oldReceiver = this.receiver;
+
+        // Remove active state immediately.
+        document
+            .querySelectorAll(".user-item")
+            .forEach(item => {
+                item.classList.remove("active");
+            });
+
+        if (userLink) {
+            userLink.classList.add("active");
+        }
+
+        // Update receiver without reloading the page.
+        this.receiver = id;
+        window.RECEIVER_ID = id;
+
+        // Update URL without navigation.
+        window.history.pushState(
+            {
+                receiver: id
+            },
+            "",
+            `/messages/${id}`
+        );
+
+        // Update the selected user's name immediately.
+        this.updateChatHeader(userName);
+
+        // Reset status while loading.
+        this.setStatus(
+            "Loading...",
+            "text-gray-400"
+        );
+
+        // Clear unread badge immediately.
+        this.clearSidebarUnread(id);
+
+        // Join the new Socket.IO conversation room.
+        if (this.socket) {
+
+            this.socket.emit(
+                "join_chat",
+                {
+                    user_id: id
+                }
+            );
+
+        }
+
+        // Load only the messages — no full page reload.
+        await this.loadMessages();
+
+        // Keep the new conversation active.
+        this.updateChatHeader(userName);
+        this.highlightCurrentUser();
+
+        // If loading failed, restore the previous receiver.
+        // loadMessages already displays its error state.
+        if (!this.chatBox) {
+            this.receiver = oldReceiver;
+            window.RECEIVER_ID = oldReceiver;
+        }
+    }
+
+
+    updateOwnMessageSidebar(message) {
+
+        const userItem =
+            document.querySelector(
+                `.user-item[data-user-id="${CSS.escape(String(this.receiver))}"]`
+            );
+
+        if (!userItem) {
+            return;
+        }
+
+        // Show the latest message preview.
+        const preview =
+            userItem.querySelector(".chat-user-preview");
+
+        if (preview) {
+
+            preview.textContent =
+                message || "Message sent";
+
+            preview.classList.remove(
+                "text-gray-600",
+                "font-semibold"
+            );
+
+            preview.classList.add(
+                "text-gray-400"
+            );
+        }
+
+        // IMPORTANT:
+        // Do NOT create or increase an unread badge for our own message.
+        // The conversation is simply moved to the top because it is active.
+        const usersList =
+            document.getElementById("users-list");
+
+        if (usersList) {
+            usersList.prepend(userItem);
+        }
     }
 
 
@@ -313,6 +661,10 @@ class ChatApp {
             this.setStatus(
                 "Active",
                 "text-green-500"
+            );
+
+            this.clearSidebarUnread(
+                this.receiver
             );
 
         }
@@ -1000,6 +1352,12 @@ class ChatApp {
 
             this.hidePreview();
 
+            // Our own message moves the conversation to the top,
+            // but NEVER increments the unread count.
+            this.updateOwnMessageSidebar(
+                message || "📎 Attachment"
+            );
+
             this.scrollBottom(
                 true
             );
@@ -1527,7 +1885,101 @@ class ChatApp {
     // EVENTS
     // =====================================================
 
+    initConversationNavigation() {
+
+        const usersList =
+            document.getElementById("users-list");
+
+        if (!usersList) {
+            return;
+        }
+
+        usersList.addEventListener(
+            "click",
+            async event => {
+
+                const link =
+                    event.target.closest(
+                        ".user-item"
+                    );
+
+                if (!link) {
+                    return;
+                }
+
+                // Let Ctrl/Cmd-click and middle-click behave normally.
+                if (
+                    event.ctrlKey ||
+                    event.metaKey ||
+                    event.shiftKey ||
+                    event.altKey ||
+                    event.button === 1
+                ) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const userId =
+                    link.dataset.userId ||
+                    link.getAttribute("href")
+                        ?.split("/")
+                        .pop();
+
+                const userName =
+                    link.dataset.userName ||
+                    link.querySelector(
+                        "p.font-semibold"
+                    )?.textContent.trim();
+
+                link.classList.add("switching");
+
+                try {
+
+                    await this.switchConversation(
+                        userId,
+                        userName,
+                        link
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "Conversation switch error:",
+                        error
+                    );
+
+                    // If something genuinely fails,
+                    // allow the normal URL to recover.
+                    window.location.href =
+                        link.getAttribute("href");
+
+                } finally {
+
+                    link.classList.remove(
+                        "switching"
+                    );
+
+                }
+            }
+        );
+    }
+
+
     initEvents() {
+
+        // Browser autoplay policy: unlock sound after first user interaction.
+        document.addEventListener(
+            "click",
+            () => this.unlockNotificationSound(),
+            { once: true }
+        );
+
+        document.addEventListener(
+            "keydown",
+            () => this.unlockNotificationSound(),
+            { once: true }
+        );
 
         // SEND
 
@@ -2188,3 +2640,47 @@ window.copyMessage =
         );
 
     };
+
+// =========================================================
+// BROWSER BACK / FORWARD
+// =========================================================
+
+window.addEventListener(
+    "popstate",
+    function () {
+
+        if (!window.chat) {
+            return;
+        }
+
+        const match =
+            window.location.pathname.match(
+                /^\/messages\/(\d+)/
+            );
+
+        if (!match) {
+            return;
+        }
+
+        const id = Number(match[1]);
+
+        const link =
+            document.querySelector(
+                `.user-item[data-user-id="${CSS.escape(String(id))}"]`
+            );
+
+        const name =
+            link?.dataset.userName ||
+            link?.querySelector(
+                "p.font-semibold"
+            )?.textContent.trim() ||
+            "Chat";
+
+        window.chat.switchConversation(
+            id,
+            name,
+            link
+        );
+
+    }
+);

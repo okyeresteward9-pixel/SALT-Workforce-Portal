@@ -305,17 +305,72 @@ def messages(user_id=None):
     c.execute("""
 
         SELECT
-            id,
-            name
+            e.id,
+            e.name,
 
-        FROM employees
+            COALESCE(unread.unread_count, 0) AS unread_count,
 
-        WHERE id != %s
+            latest.latest_message,
+            latest.latest_created_at
 
-        ORDER BY name
+        FROM employees e
+
+        LEFT JOIN LATERAL (
+
+            SELECT
+                COUNT(*)::int AS unread_count
+
+            FROM messages m
+
+            WHERE
+                m.sender_id = e.id
+                AND m.receiver_id = %s
+                AND m.seen = FALSE
+                AND m.deleted = FALSE
+
+        ) unread ON TRUE
+
+        LEFT JOIN LATERAL (
+
+            SELECT
+                m.message AS latest_message,
+                m.created_at AS latest_created_at
+
+            FROM messages m
+
+            WHERE
+                (
+                    m.sender_id = e.id
+                    AND m.receiver_id = %s
+                )
+                OR
+                (
+                    m.sender_id = %s
+                    AND m.receiver_id = e.id
+                )
+
+            ORDER BY m.created_at DESC
+
+            LIMIT 1
+
+        ) latest ON TRUE
+
+        WHERE e.id != %s
+
+        ORDER BY
+            CASE
+                WHEN COALESCE(unread.unread_count, 0) > 0
+                THEN 0
+                ELSE 1
+            END,
+            latest.latest_created_at DESC NULLS LAST,
+            e.name ASC
 
     """, (
 
+        session["user_id"],
+        session["user_id"],
+        session["user_id"],
         session["user_id"],
 
     ))
