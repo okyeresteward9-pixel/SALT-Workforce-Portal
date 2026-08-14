@@ -52,22 +52,4 @@ def get_db():
             cursor_factory=RealDictCursor
         )
 
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT
-            current_database() AS database_name,
-            current_user AS database_user,
-            current_schema() AS schema_name
-    """)
-
-    info = c.fetchone()
-
-    print(
-        "DATABASE CONNECTION:",
-        info
-    )
-
-    c.close()
-
     return conn
