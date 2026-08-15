@@ -2054,6 +2054,50 @@ class ChatApp {
     }
 
 
+    // =====================================================
+    // UNLOCK NOTIFICATION SOUND
+    // =====================================================
+
+    unlockNotificationSound() {
+
+        if (!this.notificationSound) {
+            return;
+        }
+
+        if (this.soundUnlocked) {
+            return;
+        }
+
+        this.notificationSound.muted = true;
+
+        const playPromise =
+            this.notificationSound.play();
+
+        if (playPromise !== undefined) {
+
+            playPromise
+                .then(() => {
+
+                    this.notificationSound.pause();
+
+                    this.notificationSound.currentTime = 0;
+
+                    this.notificationSound.muted = false;
+
+                    this.soundUnlocked = true;
+
+                })
+                .catch(() => {
+
+                    this.notificationSound.muted = false;
+
+                });
+
+        }
+
+    }
+
+
     initEvents() {
 
         // Browser autoplay policy: unlock sound after first user interaction.
