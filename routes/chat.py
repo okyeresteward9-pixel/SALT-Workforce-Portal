@@ -29,14 +29,6 @@ import os
 
 from cloudinary import uploader
 import cloudinary_config
-from zoneinfo import ZoneInfo
-
-ACCRA_TZ = ZoneInfo("Africa/Accra")
-
-
-def accra_now():
-    return datetime.now(ACCRA_TZ)
-
 
 
 # ==========================================
@@ -141,27 +133,19 @@ def save_uploaded_file(file):
 def serialize_message(message):
     """
     Convert PostgreSQL row to JSON-safe dict.
-
-    created_at is returned as an ISO timestamp when available.
     """
+
     message = dict(message)
 
     created_at = message.get("created_at")
 
     if isinstance(created_at, datetime):
-
-        # PostgreSQL should already be in Africa/Accra for this connection.
-        # Keep timezone information if psycopg2 provides it.
         message["created_at"] = created_at.isoformat()
 
     elif created_at is None:
-
-        # This should no longer happen for newly inserted messages because
-        # created_at is explicitly set with NOW().
         message["created_at"] = ""
 
     else:
-
         message["created_at"] = str(created_at)
 
     return message
@@ -176,19 +160,10 @@ def emit_new_message(message):
         message["receiver_id"]
     )
 
-    payload = serialize_message(message)
-
     socketio.emit(
         "new_message",
-        payload,
+        serialize_message(message),
         room=room
-    )
-
-    # Private receiver room for global real-time chat alerts.
-    socketio.emit(
-        "new_message",
-        payload,
-        room=f"user_{message['receiver_id']}"
     )
 
 
@@ -231,9 +206,6 @@ def messages(user_id=None):
 
     conn = get_db()
     c = conn.cursor(cursor_factory=RealDictCursor)
-
-    # SALT uses Ghana time.
-    c.execute("SET TIME ZONE 'Africa/Accra'")
 
     # ----------------------------------
     # SEND MESSAGE
@@ -335,95 +307,18 @@ def messages(user_id=None):
     c.execute("""
 
         SELECT
-            e.id,
-            e.name,
-            e.email,
+            id,
+            name
 
-            COALESCE(
-                (
-                    SELECT COUNT(*)
-                    FROM messages m
-                    WHERE
-                        m.sender_id = e.id
-                        AND m.receiver_id = %s
-                        AND m.seen = FALSE
-                        AND m.deleted = FALSE
-                ),
-                0
-            )::int AS unread_count,
+        FROM employees
 
-            (
-                SELECT m.message
-                FROM messages m
-                WHERE
-                    (
-                        m.sender_id = e.id
-                        AND m.receiver_id = %s
-                    )
-                    OR
-                    (
-                        m.sender_id = %s
-                        AND m.receiver_id = e.id
-                    )
-                ORDER BY m.created_at DESC
-                LIMIT 1
-            ) AS latest_message,
+        WHERE id != %s
 
-            (
-                SELECT m.created_at
-                FROM messages m
-                WHERE
-                    (
-                        m.sender_id = e.id
-                        AND m.receiver_id = %s
-                    )
-                    OR
-                    (
-                        m.sender_id = %s
-                        AND m.receiver_id = e.id
-                    )
-                ORDER BY m.created_at DESC
-                LIMIT 1
-            ) AS latest_created_at
-
-        FROM employees e
-
-        WHERE e.id != %s
-
-        ORDER BY
-            CASE
-                WHEN COALESCE(
-                    (
-                        SELECT COUNT(*)
-                        FROM messages m
-                        WHERE
-                            m.sender_id = e.id
-                            AND m.receiver_id = %s
-                            AND m.seen = FALSE
-                            AND m.deleted = FALSE
-                    ),
-                    0
-                ) > 0
-                THEN 0
-                ELSE 1
-            END,
-
-            latest_created_at DESC NULLS LAST,
-            e.name ASC
+        ORDER BY name
 
     """, (
 
-        session["user_id"],  # unread_count
-
-        session["user_id"],  # latest_message: receiver
-        session["user_id"],  # latest_message: sender
-
-        session["user_id"],  # latest_created_at: receiver
-        session["user_id"],  # latest_created_at: sender
-
-        session["user_id"],  # exclude current user
-
-        session["user_id"],  # unread_count for ordering
+        session["user_id"],
 
     ))
 
@@ -695,3 +590,4 @@ def delete_message(message_id):
         "success": True,
         "message": serialize_message(deleted_message)
     })    
+

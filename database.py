@@ -39,7 +39,8 @@ def get_db():
 
         conn = psycopg2.connect(
             database_url,
-            cursor_factory=RealDictCursor
+            cursor_factory=RealDictCursor,
+            options="-c timezone=UTC"
         )
 
     else:
@@ -49,7 +50,8 @@ def get_db():
             database="salt_portal",
             user="salt_user",
             password="ChooseAStrongpassword",
-            cursor_factory=RealDictCursor
+            cursor_factory=RealDictCursor,
+            options="-c timezone=UTC"
         )
 
     return conn
