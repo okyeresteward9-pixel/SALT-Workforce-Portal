@@ -4452,16 +4452,11 @@ def start_task(id):
     task_owner = c.fetchone()
 
     c.execute("""
-
         UPDATE tasks
-
         SET status='In Progress'
-
         WHERE id=%s
         AND assigned_to=%s
-
-    """,
-    (
+    """, (
         id,
         session['user_id']
     ))
@@ -4471,13 +4466,15 @@ def start_task(id):
     conn.close()
 
     # 🔔 Notify the task creator when an assigned task is started.
-    if task_owner and task_owner[0] != session["user_id"]:
+    if task_owner and task_owner["created_by"] != session["user_id"]:
+
         create_notification(
-            task_owner[0],
-            f"Task Started: {task_owner[1]}"
+            task_owner["created_by"],
+            f"Task Started: {task_owner['title']}"
         )
 
     return redirect('/tasks')
+
 
 @app.route('/delete_task/<int:id>')
 def delete_task(id):
