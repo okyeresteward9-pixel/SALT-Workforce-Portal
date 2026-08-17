@@ -2735,9 +2735,11 @@ document.addEventListener("DOMContentLoaded", function () {
        Socket.IO connection
        --------------------------------------------------------- */
 
+    let socket = null;
+
     if (typeof io === "function") {
 
-        const socket = io();
+        socket = io();
 
         socket.on("connect", function () {
 
@@ -2817,6 +2819,71 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error(
             "Socket.IO client library not loaded."
         );
+    }
+
+    /* ---------------------------------------------------------
+       💬 CHAT MESSAGE NOTIFICATIONS
+       Works while the user is on Dashboard.
+       The backend sends new_message to the user's personal room.
+       --------------------------------------------------------- */
+
+    if (socket) {
+
+    socket.on(
+        "new_message",
+        function (chat) {
+
+            console.log(
+                "💬 New chat message on Dashboard:",
+                chat
+            );
+
+            /*
+             * Only notify the receiver.
+             * If sender_id matches the logged-in user, this is our
+             * own outgoing message and should not create a toast.
+             */
+            if (
+                Number(chat.sender_id) ===
+                Number({{ session['user_id'] }})
+            ) {
+                return;
+            }
+
+            /*
+             * Resolve the actual sender name from the event.
+             * Never use the currently-open chat user here.
+             */
+            const senderName =
+                chat.sender_name ||
+                chat.sender ||
+                "New message";
+
+            let messageText = "";
+
+            if (chat.message) {
+                messageText = chat.message;
+            } else if (chat.file_name) {
+                messageText = "📎 Sent an attachment";
+            } else {
+                messageText = "New message";
+            }
+
+            /*
+             * Reuse the Dashboard's existing toast UI.
+             */
+            showNotificationToast(
+                senderName + ": " + messageText
+            );
+
+            /*
+             * Reuse the Dashboard notification sound.
+             */
+            playNotificationSound();
+
+        }
+    );
+
     }
 
     /* ---------------------------------------------------------
