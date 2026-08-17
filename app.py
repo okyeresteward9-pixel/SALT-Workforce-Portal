@@ -1492,11 +1492,6 @@ def get_notification_count(user_id):
 
     count = c.fetchone()["total"]
 
-    conn.close()
-
-    return count
-
-
     conn = get_db()
     c = conn.cursor()
 

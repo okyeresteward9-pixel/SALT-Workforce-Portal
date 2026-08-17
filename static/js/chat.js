@@ -67,17 +67,9 @@ class ChatApp {
 
         this.typingTimer = null;
 
-        // Chat notification UI
-        this.notificationSound =
-            document.getElementById("chatNotificationSound");
-
-        this.toastContainer =
-            document.getElementById("chat-notification-toast-container");
-
+        this.notificationSound = document.getElementById("chatNotificationSound");
+        this.chatToastContainer = document.getElementById("chatToastContainer");
         this.soundUnlocked = false;
-
-        this.receivedMessageIds =
-            new Set();
 
 
         // =====================================================
@@ -100,14 +92,6 @@ class ChatApp {
         this.initSocket();
 
         this.initEvents();
-
-        this.initConversationNavigation();
-
-        this.updateChatHeader(
-            window.RECEIVER_NAME || ""
-        );
-
-        this.highlightCurrentUser();
 
         this.loadMessages();
 
@@ -139,12 +123,6 @@ class ChatApp {
             this.setStatus(
                 "Active",
                 "text-green-500"
-            );
-
-            // Opening this conversation marks its unread messages as seen
-            // on the backend, so remove the sidebar badge immediately.
-            this.clearSidebarUnread(
-                this.receiver
             );
 
         });
@@ -228,91 +206,40 @@ class ChatApp {
                 );
 
                 /*
-                 * The backend may emit the same message through both the
-                 * conversation room and the private user room.
+                 * Socket.IO delivers this event to the private room
+                 * for the conversation. Render the message for BOTH
+                 * sender and receiver so the sender does not need to
+                 * reload the page.
                  */
-                if (
-                    chat.id !== undefined &&
-                    chat.id !== null
-                ) {
-
-                    const messageId =
-                        String(chat.id);
-
-                    if (
-                        this.receivedMessageIds.has(
-                            messageId
-                        )
-                    ) {
-                        return;
-                    }
-
-                    this.receivedMessageIds.add(
-                        messageId
-                    );
-                }
-
-                const senderId =
-                    Number(chat.sender_id);
-
-                const receiverId =
-                    Number(chat.receiver_id);
-
-                const currentUser =
+                const isMine =
+                    Number(chat.sender_id) ===
                     Number(this.currentUser);
 
-                const currentChat =
-                    Number(this.receiver);
+                if (this.chatBox) {
 
-                const belongsToOpenChat =
-                    (
-                        senderId === currentChat &&
-                        receiverId === currentUser
-                    ) ||
-                    (
-                        senderId === currentUser &&
-                        receiverId === currentChat
+                    this.append(chat);
+                    this.scrollBottom(true);
+
+                } else {
+
+                    console.error(
+                        "Live message received but #chat-box is missing.",
+                        chat
                     );
 
-                /*
-                 * Incoming message from another user.
-                 */
-                if (senderId !== currentUser) {
-
-                    if (senderId !== currentChat) {
-
-                        this.updateSidebarUnread(
-                            senderId,
-                            chat.message ||
-                            (
-                                chat.file_name
-                                    ? "📎 Attachment"
-                                    : "New message"
-                            )
-                        );
-
-                    }
-
-                    this.playIncomingSound();
-                    this.showIncomingMessageToast(chat);
                 }
 
                 /*
-                 * IMPORTANT:
-                 * If the message belongs to the conversation currently
-                 * open, render it immediately. No page reload.
+                 * Only the receiver gets the notification sound/toast.
+                 * The sender still gets the message rendered instantly.
                  */
-                if (belongsToOpenChat) {
+                if (!isMine) {
 
-                    this.append(
-                        chat,
-                        true
-                    );
+                    this.playChatNotificationSound();
+                    this.showChatToast(chat);
 
-                    this.scrollBottom(
-                        true
-                    );
                 }
+
             }
         );
 
@@ -335,294 +262,99 @@ class ChatApp {
 
 
     // =====================================================
-    // SIDEBAR UNREAD COUNTS
+    // CHAT NOTIFICATION SOUND + TOAST
     // =====================================================
 
-    updateSidebarUnread(senderId, message) {
+    unlockChatNotificationSound() {
+        if (this.soundUnlocked || !this.notificationSound) return;
 
-        const id = String(senderId);
+        this.notificationSound.volume = 0;
+        const promise = this.notificationSound.play();
 
-        const userItem =
-            document.querySelector(
-                `.user-item[data-user-id="${CSS.escape(id)}"]`
-            );
-
-        if (!userItem) {
-            return;
-        }
-
-        let badge =
-            userItem.querySelector(
-                ".chat-unread-badge"
-            );
-
-        let count = 0;
-
-        if (badge) {
-            count = parseInt(badge.textContent, 10) || 0;
-        }
-
-        count += 1;
-
-        if (!badge) {
-
-            badge =
-                document.createElement("span");
-
-            badge.className =
-                "chat-unread-badge";
-
-            badge.dataset.userId = id;
-
-            const info =
-                userItem.querySelector(
-                    ".flex-1.min-w-0"
-                );
-
-            const header =
-                info?.querySelector(
-                    ".flex.items-center.justify-between"
-                );
-
-            if (header) {
-
-                let actions =
-                    header.querySelector(
-                        ".flex.items-center.gap-2"
-                    );
-
-                if (!actions) {
-
-                    actions =
-                        document.createElement("div");
-
-                    actions.className =
-                        "flex items-center gap-2 flex-shrink-0";
-
-                    header.appendChild(actions);
-
-                }
-
-                actions.prepend(badge);
-            }
-        }
-
-        badge.textContent =
-            count > 99 ? "99+" : String(count);
-
-        userItem.classList.add(
-            "has-unread"
-        );
-
-        const preview =
-            userItem.querySelector(
-                ".chat-user-preview"
-            );
-
-        if (preview) {
-
-            preview.textContent =
-                message || "New message";
-
-            preview.classList.remove(
-                "text-gray-400"
-            );
-
-            preview.classList.add(
-                "text-gray-600",
-                "font-semibold"
-            );
-        }
-
-        // WhatsApp-style: conversation jumps to the top.
-        const usersList =
-            document.getElementById("users-list");
-
-        if (usersList) {
-            usersList.prepend(userItem);
-        }
-    }
-
-
-    clearSidebarUnread(userId) {
-
-        const id = String(userId);
-
-        const userItem =
-            document.querySelector(
-                `.user-item[data-user-id="${CSS.escape(id)}"]`
-            );
-
-        if (!userItem) {
-            return;
-        }
-
-        const badge =
-            userItem.querySelector(
-                ".chat-unread-badge"
-            );
-
-        if (badge) {
-            badge.remove();
-        }
-
-        userItem.classList.remove(
-            "has-unread"
-        );
-
-        const preview =
-            userItem.querySelector(
-                ".chat-user-preview"
-            );
-
-        if (preview) {
-
-            preview.classList.remove(
-                "text-gray-600",
-                "font-semibold"
-            );
-
-            preview.classList.add(
-                "text-gray-400"
-            );
-        }
-    }
-
-
-    updateChatHeader(userName) {
-
-        const title =
-            document.getElementById("chatReceiverName");
-
-        if (title) {
-            title.textContent =
-                userName || "Chat";
-        }
-    }
-
-
-    // =====================================================
-    // INSTANT CONVERSATION SWITCHING
-    // =====================================================
-
-    async switchConversation(userId, userName, userLink = null) {
-
-        const id = Number(userId);
-
-        if (!id || id === Number(this.currentUser)) {
-            return;
-        }
-
-        if (Number(this.receiver) === id) {
-            this.highlightCurrentUser();
-            return;
-        }
-
-        const oldReceiver = this.receiver;
-
-        // Remove active state immediately.
-        document
-            .querySelectorAll(".user-item")
-            .forEach(item => {
-                item.classList.remove("active");
+        if (promise !== undefined) {
+            promise.then(() => {
+                this.notificationSound.pause();
+                this.notificationSound.currentTime = 0;
+                this.notificationSound.volume = 1;
+                this.soundUnlocked = true;
+            }).catch(() => {
+                this.notificationSound.volume = 1;
             });
-
-        if (userLink) {
-            userLink.classList.add("active");
-        }
-
-        // Update receiver without reloading the page.
-        this.receiver = id;
-        window.RECEIVER_ID = id;
-
-        // Update URL without navigation.
-        window.history.pushState(
-            {
-                receiver: id
-            },
-            "",
-            `/messages/${id}`
-        );
-
-        // Update the selected user's name immediately.
-        this.updateChatHeader(userName);
-
-        // Reset status while loading.
-        this.setStatus(
-            "Loading...",
-            "text-gray-400"
-        );
-
-        // Clear unread badge immediately.
-        this.clearSidebarUnread(id);
-
-        // Join the new Socket.IO conversation room.
-        if (this.socket) {
-
-            this.socket.emit(
-                "join_chat",
-                {
-                    user_id: id
-                }
-            );
-
-        }
-
-        // Load only the messages — no full page reload.
-        await this.loadMessages();
-
-        // Keep the new conversation active.
-        this.updateChatHeader(userName);
-        this.highlightCurrentUser();
-
-        // If loading failed, restore the previous receiver.
-        // loadMessages already displays its error state.
-        if (!this.chatBox) {
-            this.receiver = oldReceiver;
-            window.RECEIVER_ID = oldReceiver;
         }
     }
 
+    playChatNotificationSound() {
+        if (!this.notificationSound) return;
 
-    updateOwnMessageSidebar(message) {
+        this.notificationSound.currentTime = 0;
+        this.notificationSound.volume = 1;
 
-        const userItem =
-            document.querySelector(
-                `.user-item[data-user-id="${CSS.escape(String(this.receiver))}"]`
-            );
+        this.notificationSound.play().catch(error => {
+            console.log("Chat notification sound blocked:", error);
+        });
+    }
 
-        if (!userItem) {
-            return;
-        }
+    escapeToastHTML(value) {
+        const div = document.createElement("div");
+        div.textContent = value || "";
+        return div.innerHTML;
+    }
 
-        // Show the latest message preview.
-        const preview =
-            userItem.querySelector(".chat-user-preview");
+    removeChatToast(toast) {
+        if (!toast || !toast.isConnected) return;
 
-        if (preview) {
+        toast.classList.add("chat-toast-removing");
 
-            preview.textContent =
-                message || "Message sent";
+        setTimeout(() => {
+            if (toast.isConnected) toast.remove();
+        }, 250);
+    }
 
-            preview.classList.remove(
-                "text-gray-600",
-                "font-semibold"
-            );
+    showChatToast(chat) {
+        if (!this.chatToastContainer) return;
 
-            preview.classList.add(
-                "text-gray-400"
-            );
-        }
+        const senderName =
+            chat.sender_name ||
+            window.CHAT_SENDER_NAME ||
+            "New message";
 
-        // IMPORTANT:
-        // Do NOT create or increase an unread badge for our own message.
-        // The conversation is simply moved to the top because it is active.
-        const usersList =
-            document.getElementById("users-list");
+        const message =
+            chat.message ||
+            (chat.file_name ? "Sent an attachment" : "You received a new message");
 
-        if (usersList) {
-            usersList.prepend(userItem);
-        }
+        const toast = document.createElement("div");
+        toast.className = "chat-notification-toast";
+
+        toast.innerHTML = `
+            <div class="chat-notification-icon">
+                <i class="fas fa-comment-dots"></i>
+            </div>
+
+            <div class="chat-notification-content">
+                <div class="chat-notification-title">
+                    ${this.escapeToastHTML(senderName)}
+                </div>
+
+                <div class="chat-notification-message">
+                    ${this.escapeToastHTML(message)}
+                </div>
+            </div>
+
+            <button type="button"
+                    class="chat-notification-close"
+                    aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        this.chatToastContainer.prepend(toast);
+
+        toast.querySelector(".chat-notification-close")?.addEventListener(
+            "click",
+            () => this.removeChatToast(toast)
+        );
+
+        setTimeout(() => this.removeChatToast(toast), 6000);
     }
 
 
@@ -655,70 +387,103 @@ class ChatApp {
 
     async loadMessages() {
 
-        if (
-            !this.chatBox ||
-            !this.receiver
-        ) {
+        if (!this.chatBox || !this.receiver) {
             return;
         }
 
-
         try {
 
-            const response =
-                await fetch(
-                    `/get_messages/${encodeURIComponent(this.receiver)}`,
-                    {
-                        headers: {
-                            "Accept": "application/json"
-                        }
-                    }
-                );
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    `Unable to load messages (${response.status})`
-                );
-
-            }
-
-
-            const messages =
-                await response.json();
-
-
-            this.chatBox.innerHTML = "";
-
-            this.messages.clear();
-
-
-            messages.forEach(
-                chat => {
-
-                    this.append(
-                        chat,
-                        false
-                    );
-
+            const response = await fetch(
+                `/get_messages/${encodeURIComponent(this.receiver)}`,
+                {
+                    headers: {
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store"
                 }
             );
 
+            if (!response.ok) {
+                throw new Error(
+                    `Unable to load messages (${response.status})`
+                );
+            }
 
-            this.scrollBottom(
-                true,
-                "auto"
-            );
+            const serverMessages = await response.json();
 
+            /*
+             * IMPORTANT:
+             * Socket.IO and HTTP can complete in either order.
+             *
+             * Take a snapshot of messages already received live,
+             * then rebuild the display from the server history and
+             * merge any live messages that were not in that history.
+             */
+
+            const liveMessages = new Map();
+
+            this.messages.forEach((chat, id) => {
+                liveMessages.set(String(id), chat);
+            });
+
+            /*
+             * Rebuild the message state from PostgreSQL history.
+             */
+            this.chatBox.innerHTML = "";
+            this.messages.clear();
+
+            serverMessages.forEach(chat => {
+                this.append(chat, false);
+            });
+
+            /*
+             * Add messages received through Socket.IO while the
+             * HTTP request was loading.
+             *
+             * append() performs another duplicate check.
+             */
+            liveMessages.forEach((chat, id) => {
+
+                if (!this.messages.has(id)) {
+                    this.append(chat, false);
+                }
+
+            });
+
+            /*
+             * Keep the conversation in chronological order after
+             * merging live and server messages.
+             */
+            const allMessages = Array.from(
+                this.messages.values()
+            ).sort((a, b) => {
+
+                const timeA =
+                    new Date(a.created_at || 0).getTime();
+
+                const timeB =
+                    new Date(b.created_at || 0).getTime();
+
+                if (timeA !== timeB) {
+                    return timeA - timeB;
+                }
+
+                return Number(a.id) - Number(b.id);
+
+            });
+
+            this.chatBox.innerHTML = "";
+            this.messages.clear();
+
+            allMessages.forEach(chat => {
+                this.append(chat, false);
+            });
+
+            this.scrollBottom(true, "auto");
 
             this.setStatus(
                 "Active",
                 "text-green-500"
-            );
-
-            this.clearSidebarUnread(
-                this.receiver
             );
 
         }
@@ -729,32 +494,6 @@ class ChatApp {
                 "Load messages error:",
                 error
             );
-
-
-            this.chatBox.innerHTML = `
-
-                <div class="flex h-full items-center justify-center p-6 text-center">
-
-                    <div>
-
-                        <div class="text-3xl mb-3">
-                            ⚠️
-                        </div>
-
-                        <p class="font-semibold text-gray-700">
-                            Unable to load messages
-                        </p>
-
-                        <p class="text-sm text-gray-400 mt-1">
-                            Please refresh and try again.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            `;
-
 
             this.setStatus(
                 "Unable to connect",
@@ -1074,7 +813,7 @@ class ChatApp {
 
         const time =
             this.formatTime(
-                this.formatChatTime(chat.created_at)
+                chat.created_at
             );
 
 
@@ -1142,40 +881,6 @@ class ChatApp {
     }
 
 
-    formatChatTime(value) {
-
-        if (!value) {
-            return "";
-        }
-
-        const raw = String(value);
-
-        /*
-         * Backend now sends Ghana-local timestamps without a timezone
-         * suffix, so preserve those values exactly.
-         */
-        if (!/(?:Z|[+-]\\d{2}:?\\d{2})$/.test(raw)) {
-            return raw;
-        }
-
-        const date = new Date(raw);
-
-        if (Number.isNaN(date.getTime())) {
-            return raw;
-        }
-
-        return new Intl.DateTimeFormat(
-            "en-GB",
-            {
-                timeZone: "Africa/Accra",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false
-            }
-        ).format(date);
-    }
-
-
     // =====================================================
     // APPEND MESSAGE
     // =====================================================
@@ -1196,23 +901,25 @@ class ChatApp {
         }
 
 
-        if (
-            this.messages.has(
-                chat.id
-            )
-        ) {
+        const messageId = String(chat.id);
 
+        if (this.messages.has(messageId)) {
             return;
-
         }
 
+        if (!this.chatBox) {
+            console.error(
+                "Cannot append message because #chat-box is missing.",
+                chat
+            );
+            return;
+        }
 
         const shouldScroll =
             this.isNearBottom();
 
-
         this.messages.set(
-            chat.id,
+            messageId,
             chat
         );
 
@@ -1270,15 +977,16 @@ class ChatApp {
         }
 
 
+        const messageId = String(chat.id);
+
         this.messages.set(
-            chat.id,
+            messageId,
             chat
         );
 
-
         const wrapper =
             document.getElementById(
-                "msg-" + chat.id
+                "msg-" + messageId
             );
 
 
@@ -1439,12 +1147,6 @@ class ChatApp {
             this.form.reset();
 
             this.hidePreview();
-
-            // Our own message moves the conversation to the top,
-            // but NEVER increments the unread count.
-            this.updateOwnMessageSidebar(
-                message || "📎 Attachment"
-            );
 
             this.scrollBottom(
                 true
@@ -1973,145 +1675,12 @@ class ChatApp {
     // EVENTS
     // =====================================================
 
-    initConversationNavigation() {
-
-        const usersList =
-            document.getElementById("users-list");
-
-        if (!usersList) {
-            return;
-        }
-
-        usersList.addEventListener(
-            "click",
-            async event => {
-
-                const link =
-                    event.target.closest(
-                        ".user-item"
-                    );
-
-                if (!link) {
-                    return;
-                }
-
-                // Let Ctrl/Cmd-click and middle-click behave normally.
-                if (
-                    event.ctrlKey ||
-                    event.metaKey ||
-                    event.shiftKey ||
-                    event.altKey ||
-                    event.button === 1
-                ) {
-                    return;
-                }
-
-                event.preventDefault();
-
-                const userId =
-                    link.dataset.userId ||
-                    link.getAttribute("href")
-                        ?.split("/")
-                        .pop();
-
-                const userName =
-                    link.dataset.userName ||
-                    link.querySelector(
-                        "p.font-semibold"
-                    )?.textContent.trim();
-
-                link.classList.add("switching");
-
-                try {
-
-                    await this.switchConversation(
-                        userId,
-                        userName,
-                        link
-                    );
-
-                } catch (error) {
-
-                    console.error(
-                        "Conversation switch error:",
-                        error
-                    );
-
-                    // If something genuinely fails,
-                    // allow the normal URL to recover.
-                    window.location.href =
-                        link.getAttribute("href");
-
-                } finally {
-
-                    link.classList.remove(
-                        "switching"
-                    );
-
-                }
-            }
-        );
-    }
-
-
-    // =====================================================
-    // UNLOCK NOTIFICATION SOUND
-    // =====================================================
-
-    unlockNotificationSound() {
-
-        if (!this.notificationSound) {
-            return;
-        }
-
-        if (this.soundUnlocked) {
-            return;
-        }
-
-        this.notificationSound.muted = true;
-
-        const playPromise =
-            this.notificationSound.play();
-
-        if (playPromise !== undefined) {
-
-            playPromise
-                .then(() => {
-
-                    this.notificationSound.pause();
-
-                    this.notificationSound.currentTime = 0;
-
-                    this.notificationSound.muted = false;
-
-                    this.soundUnlocked = true;
-
-                })
-                .catch(() => {
-
-                    this.notificationSound.muted = false;
-
-                });
-
-        }
-
-    }
-
-
     initEvents() {
 
-        // Browser autoplay policy: unlock sound after first user interaction.
-        document.addEventListener(
-            "click",
-            () => this.unlockNotificationSound(),
-            { once: true }
-        );
+        const unlockSound = () => this.unlockChatNotificationSound();
 
-        document.addEventListener(
-            "keydown",
-            () => this.unlockNotificationSound(),
-            { once: true }
-        );
+        document.addEventListener("click", unlockSound, { once: true, passive: true });
+        document.addEventListener("keydown", unlockSound, { once: true, passive: true });
 
         // SEND
 
@@ -2713,19 +2282,7 @@ class ChatApp {
 document.addEventListener(
     "DOMContentLoaded",
     () => {
-
-        if (
-            !window.RECEIVER_ID
-        ) {
-
-            return;
-
-        }
-
-
-        window.chat =
-            new ChatApp();
-
+        window.chat = new ChatApp();
     }
 );
 
@@ -2772,47 +2329,3 @@ window.copyMessage =
         );
 
     };
-
-// =========================================================
-// BROWSER BACK / FORWARD
-// =========================================================
-
-window.addEventListener(
-    "popstate",
-    function () {
-
-        if (!window.chat) {
-            return;
-        }
-
-        const match =
-            window.location.pathname.match(
-                /^\/messages\/(\d+)/
-            );
-
-        if (!match) {
-            return;
-        }
-
-        const id = Number(match[1]);
-
-        const link =
-            document.querySelector(
-                `.user-item[data-user-id="${CSS.escape(String(id))}"]`
-            );
-
-        const name =
-            link?.dataset.userName ||
-            link?.querySelector(
-                "p.font-semibold"
-            )?.textContent.trim() ||
-            "Chat";
-
-        window.chat.switchConversation(
-            id,
-            name,
-            link
-        );
-
-    }
-);
