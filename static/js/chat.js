@@ -247,9 +247,18 @@ class ChatApp {
                  * moves the conversation to the top and increments
                  * unread only when the conversation is not open.
                  */
-                this.updateConversationList(
+                /*
+                 * Update the existing WhatsApp-style user list without
+                 * reloading. The current JS already knows how to find
+                 * users by /messages/<id>, so keep using that path.
+                 */
+                this.updateChatListItem(
                     chat,
-                    !isMine && !isOpenConversation
+                    {
+                        unread:
+                            !isMine &&
+                            !isOpenConversation
+                    }
                 );
 
                 /*
@@ -336,14 +345,24 @@ class ChatApp {
     showChatToast(chat) {
         if (!this.chatToastContainer) return;
 
+        /*
+         * Use the ACTUAL sender of this notification.
+         * Do not fall back to CHAT_SENDER_NAME because that is the
+         * currently open conversation user and can be the wrong person.
+         */
+        const senderItem =
+            this.getUserItem(chat.sender_id);
+
         const senderName =
             chat.sender_name ||
-            window.CHAT_SENDER_NAME ||
+            senderItem?.querySelector(".user-name")?.textContent?.trim() ||
             "New message";
 
         const message =
             chat.message ||
-            (chat.file_name ? "Sent an attachment" : "You received a new message");
+            (chat.file_name
+                ? "Sent an attachment"
+                : "You received a new message");
 
         const toast = document.createElement("div");
         toast.className = "chat-notification-toast";
@@ -1783,17 +1802,34 @@ class ChatApp {
 
         if (preview) {
 
-            preview.textContent =
-                chat.deleted
-                    ? "Message deleted"
-                    : (
-                        chat.message ||
-                        (
-                            chat.file_name
-                                ? "Sent an attachment"
-                                : "New message"
-                        )
-                    );
+            let latestText = "";
+
+            if (chat.deleted) {
+
+                latestText = "Message deleted";
+
+            } else if (chat.message) {
+
+                latestText = chat.message;
+
+            } else if (chat.file_name) {
+
+                latestText = "📎 Attachment";
+
+            } else {
+
+                latestText = "New message";
+
+            }
+
+            if (isMine) {
+                latestText = `You: ${latestText}`;
+            }
+
+            preview.textContent = latestText;
+
+            preview.classList.remove("text-gray-400");
+            preview.classList.add("text-gray-600");
 
         }
 
