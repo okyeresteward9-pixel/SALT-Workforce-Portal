@@ -247,11 +247,6 @@ class ChatApp {
                  * moves the conversation to the top and increments
                  * unread only when the conversation is not open.
                  */
-                /*
-                 * Update the existing WhatsApp-style user list without
-                 * reloading. The current JS already knows how to find
-                 * users by /messages/<id>, so keep using that path.
-                 */
                 this.updateChatListItem(
                     chat,
                     {
@@ -345,24 +340,18 @@ class ChatApp {
     showChatToast(chat) {
         if (!this.chatToastContainer) return;
 
-        /*
-         * Use the ACTUAL sender of this notification.
-         * Do not fall back to CHAT_SENDER_NAME because that is the
-         * currently open conversation user and can be the wrong person.
-         */
         const senderItem =
             this.getUserItem(chat.sender_id);
 
         const senderName =
             chat.sender_name ||
-            senderItem?.querySelector(".user-name")?.textContent?.trim() ||
+            senderItem?.querySelector(".flex-1.min-w-0 p.font-semibold")?.textContent?.trim() ||
+            senderItem?.querySelector(".flex-1.min-w-0 p")?.textContent?.trim() ||
             "New message";
 
         const message =
             chat.message ||
-            (chat.file_name
-                ? "Sent an attachment"
-                : "You received a new message");
+            (chat.file_name ? "Sent an attachment" : "You received a new message");
 
         const toast = document.createElement("div");
         toast.className = "chat-notification-toast";
@@ -1585,24 +1574,21 @@ class ChatApp {
             return;
         }
 
-        const senderId =
-            String(chat.sender_id);
+        const isMine =
+            Number(chat.sender_id) ===
+            Number(this.currentUser);
 
         /*
-         * If the incoming message is from the current user,
-         * the other person's list item is not the target.
+         * Incoming message belongs to sender.
+         * Outgoing message belongs to receiver.
          */
-        if (
-            Number(chat.sender_id) ===
-            Number(this.currentUser)
-        ) {
-
-            return;
-
-        }
+        const contactId =
+            isMine
+                ? String(chat.receiver_id)
+                : String(chat.sender_id);
 
         const item =
-            this.getUserItem(senderId);
+            this.getUserItem(contactId);
 
         if (!item) {
 
@@ -1642,8 +1628,16 @@ class ChatApp {
 
         if (preview) {
 
-            preview.textContent =
+            let latestText =
                 this.getChatPreview(chat);
+
+            if (isMine && latestText) {
+                latestText =
+                    `You: ${latestText}`;
+            }
+
+            preview.textContent =
+                latestText;
 
             preview.classList.remove(
                 "text-gray-400"
@@ -1802,34 +1796,17 @@ class ChatApp {
 
         if (preview) {
 
-            let latestText = "";
-
-            if (chat.deleted) {
-
-                latestText = "Message deleted";
-
-            } else if (chat.message) {
-
-                latestText = chat.message;
-
-            } else if (chat.file_name) {
-
-                latestText = "📎 Attachment";
-
-            } else {
-
-                latestText = "New message";
-
-            }
-
-            if (isMine) {
-                latestText = `You: ${latestText}`;
-            }
-
-            preview.textContent = latestText;
-
-            preview.classList.remove("text-gray-400");
-            preview.classList.add("text-gray-600");
+            preview.textContent =
+                chat.deleted
+                    ? "Message deleted"
+                    : (
+                        chat.message ||
+                        (
+                            chat.file_name
+                                ? "Sent an attachment"
+                                : "New message"
+                        )
+                    );
 
         }
 
