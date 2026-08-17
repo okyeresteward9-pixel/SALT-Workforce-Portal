@@ -58,6 +58,12 @@ def register_chat_socketio(socket):
 
         if "user_id" in session:
 
+            user_room = get_user_room(
+                session["user_id"]
+            )
+
+            join_room(user_room)
+
             print(
                 f"{session['name']} connected."
             )
@@ -91,6 +97,11 @@ def register_chat_socketio(socket):
 # ==========================================
 # HELPERS
 # ==========================================
+
+def get_user_room(user_id):
+    """Personal Socket.IO room for global chat notifications."""
+    return f"user_{user_id}"
+
 
 def get_room_name(user1, user2):
 
@@ -155,15 +166,23 @@ def emit_new_message(message):
     if socketio is None:
         return
 
-    room = get_room_name(
-        message["sender_id"],
-        message["receiver_id"]
-    )
+    serialized = serialize_message(message)
 
+    # Receiver gets the event even when another conversation is open.
     socketio.emit(
         "new_message",
-        serialize_message(message),
-        room=room
+        serialized,
+        room=get_user_room(message["receiver_id"])
+    )
+
+    # Keep the existing open-conversation delivery.
+    socketio.emit(
+        "new_message",
+        serialized,
+        room=get_room_name(
+            message["sender_id"],
+            message["receiver_id"]
+        )
     )
 
 
@@ -172,15 +191,21 @@ def emit_message_update(message):
     if socketio is None:
         return
 
-    room = get_room_name(
-        message["sender_id"],
-        message["receiver_id"]
+    serialized = serialize_message(message)
+
+    socketio.emit(
+        "message_updated",
+        serialized,
+        room=get_user_room(message["receiver_id"])
     )
 
     socketio.emit(
         "message_updated",
-        serialize_message(message),
-        room=room
+        serialized,
+        room=get_room_name(
+            message["sender_id"],
+            message["receiver_id"]
+        )
     )
 
 
@@ -300,29 +325,7 @@ def messages(user_id=None):
 
         })
 
-    # ----------------------------------
-    # USERS
-    # ----------------------------------
-
-    c.execute("""
-
-        SELECT
-            id,
-            name
-
-        FROM employees
-
-        WHERE id != %s
-
-        ORDER BY name
-
-    """, (
-
-        session["user_id"],
-
-    ))
-
-    users = c.fetchall()
+    users = []
 
     chats = []
 
@@ -420,6 +423,78 @@ def messages(user_id=None):
         ))
 
         conn.commit()
+
+    # ----------------------------------
+    # USERS / CONVERSATION LIST
+    # ----------------------------------
+    # Latest message, latest time and unread count are returned
+    # so the sidebar can behave like WhatsApp.
+
+    c.execute("""
+
+        SELECT
+            e.id,
+            e.name,
+
+            COUNT(m.id) FILTER (
+                WHERE
+                    m.sender_id = e.id
+                    AND m.receiver_id = %s
+                    AND COALESCE(m.seen, FALSE) = FALSE
+            ) AS unread_count,
+
+            MAX(m.created_at) AS latest_created_at,
+
+            (
+                SELECT lm.message
+                FROM messages lm
+                WHERE
+                    (
+                        lm.sender_id = e.id
+                        AND lm.receiver_id = %s
+                    )
+                    OR
+                    (
+                        lm.sender_id = %s
+                        AND lm.receiver_id = e.id
+                    )
+                ORDER BY lm.created_at DESC, lm.id DESC
+                LIMIT 1
+            ) AS latest_message
+
+        FROM employees e
+
+        LEFT JOIN messages m
+            ON (
+                (
+                    m.sender_id = e.id
+                    AND m.receiver_id = %s
+                )
+                OR
+                (
+                    m.sender_id = %s
+                    AND m.receiver_id = e.id
+                )
+            )
+
+        WHERE e.id != %s
+
+        GROUP BY e.id, e.name
+
+        ORDER BY
+            latest_created_at DESC NULLS LAST,
+            e.name ASC
+
+    """, (
+        session["user_id"],
+        session["user_id"],
+        session["user_id"],
+        session["user_id"],
+        session["user_id"],
+        session["user_id"]
+    ))
+
+    users = c.fetchall()
 
     conn.close()
 

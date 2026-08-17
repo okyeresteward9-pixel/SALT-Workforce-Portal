@@ -73,6 +73,24 @@
         box-shadow: inset 3px 0 0 #2563eb;
     }
 
+    .user-item.has-unread {
+        background: #f8fbff;
+    }
+
+    .user-item.has-unread .user-name {
+        font-weight: 800;
+        color: #111827;
+    }
+
+    .user-item.has-unread .user-preview {
+        color: #334155;
+        font-weight: 600;
+    }
+
+    .user-unread-badge {
+        display: inline-flex;
+    }
+
     #users-list {
         scrollbar-gutter: stable;
     }
@@ -488,6 +506,7 @@
 
                 <a href="/messages/{{ user.id }}"
                    class="user-item group flex items-center gap-4 p-3 md:p-4 rounded-2xl hover:bg-blue-50 transition-all duration-200"
+                   data-user-id="{{ user.id }}"
                    data-user-name="{{ user.name|lower|e }}"
                    data-user-email="{{ user.email|default('', true)|lower|e }}">
 
@@ -508,21 +527,31 @@
                     <!-- INFO -->
                     <div class="flex-1 min-w-0">
 
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between gap-2">
 
-                            <p class="font-semibold text-gray-800 truncate">
+                            <p class="user-name font-semibold text-gray-800 truncate">
                                 {{ user.name }}
                             </p>
 
-                            <span class="text-xs text-gray-300">
+                            <span class="user-time text-xs text-gray-300 shrink-0">
                                 now
                             </span>
 
                         </div>
 
-                        <p class="text-sm text-gray-400 truncate mt-1">
-                            Start conversation...
-                        </p>
+                        <div class="flex items-center justify-between gap-2 mt-1">
+
+                            <p class="user-preview text-sm text-gray-400 truncate">
+                                Start conversation...
+                            </p>
+
+                            <span
+                                class="user-unread-badge hidden min-w-5 h-5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-bold items-center justify-center shrink-0"
+                                data-unread-count="0">
+                                0
+                            </span>
+
+                        </div>
 
                     </div>
 

@@ -113,12 +113,16 @@ class ChatApp {
                 this.socket.id
             );
 
-            this.socket.emit(
-                "join_chat",
-                {
-                    user_id: this.receiver
-                }
-            );
+            if (this.receiver) {
+
+                this.socket.emit(
+                    "join_chat",
+                    {
+                        user_id: this.receiver
+                    }
+                );
+
+            }
 
             this.setStatus(
                 "Active",
@@ -205,33 +209,52 @@ class ChatApp {
                     chat
                 );
 
-                /*
-                 * Socket.IO delivers this event to the private room
-                 * for the conversation. Render the message for BOTH
-                 * sender and receiver so the sender does not need to
-                 * reload the page.
-                 */
                 const isMine =
                     Number(chat.sender_id) ===
                     Number(this.currentUser);
 
-                if (this.chatBox) {
+                /*
+                 * The message is relevant to the currently open
+                 * conversation only when the other user's ID matches
+                 * the open receiver. Otherwise it belongs in the
+                 * sidebar/unread system.
+                 */
+                const otherUserId = isMine
+                    ? Number(chat.receiver_id)
+                    : Number(chat.sender_id);
+
+                const isOpenConversation =
+                    this.receiver &&
+                    Number(this.receiver) === otherUserId;
+
+                /*
+                 * Sender and receiver both see an open conversation
+                 * update instantly. Messages for other conversations
+                 * must NEVER be appended to the currently open chat.
+                 */
+                if (
+                    isOpenConversation &&
+                    this.chatBox
+                ) {
 
                     this.append(chat);
                     this.scrollBottom(true);
 
-                } else {
-
-                    console.error(
-                        "Live message received but #chat-box is missing.",
-                        chat
-                    );
-
                 }
 
                 /*
-                 * Only the receiver gets the notification sound/toast.
-                 * The sender still gets the message rendered instantly.
+                 * Always update the conversation list. The helper
+                 * moves the conversation to the top and increments
+                 * unread only when the conversation is not open.
+                 */
+                this.updateConversationList(
+                    chat,
+                    !isMine && !isOpenConversation
+                );
+
+                /*
+                 * Only notify the receiver. If the conversation is
+                 * currently open, still notify them as requested.
                  */
                 if (!isMine) {
 
@@ -1389,6 +1412,479 @@ class ChatApp {
 
 
     // =====================================================
+    // REAL-TIME CHAT LIST
+    // =====================================================
+
+    getUserItem(userId) {
+
+        const targetId = String(userId);
+
+        return Array.from(
+            document.querySelectorAll(".user-item")
+        ).find(item => {
+
+            const href =
+                item.getAttribute("href") || "";
+
+            const match =
+                href.match(/\/messages\/(\d+)(?:\/)?$/);
+
+            return match &&
+                String(match[1]) === targetId;
+
+        }) || null;
+
+    }
+
+
+    getChatListTime(chat) {
+
+        const formatted =
+            this.formatTime(chat?.created_at);
+
+        return formatted || "now";
+
+    }
+
+
+    getChatPreview(chat) {
+
+        if (chat?.deleted) {
+            return "This message was deleted";
+        }
+
+        if (chat?.file_name && !chat?.message) {
+            return "📎 Attachment";
+        }
+
+        return (
+            chat?.message ||
+            (chat?.file_name
+                ? "📎 Attachment"
+                : "Start conversation...")
+        );
+
+    }
+
+
+    getUnreadCount(item) {
+
+        if (!item) {
+            return 0;
+        }
+
+        const badge =
+            item.querySelector(
+                "[data-chat-unread]"
+            );
+
+        if (!badge) {
+            return 0;
+        }
+
+        const count =
+            Number.parseInt(
+                badge.textContent,
+                10
+            );
+
+        return Number.isFinite(count)
+            ? count
+            : 0;
+
+    }
+
+
+    setUnreadCount(item, count) {
+
+        if (!item) {
+            return;
+        }
+
+        const info =
+            item.querySelector(
+                ".flex-1.min-w-0"
+            );
+
+        if (!info) {
+            return;
+        }
+
+        let badge =
+            info.querySelector(
+                "[data-chat-unread]"
+            );
+
+        if (count <= 0) {
+
+            badge?.remove();
+            return;
+
+        }
+
+        if (!badge) {
+
+            badge =
+                document.createElement("span");
+
+            badge.dataset.chatUnread = "true";
+
+            badge.className =
+                "ml-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center shadow-sm";
+
+            const header =
+                info.querySelector(
+                    ".flex.items-center.justify-between"
+                );
+
+            if (header) {
+                header.appendChild(badge);
+            }
+            else {
+                info.appendChild(badge);
+            }
+
+        }
+
+        badge.textContent =
+            count > 99
+                ? "99+"
+                : String(count);
+
+    }
+
+
+    updateChatListItem(
+        chat,
+        options = {}
+    ) {
+
+        if (
+            !chat ||
+            chat.sender_id === undefined
+        ) {
+            return;
+        }
+
+        const senderId =
+            String(chat.sender_id);
+
+        /*
+         * If the incoming message is from the current user,
+         * the other person's list item is not the target.
+         */
+        if (
+            Number(chat.sender_id) ===
+            Number(this.currentUser)
+        ) {
+
+            return;
+
+        }
+
+        const item =
+            this.getUserItem(senderId);
+
+        if (!item) {
+
+            console.warn(
+                "Chat user item not found:",
+                senderId
+            );
+
+            return;
+
+        }
+
+        const info =
+            item.querySelector(
+                ".flex-1.min-w-0"
+            );
+
+        if (!info) {
+            return;
+        }
+
+        const header =
+            info.querySelector(
+                ".flex.items-center.justify-between"
+            );
+
+        const name =
+            header?.querySelector("p");
+
+        const time =
+            header?.querySelector("span");
+
+        const preview =
+            info.querySelector(
+                "p.text-sm"
+            );
+
+        if (preview) {
+
+            preview.textContent =
+                this.getChatPreview(chat);
+
+            preview.classList.remove(
+                "text-gray-400"
+            );
+
+            preview.classList.add(
+                "text-gray-600"
+            );
+
+        }
+
+        if (time) {
+
+            time.textContent =
+                this.getChatListTime(chat);
+
+            time.classList.remove(
+                "text-gray-300"
+            );
+
+            time.classList.add(
+                "text-gray-500"
+            );
+
+        }
+
+        const shouldUnread =
+            options.unread === true;
+
+        if (shouldUnread) {
+
+            const count =
+                this.getUnreadCount(item);
+
+            this.setUnreadCount(
+                item,
+                count + 1
+            );
+
+            if (name) {
+
+                name.classList.remove(
+                    "text-gray-800"
+                );
+
+                name.classList.add(
+                    "text-blue-700"
+                );
+
+            }
+
+        }
+        else {
+
+            this.setUnreadCount(
+                item,
+                0
+            );
+
+        }
+
+        /*
+         * Move the conversation to the top without reloading.
+         * Keep the search "no results" node and any other non-user
+         * elements in place.
+         */
+        const usersList =
+            document.getElementById(
+                "users-list"
+            );
+
+        if (usersList) {
+
+            usersList.prepend(item);
+
+        }
+
+        /*
+         * Re-apply the active class after moving the item.
+         */
+        this.highlightCurrentUser();
+
+    }
+
+
+    clearUnreadForUser(userId) {
+
+        const item =
+            this.getUserItem(userId);
+
+        if (!item) {
+            return;
+        }
+
+        this.setUnreadCount(
+            item,
+            0
+        );
+
+        const name =
+            item.querySelector(
+                ".flex.items-center.justify-between p"
+            );
+
+        name?.classList.remove(
+            "text-blue-700"
+        );
+
+        name?.classList.add(
+            "text-gray-800"
+        );
+
+    }
+
+
+    // =====================================================
+    // REAL-TIME CONVERSATION LIST
+    // =====================================================
+
+    updateConversationList(chat, incrementUnread = false) {
+
+        if (!chat) {
+            return;
+        }
+
+        const isMine =
+            Number(chat.sender_id) ===
+            Number(this.currentUser);
+
+        const userId =
+            isMine
+                ? Number(chat.receiver_id)
+                : Number(chat.sender_id);
+
+        if (!userId) {
+            return;
+        }
+
+        const item =
+            document.querySelector(
+                `.user-item[data-user-id="${userId}"]`
+            );
+
+        if (!item) {
+            return;
+        }
+
+        const preview =
+            item.querySelector(".user-preview");
+
+        const time =
+            item.querySelector(".user-time");
+
+        const badge =
+            item.querySelector(".user-unread-badge");
+
+        if (preview) {
+
+            preview.textContent =
+                chat.deleted
+                    ? "Message deleted"
+                    : (
+                        chat.message ||
+                        (
+                            chat.file_name
+                                ? "Sent an attachment"
+                                : "New message"
+                        )
+                    );
+
+        }
+
+        if (time) {
+
+            time.textContent =
+                this.formatTime(chat.created_at) ||
+                "now";
+
+        }
+
+        /*
+         * Move the conversation to the top without reloading.
+         */
+        const list =
+            document.getElementById("users-list");
+
+        if (list) {
+            list.prepend(item);
+        }
+
+        /*
+         * Unread messages are counted only for incoming messages
+         * whose conversation is not currently open.
+         */
+        if (incrementUnread && badge) {
+
+            const current =
+                Number(
+                    badge.dataset.unreadCount ||
+                    badge.textContent ||
+                    0
+                );
+
+            const next =
+                current + 1;
+
+            badge.dataset.unreadCount =
+                String(next);
+
+            badge.textContent =
+                next > 99
+                    ? "99+"
+                    : String(next);
+
+            badge.classList.remove("hidden");
+            badge.classList.add("inline-flex");
+
+            item.classList.add("has-unread");
+
+        }
+
+        /*
+         * If this conversation is open, clear its unread state.
+         */
+        if (
+            this.receiver &&
+            Number(this.receiver) === userId
+        ) {
+
+            this.clearConversationUnread(item);
+
+        }
+
+    }
+
+
+    clearConversationUnread(item) {
+
+        if (!item) {
+            return;
+        }
+
+        const badge =
+            item.querySelector(".user-unread-badge");
+
+        if (badge) {
+
+            badge.dataset.unreadCount = "0";
+            badge.textContent = "0";
+            badge.classList.add("hidden");
+            badge.classList.remove("inline-flex");
+
+        }
+
+        item.classList.remove("has-unread");
+
+    }
+
+
+    // =====================================================
     // SIDEBAR
     // =====================================================
 
@@ -1934,6 +2430,20 @@ class ChatApp {
 
 
                     if (link) {
+
+                        const href =
+                            link.getAttribute("href") || "";
+
+                        const match =
+                            href.match(/\/messages\/(\d+)(?:\/)?$/);
+
+                        if (match) {
+
+                            this.clearUnreadForUser(
+                                match[1]
+                            );
+
+                        }
 
                         this.closeSidebar();
 
