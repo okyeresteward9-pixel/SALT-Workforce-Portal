@@ -3820,7 +3820,6 @@ def reply_task(id):
     c = conn.cursor()
 
     c.execute("""
-
         INSERT INTO task_comments
         (
             task_id,
@@ -3831,7 +3830,6 @@ def reply_task(id):
             visibility,
             created_at
         )
-
         VALUES
         (
             %s,
@@ -3842,7 +3840,6 @@ def reply_task(id):
             %s,
             %s
         )
-
     """,
     (
         id,
@@ -3854,7 +3851,7 @@ def reply_task(id):
         datetime.now()
     ))
 
-    # Find the task creator so they receive the reply notification.
+    # Find the task creator
     c.execute("""
         SELECT created_by, title
         FROM tasks
@@ -3866,10 +3863,12 @@ def reply_task(id):
     conn.commit()
     conn.close()
 
-    if task_owner and task_owner[0] != session["user_id"]:
+    # Notify the task creator
+    if task_owner and task_owner["created_by"] != session["user_id"]:
+
         create_notification(
-            task_owner[0],
-            f"New reply on task: {task_owner[1]}"
+            task_owner["created_by"],
+            f"New reply on task: {task_owner['title']}"
         )
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -3877,7 +3876,6 @@ def reply_task(id):
         return jsonify({
             "status": "success"
         })
-
 
     return redirect("/tasks")
 
