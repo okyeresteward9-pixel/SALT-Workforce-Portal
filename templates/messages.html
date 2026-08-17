@@ -73,24 +73,6 @@
         box-shadow: inset 3px 0 0 #2563eb;
     }
 
-    .user-item.has-unread {
-        background: #f8fbff;
-    }
-
-    .user-item.has-unread .user-name {
-        font-weight: 800;
-        color: #111827;
-    }
-
-    .user-item.has-unread .user-preview {
-        color: #334155;
-        font-weight: 600;
-    }
-
-    .user-unread-badge {
-        display: inline-flex;
-    }
-
     #users-list {
         scrollbar-gutter: stable;
     }
@@ -510,51 +492,39 @@
                    data-user-name="{{ user.name|lower|e }}"
                    data-user-email="{{ user.email|default('', true)|lower|e }}">
 
-                    <!-- AVATAR -->
                     <div class="relative">
-
                         <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md">
-
                             {{ user.name[0] }}
-
                         </div>
-
-                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full">
-                        </div>
-
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
                     </div>
 
-                    <!-- INFO -->
                     <div class="flex-1 min-w-0">
-
                         <div class="flex items-center justify-between gap-2">
-
-                            <p class="user-name font-semibold text-gray-800 truncate">
-                                {{ user.name }}
-                            </p>
-
-                            <span class="user-time text-xs text-gray-300 shrink-0">
-                                now
+                            <p class="user-name font-semibold text-gray-800 truncate">{{ user.name }}</p>
+                            <span class="user-time text-xs text-gray-400 shrink-0">
+                                {% if user.latest_created_at %}
+                                    {{ user.latest_created_at.strftime('%I:%M %p').lstrip('0') }}
+                                {% endif %}
                             </span>
-
                         </div>
 
                         <div class="flex items-center justify-between gap-2 mt-1">
-
-                            <p class="user-preview text-sm text-gray-400 truncate">
-                                Start conversation...
+                            <p class="user-preview text-sm truncate {% if user.latest_message or user.latest_file_name %}text-gray-600{% else %}text-gray-400{% endif %}">
+                                {% if user.latest_message %}
+                                    {% if user.latest_sender_id == session["user_id"] %}You: {% endif %}{{ user.latest_message }}
+                                {% elif user.latest_file_name %}
+                                    {% if user.latest_sender_id == session["user_id"] %}You: {% endif %}📎 Attachment
+                                {% else %}
+                                    Start conversation...
+                                {% endif %}
                             </p>
 
-                            <span
-                                class="user-unread-badge hidden min-w-5 h-5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-bold items-center justify-center shrink-0"
-                                data-unread-count="0">
-                                0
+                            <span class="user-unread-badge {% if user.unread_count and user.unread_count > 0 %}inline-flex{% else %}hidden{% endif %} min-w-5 h-5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-bold items-center justify-center shrink-0" data-unread-count="{{ user.unread_count or 0 }}">
+                                {% if user.unread_count and user.unread_count > 99 %}99+{% else %}{{ user.unread_count or 0 }}{% endif %}
                             </span>
-
                         </div>
-
                     </div>
-
                 </a>
 
                 {% endfor %}

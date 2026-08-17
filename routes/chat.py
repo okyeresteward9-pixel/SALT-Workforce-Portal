@@ -460,7 +460,25 @@ def messages(user_id=None):
                     )
                 ORDER BY lm.created_at DESC, lm.id DESC
                 LIMIT 1
-            ) AS latest_message
+            ) AS latest_message,
+
+            (
+                SELECT lm.sender_id
+                FROM messages lm
+                WHERE ((lm.sender_id = e.id AND lm.receiver_id = %s)
+                   OR (lm.sender_id = %s AND lm.receiver_id = e.id))
+                ORDER BY lm.created_at DESC, lm.id DESC
+                LIMIT 1
+            ) AS latest_sender_id,
+
+            (
+                SELECT lm.file_name
+                FROM messages lm
+                WHERE ((lm.sender_id = e.id AND lm.receiver_id = %s)
+                   OR (lm.sender_id = %s AND lm.receiver_id = e.id))
+                ORDER BY lm.created_at DESC, lm.id DESC
+                LIMIT 1
+            ) AS latest_file_name
 
         FROM employees e
 
@@ -486,6 +504,10 @@ def messages(user_id=None):
             e.name ASC
 
     """, (
+        session["user_id"],
+        session["user_id"],
+        session["user_id"],
+        session["user_id"],
         session["user_id"],
         session["user_id"],
         session["user_id"],
