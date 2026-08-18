@@ -1869,7 +1869,6 @@ def export_attendance():
         download_name="attendance.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
 @app.route('/admin/tasks')
 def admin_tasks():
 
@@ -1886,11 +1885,28 @@ def admin_tasks():
 
     status = request.args.get("status")
 
+    # Employee filter
+    employee_id = request.args.get("employee_id")
+
+
+    # =========================================================
+    # LOAD EMPLOYEES FOR FILTER DROPDOWN
+    # =========================================================
+
+    c.execute("""
+        SELECT
+            id,
+            name
+        FROM employees
+        ORDER BY name ASC
+    """)
+
+    employees = c.fetchall()
+
 
     # =========================================================
     # LOAD ALL TASKS VISIBLE TO ADMIN
     #
-    # IMPORTANT:
     # We do NOT filter by task_scope.
     #
     # Self tasks
@@ -1945,6 +1961,21 @@ def admin_tasks():
 
 
     # =========================================================
+    # EMPLOYEE NAME FILTER
+    # =========================================================
+
+    if employee_id:
+
+        base_query += """
+
+            AND tasks.assigned_to = %s
+
+        """
+
+        params.append(employee_id)
+
+
+    # =========================================================
     # STATUS FILTER
     # =========================================================
 
@@ -1981,8 +2012,6 @@ def admin_tasks():
 
     # =========================================================
     # NORMALIZE DEADLINES
-    #
-    # Keeps your existing date handling safe.
     # =========================================================
 
     for task in tasks:
@@ -2076,63 +2105,89 @@ def admin_tasks():
     # =========================================================
     # STATISTICS
     #
-    # Count only tasks visible to Admin.
+    # Statistics follow the selected employee filter.
+    # Status buttons continue to filter the task list.
+    #
+    # We intentionally DO NOT apply the status filter here,
+    # so the three cards show Pending/In Progress/Completed
+    # for the selected employee.
     # =========================================================
 
-    c.execute("""
+    stats_params = []
+
+
+    stats_where = """
+
+        WHERE COALESCE(
+            admin_deleted,
+            FALSE
+        ) = FALSE
+
+    """
+
+
+    if employee_id:
+
+        stats_where += """
+
+            AND assigned_to = %s
+
+        """
+
+        stats_params.append(employee_id)
+
+
+    c.execute(f"""
 
         SELECT COUNT(*) AS count
 
         FROM tasks
 
-        WHERE status = 'Pending'
+        {stats_where}
 
-        AND COALESCE(
-            admin_deleted,
-            FALSE
-        ) = FALSE
+        AND status = 'Pending'
 
-    """)
+    """,
+    stats_params)
+
 
     pending_count = (
         c.fetchone()["count"]
     )
 
 
-    c.execute("""
+    c.execute(f"""
 
         SELECT COUNT(*) AS count
 
         FROM tasks
 
-        WHERE status = 'In Progress'
+        {stats_where}
 
-        AND COALESCE(
-            admin_deleted,
-            FALSE
-        ) = FALSE
+        AND status = 'In Progress'
 
-    """)
+    """,
+    stats_params)
+
 
     progress_count = (
         c.fetchone()["count"]
     )
 
 
-    c.execute("""
+    c.execute(f"""
 
         SELECT COUNT(*) AS count
 
         FROM tasks
 
-        WHERE status = 'Completed'
+        {stats_where}
 
-        AND COALESCE(
-            admin_deleted,
-            FALSE
-        ) = FALSE
+        AND status = 'Completed'
 
-    """)
+    """,
+    stats_params)
+
 
     completed_count = (
         c.fetchone()["count"]
@@ -2158,6 +2213,12 @@ def admin_tasks():
         "admin_tasks.html",
 
         tasks=tasks,
+
+        employees=employees,
+
+        selected_employee=employee_id,
+
+        selected_status=status,
 
         pending_count=pending_count,
 
