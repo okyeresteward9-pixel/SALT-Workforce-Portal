@@ -1623,6 +1623,142 @@ def clear_all_notifications():
 
 # -------------------------
 # Clear all notifications
+def get_attendance_date_range(period, start_date_value, end_date_value):
+    """
+    Return (start_datetime, end_datetime) for the selected filter.
+
+    end_datetime is exclusive.
+
+    Custom dates are treated as whole calendar days:
+        From 2026-08-01
+        To   2026-08-10
+
+    means:
+        >= 2026-08-01 00:00:00
+        <  2026-08-11 00:00:00
+    """
+
+    today = date.today()
+
+    # ------------------------------------------------------------
+    # QUICK FILTERS
+    # ------------------------------------------------------------
+
+    if period == "today":
+
+        start_date = today
+        end_date = today
+
+    elif period == "yesterday":
+
+        start_date = today - timedelta(days=1)
+        end_date = start_date
+
+    elif period == "this_week":
+
+        # Monday -> Sunday
+        start_date = today - timedelta(days=today.weekday())
+        end_date = start_date + timedelta(days=6)
+
+    elif period == "last_week":
+
+        this_week_start = today - timedelta(days=today.weekday())
+
+        start_date = this_week_start - timedelta(days=7)
+        end_date = this_week_start - timedelta(days=1)
+
+    elif period == "this_month":
+
+        start_date = today.replace(day=1)
+
+        if today.month == 12:
+            next_month = date(
+                today.year + 1,
+                1,
+                1
+            )
+        else:
+            next_month = date(
+                today.year,
+                today.month + 1,
+                1
+            )
+
+        end_date = next_month - timedelta(days=1)
+
+    elif period == "last_month":
+
+        first_this_month = today.replace(day=1)
+
+        last_day_last_month = (
+            first_this_month - timedelta(days=1)
+        )
+
+        start_date = last_day_last_month.replace(day=1)
+        end_date = last_day_last_month
+
+    # ------------------------------------------------------------
+    # CUSTOM DATE RANGE
+    # ------------------------------------------------------------
+
+    elif start_date_value or end_date_value:
+
+        try:
+
+            start_date = (
+                datetime.strptime(
+                    start_date_value,
+                    "%Y-%m-%d"
+                ).date()
+                if start_date_value
+                else None
+            )
+
+            end_date = (
+                datetime.strptime(
+                    end_date_value,
+                    "%Y-%m-%d"
+                ).date()
+                if end_date_value
+                else None
+            )
+
+        except (
+            ValueError,
+            TypeError
+        ):
+
+            start_date = None
+            end_date = None
+
+    else:
+
+        start_date = None
+        end_date = None
+
+    # ------------------------------------------------------------
+    # CONVERT DATES TO DATETIME BOUNDARIES
+    # ------------------------------------------------------------
+
+    start_datetime = None
+    end_datetime = None
+
+    if start_date:
+        start_datetime = datetime.combine(
+            start_date,
+            datetime.min.time()
+        )
+
+    if end_date:
+        # End is exclusive, therefore use the next day.
+        end_datetime = datetime.combine(
+            end_date + timedelta(days=1),
+            datetime.min.time()
+        )
+
+    return start_datetime, end_datetime
+
+
 @app.route('/attendance')
 def attendance():
 
@@ -1638,57 +1774,233 @@ def attendance():
     role = session.get('role')
 
 
-    # 👑 ADMIN → see all
-    if role == 'admin':
+    # ============================================================
+    # FILTER VALUES
+    # ============================================================
 
-        c.execute("""
-            SELECT 
-                employees.name,
-                attendance.clock_in,
-                attendance.clock_out
+    period = request.args.get(
+        "period",
+        ""
+    ).strip()
 
-            FROM attendance
+    employee_id = request.args.get(
+        "employee_id",
+        ""
+    ).strip()
 
-            JOIN employees 
-            ON attendance.employee_id = employees.id
+    status = request.args.get(
+        "status",
+        ""
+    ).strip().lower()
 
-            ORDER BY attendance.clock_in DESC
-        """)
+    start_date_value = request.args.get(
+        "start_date",
+        ""
+    ).strip()
+
+    end_date_value = request.args.get(
+        "end_date",
+        ""
+    ).strip()
 
 
-    else:
+    # ============================================================
+    # DATE RANGE
+    # ============================================================
 
-        # 👤 STAFF → see only theirs
+    start_datetime, end_datetime = (
+        get_attendance_date_range(
+            period,
+            start_date_value,
+            end_date_value
+        )
+    )
 
-        c.execute("""
-            SELECT 
-                NULL AS name,
-                clock_in,
-                clock_out
 
-            FROM attendance
+    # ============================================================
+    # BASE QUERY
+    # ============================================================
 
-            WHERE employee_id=%s
+    query = """
 
-            ORDER BY clock_in DESC
-        """,
-        (session['user_id'],))
+        SELECT
+
+            employees.name,
+
+            attendance.clock_in,
+
+            attendance.clock_out
+
+        FROM attendance
+
+        JOIN employees
+
+            ON attendance.employee_id =
+               employees.id
+
+        WHERE 1=1
+
+    """
+
+
+    params = []
+
+
+    # ============================================================
+    # STAFF SECURITY
+    #
+    # Staff can ONLY see their own attendance.
+    # ============================================================
+
+    if role != 'admin':
+
+        query += """
+
+            AND attendance.employee_id = %s
+
+        """
+
+        params.append(
+            session['user_id']
+        )
+
+
+    # ============================================================
+    # ADMIN → EMPLOYEE FILTER
+    # ============================================================
+
+    elif employee_id:
+
+        try:
+
+            selected_employee_id = int(
+                employee_id
+            )
+
+            query += """
+
+                AND attendance.employee_id = %s
+
+            """
+
+            params.append(
+                selected_employee_id
+            )
+
+        except (
+            ValueError,
+            TypeError
+        ):
+
+            employee_id = ""
+
+
+    # ============================================================
+    # DATE FILTER
+    # ============================================================
+
+    if start_datetime:
+
+        query += """
+
+            AND attendance.clock_in >= %s
+
+        """
+
+        params.append(
+            start_datetime
+        )
+
+
+    if end_datetime:
+
+        query += """
+
+            AND attendance.clock_in < %s
+
+        """
+
+        params.append(
+            end_datetime
+        )
+
+
+    # ============================================================
+    # STATUS FILTER
+    # ============================================================
+
+    if status == "active":
+
+        query += """
+
+            AND attendance.clock_out IS NULL
+
+        """
+
+    elif status == "completed":
+
+        query += """
+
+            AND attendance.clock_out IS NOT NULL
+
+        """
+
+
+    # ============================================================
+    # ORDER
+    # ============================================================
+
+    query += """
+
+        ORDER BY attendance.clock_in DESC
+
+    """
+
+
+    c.execute(
+        query,
+        params
+    )
 
 
     raw_records = c.fetchall()
 
 
+    # ============================================================
+    # ADMIN EMPLOYEE LIST
+    # ============================================================
+
+    employees = []
+
+
+    if role == 'admin':
+
+        c.execute("""
+
+            SELECT
+                id,
+                name
+
+            FROM employees
+
+            ORDER BY name ASC
+
+        """)
+
+        employees = c.fetchall()
+
+
     conn.close()
 
 
-
-    # ✅ Format data
+    # ============================================================
+    # FORMAT DATA
+    # ============================================================
 
     records = []
 
 
     for r in raw_records:
-
 
         clock_in = format_datetime(
             r["clock_in"]
@@ -1701,26 +2013,59 @@ def attendance():
 
         records.append({
 
-            "name": r["name"] if role == 'admin' else None,
+            "name":
+                r["name"]
+                if role == 'admin'
+                else None,
 
-            "clock_in_date": clock_in["date"],
+            "clock_in_date":
+                clock_in["date"],
 
-            "clock_in_time": clock_in["time"],
+            "clock_in_time":
+                clock_in["time"],
 
-            "clock_out_date": clock_out["date"],
+            "clock_out_date":
+                clock_out["date"],
 
-            "clock_out_time": clock_out["time"],
+            "clock_out_time":
+                clock_out["time"],
 
-            "is_active": r["clock_out"] is None
+            "is_active":
+                r["clock_out"] is None
 
         })
 
 
+    # ============================================================
+    # RENDER
+    # ============================================================
+
     return render_template(
+
         "attendance.html",
+
         records=records,
-        role=role
+
+        role=role,
+
+        employees=employees,
+
+        selected_employee=employee_id,
+
+        status=status,
+
+        period=period,
+
+        start_date=start_date_value,
+
+        end_date=end_date_value
+
     )
+
+
+# ============================================================
+# EXPORT ATTENDANCE
+# ============================================================
 
 @app.route('/export/attendance')
 def export_attendance():
@@ -1737,43 +2082,183 @@ def export_attendance():
     c = conn.cursor()
 
 
+    # ============================================================
+    # SAME FILTERS AS ATTENDANCE PAGE
+    # ============================================================
 
-    # 👑 Admin → all records
-    if role == 'admin':
+    period = request.args.get(
+        "period",
+        ""
+    ).strip()
 
-        c.execute("""
-            SELECT 
-                employees.name,
-                attendance.clock_in,
-                attendance.clock_out
+    employee_id = request.args.get(
+        "employee_id",
+        ""
+    ).strip()
 
-            FROM attendance
+    status = request.args.get(
+        "status",
+        ""
+    ).strip().lower()
 
-            JOIN employees 
-            ON attendance.employee_id = employees.id
+    start_date_value = request.args.get(
+        "start_date",
+        ""
+    ).strip()
 
-            ORDER BY attendance.clock_in DESC
-        """)
+    end_date_value = request.args.get(
+        "end_date",
+        ""
+    ).strip()
 
 
-    else:
+    start_datetime, end_datetime = (
+        get_attendance_date_range(
+            period,
+            start_date_value,
+            end_date_value
+        )
+    )
 
-        # 👤 Staff → only theirs
 
-        c.execute("""
-            SELECT 
-                NULL AS name,
-                clock_in,
-                clock_out
+    # ============================================================
+    # BASE QUERY
+    # ============================================================
 
-            FROM attendance
+    query = """
 
-            WHERE employee_id=%s
+        SELECT
 
-            ORDER BY clock_in DESC
-        """,
-        (session['user_id'],))
+            employees.name,
 
+            attendance.clock_in,
+
+            attendance.clock_out
+
+        FROM attendance
+
+        JOIN employees
+
+            ON attendance.employee_id =
+               employees.id
+
+        WHERE 1=1
+
+    """
+
+
+    params = []
+
+
+    # ============================================================
+    # STAFF SECURITY
+    # ============================================================
+
+    if role != 'admin':
+
+        query += """
+
+            AND attendance.employee_id = %s
+
+        """
+
+        params.append(
+            session['user_id']
+        )
+
+
+    # ============================================================
+    # ADMIN → EMPLOYEE FILTER
+    # ============================================================
+
+    elif employee_id:
+
+        try:
+
+            selected_employee_id = int(
+                employee_id
+            )
+
+            query += """
+
+                AND attendance.employee_id = %s
+
+            """
+
+            params.append(
+                selected_employee_id
+            )
+
+        except (
+            ValueError,
+            TypeError
+        ):
+
+            employee_id = ""
+
+
+    # ============================================================
+    # DATE FILTER
+    # ============================================================
+
+    if start_datetime:
+
+        query += """
+
+            AND attendance.clock_in >= %s
+
+        """
+
+        params.append(
+            start_datetime
+        )
+
+
+    if end_datetime:
+
+        query += """
+
+            AND attendance.clock_in < %s
+
+        """
+
+        params.append(
+            end_datetime
+        )
+
+
+    # ============================================================
+    # STATUS FILTER
+    # ============================================================
+
+    if status == "active":
+
+        query += """
+
+            AND attendance.clock_out IS NULL
+
+        """
+
+    elif status == "completed":
+
+        query += """
+
+            AND attendance.clock_out IS NOT NULL
+
+        """
+
+
+    query += """
+
+        ORDER BY attendance.clock_in DESC
+
+    """
+
+
+    c.execute(
+        query,
+        params
+    )
 
 
     records = c.fetchall()
@@ -1782,8 +2267,9 @@ def export_attendance():
     conn.close()
 
 
-
-    # ✅ Create Excel file
+    # ============================================================
+    # CREATE EXCEL
+    # ============================================================
 
     wb = Workbook()
 
@@ -1792,83 +2278,151 @@ def export_attendance():
     ws.title = "Attendance"
 
 
-
-    # Headers
+    # ============================================================
+    # HEADERS
+    # ============================================================
 
     if role == 'admin':
 
         ws.append([
+
             "Employee",
             "Clock In",
             "Clock Out",
             "Status"
+
         ])
 
     else:
 
         ws.append([
+
             "Clock In",
             "Clock Out",
             "Status"
+
         ])
 
 
-
-
-    # Fill data
+    # ============================================================
+    # DATA
+    # ============================================================
 
     for r in records:
-
 
         clock_in = r["clock_in"]
 
         clock_out = r["clock_out"]
 
 
-        status = (
-            "Active"
-            if clock_out is None
-            else "Completed"
-        )
+        status_text = (
 
+            "Active"
+
+            if clock_out is None
+
+            else "Completed"
+
+        )
 
 
         if role == 'admin':
 
             ws.append([
+
                 r["name"],
+
                 clock_in,
-                clock_out or "Still working",
-                status
+
+                clock_out
+                or "Still working",
+
+                status_text
+
             ])
 
         else:
 
             ws.append([
+
                 clock_in,
-                clock_out or "Still working",
-                status
+
+                clock_out
+                or "Still working",
+
+                status_text
+
             ])
 
 
+    # ============================================================
+    # BASIC EXCEL FORMATTING
+    # ============================================================
+
+    for cell in ws[1]:
+
+        cell.font = cell.font.copy(
+            bold=True
+        )
 
 
-    # Save to memory
+    ws.freeze_panes = "A2"
+
+
+    for column in ws.columns:
+
+        max_length = 0
+
+        column_letter = column[0].column_letter
+
+        for cell in column:
+
+            value = cell.value
+
+            if value is not None:
+
+                max_length = max(
+                    max_length,
+                    len(str(value))
+                )
+
+        ws.column_dimensions[
+            column_letter
+        ].width = min(
+            max_length + 3,
+            35
+        )
+
+
+    # ============================================================
+    # SAVE TO MEMORY
+    # ============================================================
 
     file_stream = io.BytesIO()
 
-    wb.save(file_stream)
+    wb.save(
+        file_stream
+    )
 
     file_stream.seek(0)
 
 
-
     return send_file(
+
         file_stream,
+
         as_attachment=True,
+
         download_name="attendance.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+        mimetype=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        )
+
     )
+
+
 @app.route('/admin/tasks')
 def admin_tasks():
 
@@ -3796,8 +4350,6 @@ def tasks():
         FROM tasks
 
         WHERE assigned_to = %s
-
-        AND status <> 'Completed'
 
         AND COALESCE(
             employee_deleted,
