@@ -1903,7 +1903,7 @@ def attendance():
 
         query += """
 
-            AND attendance.clock_in >= %s
+            AND attendance.clock_in::timestamp >= %s
 
         """
 
@@ -1916,7 +1916,7 @@ def attendance():
 
         query += """
 
-            AND attendance.clock_in < %s
+            AND attendance.clock_in::timestamp < %s
 
         """
 
@@ -2205,7 +2205,7 @@ def export_attendance():
 
         query += """
 
-            AND attendance.clock_in >= %s
+            AND attendance.clock_in::timestamp >= %s
 
         """
 
@@ -2218,7 +2218,7 @@ def export_attendance():
 
         query += """
 
-            AND attendance.clock_in < %s
+            AND attendance.clock_in::timestamp < %s
 
         """
 
@@ -2421,7 +2421,6 @@ def export_attendance():
         )
 
     )
-
 
 @app.route('/admin/tasks')
 def admin_tasks():
