@@ -26,12 +26,27 @@ import cloudinary_config
 
 app = Flask(__name__)
 app.register_blueprint(chat_bp)
-app.secret_key = os.environ.get("SECRET_KEY", "fallback-secret")
+
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "fallback-secret"
+)
+
+# Session settings
+app.permanent_session_lifetime = timedelta(days=30)
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=True
+)
+
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
     async_mode="gevent"
 )
+
 register_chat_socketio(socketio)
 
 
@@ -399,19 +414,37 @@ def create_admin():
 
 @app.route('/')
 def home():
+
+    if 'user_id' in session:
+        return redirect('/dashboard')
+
     return render_template("login.html")
 
 
 @app.route('/login', methods=['POST'])
 def login():
-    email = request.form['email']
-    password = request.form['password']
+
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '')
+
+    # Check Remember Me
+    remember = request.form.get('remember') == '1'
+
+    if not email or not password:
+        return render_template(
+            "login.html",
+            error="Please enter your email and password."
+        )
 
     conn = get_db()
     c = conn.cursor()
 
     c.execute(
-        "SELECT * FROM employees WHERE email=%s",
+        """
+        SELECT *
+        FROM employees
+        WHERE email=%s
+        """,
         (email,)
     )
 
@@ -419,12 +452,27 @@ def login():
     conn.close()
 
     if user and check_password_hash(user['password'], password):
+
+        # Clear old session data
+        session.clear()
+
+        # Store logged-in user
         session['user_id'] = user['id']
         session['name'] = user['name']
         session['role'] = user['role']
+
+        # Remember Me
+        if remember:
+            session.permanent = True
+        else:
+            session.permanent = False
+
         return redirect('/dashboard')
 
-    return "Invalid login"
+    return render_template(
+        "login.html",
+        error="Invalid email or password."
+    )
 
 @app.route('/settings/profile', methods=['GET', 'POST'])
 def profile_settings():
