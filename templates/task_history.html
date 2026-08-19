@@ -19,287 +19,377 @@
     <link rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+
+<style>
+:root{--navy:#0f2b5b;--blue:#1558b0;--blue-dark:#0f4b99;--soft:#eaf2ff;--border:#dbe4f0;--bg:#f5f7fb;--text:#172033;--muted:#64748b}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}body{background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.portal-main{margin-left:260px;width:calc(100% - 260px);min-height:100vh}.main-inner{max-width:1500px;margin:auto;padding:28px 30px 40px}
+.salt-sidebar{position:fixed;left:0;top:0;width:260px;min-width:260px;height:100vh;overflow-y:auto;color:#fff;background:linear-gradient(180deg,var(--navy),#12366f);z-index:1000;display:flex;flex-direction:column;transition:.25s}
+.salt-sidebar::-webkit-scrollbar{width:5px}.salt-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:10px}
+.sidebar-brand{padding:22px 20px;border-bottom:1px solid rgba(255,255,255,.1)}.brand-logo{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center}.brand-logo img{width:32px;height:32px;object-fit:contain}
+.sidebar-link{display:flex;align-items:center;gap:12px;padding:11px 14px;margin-bottom:5px;border-radius:12px;color:#dbeafe;text-decoration:none;transition:.2s}.sidebar-link:hover{background:rgba(255,255,255,.09);color:#fff;transform:translateX(2px)}.sidebar-link.active{color:#fff;background:rgba(255,255,255,.16);box-shadow:inset 3px 0 #60a5fa}.sidebar-icon{width:38px;height:38px;flex-shrink:0;border-radius:10px;background:rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center}
+.topbar{height:58px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}.menu-button{width:42px;height:42px;border:1px solid var(--border);border-radius:11px;background:#fff;color:#475569;cursor:pointer}.admin-pill{display:flex;align-items:center;gap:9px;padding:9px 15px;border:1px solid var(--border);border-radius:12px;background:#fff;color:#475569;font-size:13px;font-weight:700}.admin-pill i{color:var(--blue)}
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}.page-badge{display:inline-flex;align-items:center;gap:8px;color:var(--blue);font-size:13px;font-weight:800;margin-bottom:8px;letter-spacing:.04em}.page-title{margin:0;font-size:clamp(28px,3vw,38px);line-height:1.15;font-weight:800}.page-subtitle{margin-top:8px;color:var(--muted);font-size:14px}.header-actions{display:flex;gap:10px;flex-wrap:wrap}.btn-primary,.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:11px;font-size:13px;font-weight:700;text-decoration:none}.btn-primary{color:#fff;background:linear-gradient(135deg,var(--blue),var(--blue-dark))}.btn-secondary{color:#475569;background:#fff;border:1px solid var(--border)}
+.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:22px}.summary-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 6px 22px rgba(15,43,91,.05)}.summary-label{color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}.summary-value{margin-top:5px;font-size:28px;font-weight:800}
+.filter-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:17px;margin-bottom:18px;box-shadow:0 6px 22px rgba(15,43,91,.045)}.filter-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px}.filter-title{display:flex;align-items:center;gap:9px;color:#26344d;font-size:14px;font-weight:800}.filter-title i{color:var(--blue)}
+.filter-grid{display:grid;grid-template-columns:minmax(220px,1.2fr) minmax(190px,.8fr) auto;gap:10px;align-items:center}.search-box{position:relative}.search-box i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--blue);pointer-events:none}.filter-input,.filter-select{width:100%;min-height:43px;padding:10px 13px 10px 38px;border:1px solid #d9e2ee;border-radius:10px;background:#fff;color:#334155;font-size:13px;outline:0}.filter-input:focus,.filter-select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(21,88,176,.09)}.search-button{min-height:43px;padding:0 18px;border:0;border-radius:10px;background:var(--blue);color:#fff;font-size:13px;font-weight:800;cursor:pointer}
+.period-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.period-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid #d9e2ee;border-radius:9px;background:#fff;color:#64748b;font-size:12px;font-weight:800;text-decoration:none}.period-btn:hover{border-color:#b9c8da;color:var(--blue);background:#f8fbff}.period-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.filter-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:13px;border-top:1px solid #edf1f6}.active-filter{display:flex;align-items:center;gap:7px;color:#64748b;font-size:12px}.active-filter strong{color:#334155}
+.export-wrap{position:relative}.export-button{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:9px;padding:9px 13px;background:#15803d;color:#fff;font-size:12px;font-weight:800;cursor:pointer}.export-menu{position:absolute;right:0;top:calc(100% + 7px);width:220px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 30px rgba(15,43,91,.12);overflow:hidden;z-index:100}.export-menu.hidden{display:none}.export-menu a{display:block;padding:11px 14px;color:#475569;text-decoration:none;font-size:12px;font-weight:700}.export-menu a:hover{background:#f5f8fc}
+.table-card{background:#fff;border:1px solid var(--border);border-radius:17px;overflow:hidden;box-shadow:0 8px 28px rgba(15,43,91,.055)}.table-header{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:17px 20px;border-bottom:1px solid var(--border)}.table-heading{display:flex;align-items:center;gap:10px}.table-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--soft);color:var(--blue)}.table-heading h2{margin:0;font-size:15px;font-weight:800;color:#26344d}.table-heading p{margin:2px 0 0;color:#94a3b8;font-size:11px}.table-scroll{width:100%;overflow-x:auto}table{width:100%;min-width:1050px;border-collapse:collapse}thead{background:#f7f9fc}th{padding:12px 15px;color:#64748b;font-size:10px;font-weight:800;text-align:left;text-transform:uppercase;letter-spacing:.055em;border-bottom:1px solid var(--border);white-space:nowrap}td{padding:15px;border-bottom:1px solid #edf1f6;vertical-align:top;color:#475569;font-size:12px}tbody tr:hover{background:#fbfdff}tbody tr:last-child td{border-bottom:0}.task-title{color:#1e293b;font-size:13px;font-weight:800}.task-description{max-width:300px;margin-top:4px;color:#64748b;line-height:1.5}.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}.badge-completed{background:#eaf8f0;color:#15803d}.badge-carry{background:#fff4e5;color:#b45309}.badge-normal{background:#f1f5f9;color:#64748b}
+.empty-state{padding:70px 20px;text-align:center}.empty-icon{width:64px;height:64px;margin:0 auto 15px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:var(--soft);color:#8fb6e8;font-size:26px}.empty-state h2{margin:0;color:#334155;font-size:19px;font-weight:800}.empty-state p{margin-top:5px;color:#94a3b8;font-size:13px}.footer{padding:18px 0 5px;text-align:center;color:#9aa7b8;font-size:11px}
+.salt-sidebar.collapsed{width:78px;min-width:78px}.salt-sidebar.collapsed .brand-text,.salt-sidebar.collapsed .sidebar-label{display:none}.salt-sidebar.collapsed .sidebar-link{justify-content:center}.salt-sidebar.collapsed+.portal-main{margin-left:78px;width:calc(100% - 78px)}
+@media(max-width:1000px){.filter-grid{grid-template-columns:1fr 1fr}.search-button{grid-column:1/-1}}
+@media(max-width:850px){.salt-sidebar{left:-270px}.salt-sidebar.mobile-open{left:0}.portal-main{margin-left:0;width:100%}.salt-sidebar.collapsed+.portal-main{margin-left:0;width:100%}.main-inner{padding:20px 16px 30px}.page-header{align-items:flex-start;flex-direction:column}.summary-grid{grid-template-columns:1fr}.filter-grid{grid-template-columns:1fr}.search-button{grid-column:auto}}
+@media(max-width:520px){.admin-pill{display:none}.header-actions,.header-actions a{width:100%}.period-btn{flex:1;justify-content:center}.filter-bottom{align-items:flex-start;flex-direction:column}.export-wrap,.export-button{width:100%}.export-button{justify-content:center}.export-menu{left:0;right:0;width:100%}}
+</style>
+
 </head>
 
 <body>
+<div class="portal-wrapper">
 
-<div class="wrapper">
+    <aside class="salt-sidebar" id="sidebar">
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-
-        <div class="logo py-5">
-            <img src="{{ url_for('static', filename='salt-logo.png') }}">
-            <div class="portal-name">
-                SALT Workforce Portal
+        <div class="sidebar-brand">
+            <div class="flex items-center gap-3">
+                <div class="brand-logo">
+                    <img src="{{ url_for('static', filename='salt-logo.png') }}" alt="SALT">
+                </div>
+                <div class="brand-text">
+                    <h2 class="text-lg font-bold tracking-tight">SALT Portal</h2>
+                    <p class="text-xs text-blue-200">Workforce Management</p>
+                </div>
             </div>
         </div>
 
-        <ul>
+        <nav class="flex-1 p-4">
 
-            <li>
-                <a href="/dashboard">
-                    <i class="fas fa-home"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
+            <a href="/dashboard" class="sidebar-link">
+                <span class="sidebar-icon"><i class="fas fa-home"></i></span>
+                <span class="sidebar-label">Dashboard</span>
+            </a>
 
-            <li>
-                <a href="/tasks">
-                    <i class="fas fa-tasks"></i>
-                    <span>Tasks</span>
-                </a>
-            </li>
+            <a href="/tasks" class="sidebar-link">
+                <span class="sidebar-icon"><i class="fas fa-tasks"></i></span>
+                <span class="sidebar-label">Tasks</span>
+            </a>
 
-            <li class="active">
-                <a href="/task-history">
-                    <i class="fas fa-history"></i>
-                    <span>Task History</span>
-                </a>
-            </li>
+            <a href="/task-history" class="sidebar-link active">
+                <span class="sidebar-icon"><i class="fas fa-history"></i></span>
+                <span class="sidebar-label">Task History</span>
+            </a>
 
-        </ul>
+                </nav>
 
-    </div>
-
-    <!-- MAIN -->
-    <div class="main">
-
-        <!-- TOPBAR -->
-        <div class="topbar">
-
-            <h3 class="font-semibold text-lg">
-                Task History
-            </h3>
-
+        <div class="p-4 border-t border-white/10">
+            <a href="/logout" class="sidebar-link !bg-red-500/90 hover:!bg-red-600">
+                <span class="sidebar-icon"><i class="fas fa-right-from-bracket"></i></span>
+                <span class="sidebar-label">Logout</span>
+            </a>
         </div>
+    </aside>
 
-        <!-- CONTENT -->
-        <div class="content">
+    <main class="portal-main">
+        <div class="main-inner">
 
-            <!-- SEARCH -->
-            <form method="GET"
-                action="/task-history"
-                class="mb-5 flex gap-3">
-
-                <input
-                    type="text"
-                    name="search"
-                    placeholder="Search tasks..."
-                    value="{{ search }}"
-                    class="border rounded-xl px-4 py-2 w-full max-w-md">
-
-                <input
-                    type="hidden"
-                    name="filter"
-                    value="{{ current_filter }}">
-
-                <button
-                    type="submit"
-                    class="bg-blue-600 text-white px-5 py-2 rounded-xl">
-
-                    Search
-
+            <div class="topbar">
+                <button id="toggle-btn" class="menu-button" type="button" aria-label="Toggle sidebar">
+                    <i class="fas fa-bars"></i>
                 </button>
 
-            </form>
+                <div class="admin-pill">
+                    <i class="fas fa-clock-rotate-left"></i>
+                    Task History
+                </div>
+            </div>
 
-            <!-- FILTERS + EXPORT -->
-            <div class="flex flex-wrap items-center gap-3 mb-5">
+            <section class="page-header">
+                <div>
+                    <div class="page-badge">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        TASK MANAGEMENT
+                    </div>
+                    <h1 class="page-title">Task History</h1>
+                    <p class="page-subtitle">
+                        Review completed work, search previous assignments,
+                        and analyze task activity by period.
+                    </p>
+                </div>
 
-                <!-- FILTER BUTTONS -->
-                <a href="/task-history?filter=all"
-                class="px-4 py-2 rounded-lg bg-blue-600 text-white">
-                    All
-                </a>
-
-                <a href="/task-history?filter=this_week"
-                class="px-4 py-2 rounded-lg bg-gray-600 text-white">
-                    This Week
-                </a>
-
-                <a href="/task-history?filter=last_week"
-                class="px-4 py-2 rounded-lg bg-gray-600 text-white">
-                    Last Week
-                </a>
-
-                <a href="/task-history?filter=this_month"
-                class="px-4 py-2 rounded-lg bg-gray-600 text-white">
-                    This Month
-                </a>
-
-                <a href="/task-history?filter=last_month"
-                class="px-4 py-2 rounded-lg bg-gray-600 text-white">
-                    Last Month
-                </a>
-
-            <!-- EXPORT DROPDOWN -->
-            <div class="relative inline-block ml-auto">
-
-                <!-- BUTTON -->
-                <button id="exportBtn"
-                onclick="toggleExportMenu()"
-                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow">
-
-                    <i class="fas fa-file-excel"></i>
-
-                    Export Excel
-
-                    <i class="fas fa-chevron-down text-xs"></i>
-
-                </button>
-
-                <!-- MENU -->
-                <div id="exportMenu"
-                class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border z-50 overflow-hidden">
-
-                    <a href="/export-task-history?type=all"
-                    class="block px-4 py-3 hover:bg-gray-100">
-
-                        Export All Tasks
-
-                    </a>
-
-                    <a href="/export-task-history?type=my"
-                    class="block px-4 py-3 hover:bg-gray-100">
-
-                        Export My Tasks
-
-                    </a>
-
-                    <a href="/export-task-history?type=assigned"
-                    class="block px-4 py-3 hover:bg-gray-100">
-
-                        Export Assigned Tasks
-
+                <div class="header-actions">
+                    <a href="/dashboard" class="btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
                     </a>
 
                 </div>
+            </section>
+
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-label">Records Found</div>
+                    <div class="summary-value">{{ tasks|length }}</div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-label">Current Period</div>
+                    <div class="summary-value" style="font-size:20px;">
+                        {% if current_filter == 'this_week' %}This Week
+                        {% elif current_filter == 'last_week' %}Last Week
+                        {% elif current_filter == 'this_month' %}This Month
+                        {% elif current_filter == 'last_month' %}Last Month
+                        {% else %}All History{% endif %}
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-label">View</div>
+                    <div class="summary-value" style="font-size:20px;">
+                        {% if session.get('role') == 'admin' %}Admin History{% else %}My History{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-card">
+
+                <div class="filter-head">
+                    <div class="filter-title">
+                        <i class="fas fa-filter"></i>
+                        Filter Task History
+                    </div>
+
+                </div>
+
+                <form method="GET" action="/task-history">
+
+                    <div class="filter-grid">
+
+                        <div class="search-box">
+                            <i class="fas fa-magnifying-glass"></i>
+                            <input
+                                type="text"
+                                name="search"
+                                value="{{ search or '' }}"
+                                placeholder="Search task title or description..."
+                                class="filter-input">
+                        </div>
+
+
+                        <button type="submit" class="search-button">
+                            <i class="fas fa-filter mr-1"></i>
+                            Apply Filters
+                        </button>
+                    </div>
+
+                    <div class="period-row">
+
+                        <a href="/task-history?filter=all{% if search %}&search={{ search|urlencode }}{% endif %}"
+                           class="period-btn {% if not current_filter or current_filter == 'all' %}active{% endif %}">
+                            <i class="fas fa-layer-group"></i> All
+                        </a>
+
+                        <a href="/task-history?filter=this_week{% if search %}&search={{ search|urlencode }}{% endif %}"
+                           class="period-btn {% if current_filter == 'this_week' %}active{% endif %}">
+                            <i class="fas fa-calendar-week"></i> This Week
+                        </a>
+
+                        <a href="/task-history?filter=last_week{% if search %}&search={{ search|urlencode }}{% endif %}"
+                           class="period-btn {% if current_filter == 'last_week' %}active{% endif %}">
+                            <i class="fas fa-calendar-minus"></i> Last Week
+                        </a>
+
+                        <a href="/task-history?filter=this_month{% if search %}&search={{ search|urlencode }}{% endif %}"
+                           class="period-btn {% if current_filter == 'this_month' %}active{% endif %}">
+                            <i class="fas fa-calendar-days"></i> This Month
+                        </a>
+
+                        <a href="/task-history?filter=last_month{% if search %}&search={{ search|urlencode }}{% endif %}"
+                           class="period-btn {% if current_filter == 'last_month' %}active{% endif %}">
+                            <i class="fas fa-calendar-check"></i> Last Month
+                        </a>
+
+                    </div>
+
+                    <div class="filter-bottom">
+
+                        <div class="active-filter">
+                            <i class="fas fa-circle-info"></i>
+                            Showing:
+                            <strong>
+                                {% if current_filter == 'this_week' %}This Week
+                                {% elif current_filter == 'last_week' %}Last Week
+                                {% elif current_filter == 'this_month' %}This Month
+                                {% elif current_filter == 'last_month' %}Last Month
+                                {% else %}All History{% endif %}
+                            </strong>
+
+                        </div>
+
+                        <div class="export-wrap">
+                            <button id="exportBtn" type="button"
+                                    onclick="toggleExportMenu()" class="export-button">
+                                <i class="fas fa-file-excel"></i>
+                                Export Excel
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+
+                            <div id="exportMenu" class="export-menu hidden">
+                                <a href="/export-task-history?type=all">
+                                    <i class="fas fa-file-export mr-2"></i> Export All Tasks
+                                </a>
+                                <a href="/export-task-history?type=my">
+                                    <i class="fas fa-user mr-2"></i> Export My Tasks
+                                </a>
+                                <a href="/export-task-history?type=assigned">
+                                    <i class="fas fa-user-plus mr-2"></i> Export Assigned Tasks
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-card">
+
+                <div class="table-header">
+                    <div class="table-heading">
+                        <div class="table-icon">
+                            <i class="fas fa-table-list"></i>
+                        </div>
+                        <div>
+                            <h2>Completed Task Records</h2>
+                            <p>Historical assignments and completion activity</p>
+                        </div>
+                    </div>
+
+                    <div class="text-xs text-slate-400">
+                        <i class="fas fa-arrows-left-right mr-1"></i>
+                        Scroll horizontally if needed
+                    </div>
+                </div>
+
+                {% if tasks %}
+
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Description</th>
+                                <th>Deadline</th>
+                                <th>Completed</th>
+                                <th>Status</th>
+                                <th>Carry Forward</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                        {% for task in tasks %}
+                            <tr>
+
+                                <td>
+                                    <div class="task-title">{{ task.title }}</div>
+                                </td>
+
+                                <td>
+                                    <div class="task-description">
+                                        {{ task.description or 'No description provided.' }}
+                                    </div>
+                                </td>
+
+                                <td>{{ task.deadline or '—' }}</td>
+                                <td>{{ task.completed_at or '—' }}</td>
+
+                                <td>
+                                    <span class="badge badge-completed">
+                                        <i class="fas fa-check"></i> Completed
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {% if task.carried_forward == 1 %}
+                                    <span class="badge badge-carry">
+                                        <i class="fas fa-forward"></i> Yes
+                                    </span>
+                                    {% else %}
+                                    <span class="badge badge-normal">No</span>
+                                    {% endif %}
+                                </td>
+
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% else %}
+
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-clock-rotate-left"></i>
+                    </div>
+                    <h2>No Task History Found</h2>
+                    <p>
+                        There are no completed tasks matching the selected filters.
+                    </p>
+                </div>
+
+                {% endif %}
 
             </div>
 
-            </div>
-
-            <!-- TABLE -->
-            <div class="bg-white rounded-2xl shadow overflow-x-auto">
-
-                <table class="min-w-full">
-
-                    <thead>
-
-                        <tr>
-
-                            <th>Task</th>
-                            <th>Description</th>
-                            <th>Deadline</th>
-                            <th>Completed</th>
-                            <th>Status</th>
-                            <th>Carry Forward</th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                    {% for task in tasks %}
-
-                    <tr>
-
-                        <td>
-                            {{ task.title }}
-                        </td>
-
-                        <td>
-                            {{ task.description }}
-                        </td>
-
-                        <td>
-                            {{ task.deadline }}
-                        </td>
-
-                        <td>
-                            {{ task.completed_at }}
-                        </td>
-
-                        <td>
-
-                            <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
-                                Completed
-                            </span>
-
-                        </td>
-
-                        <td>
-
-                            {% if task.carried_forward == 1 %}
-
-                            <span class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs">
-                                Yes
-                            </span>
-
-                            {% else %}
-
-                            No
-
-                            {% endif %}
-
-                        </td>
-
-                    </tr>
-
-                    {% else %}
-
-                    <tr>
-
-                        <td colspan="6"
-                        class="text-center text-gray-400 py-8">
-
-                            No task history found.
-
-                        </td>
-
-                    </tr>
-
-                    {% endfor %}
-
-                    </tbody>
-
-                </table>
-
+            <div class="footer">
+                <i class="fas fa-lock mr-1"></i>
+                SALT Workforce Portal · Task History
             </div>
 
         </div>
-
-    </div>
-
+    </main>
 </div>
 
 <script>
+(function () {
+    "use strict";
 
-    function toggleExportMenu() {
-    
-        document
-            .getElementById("exportMenu")
-            .classList.toggle("hidden");
-    
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggle-btn");
+
+    if (toggleBtn && sidebar) {
+        toggleBtn.addEventListener("click", function () {
+            if (window.innerWidth <= 850) {
+                sidebar.classList.toggle("mobile-open");
+            } else {
+                sidebar.classList.toggle("collapsed");
+            }
+        });
+
+        document.addEventListener("click", function (event) {
+            if (window.innerWidth > 850) return;
+            if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
+                sidebar.classList.remove("mobile-open");
+            }
+        });
     }
-    
-    window.addEventListener("click", function(e){
-    
+
+    window.toggleExportMenu = function () {
+        const menu = document.getElementById("exportMenu");
+        if (menu) menu.classList.toggle("hidden");
+    };
+
+    window.addEventListener("click", function (event) {
         const button = document.getElementById("exportBtn");
         const menu = document.getElementById("exportMenu");
-    
-        if(
-            !button.contains(e.target) &&
-            !menu.contains(e.target)
-        ){
+
+        if (!button || !menu) return;
+
+        if (!button.contains(event.target) && !menu.contains(event.target)) {
             menu.classList.add("hidden");
         }
-    
     });
-    
-    </script>
+})();
+</script>
 
+</body>
 </body>
 </html>
