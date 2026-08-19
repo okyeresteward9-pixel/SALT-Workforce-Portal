@@ -3,385 +3,515 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>SALT Workforce Portal</title>
+<title>SALT Workforce Web Application</title>
 
 <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family: "Segoe UI", sans-serif;
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#0878f9;
+  --deep:#062b63;
+  --cyan:#19c8ff;
+  --text:#10233f;
+  --muted:#718096;
+  --border:#e4ebf5;
 }
-
-/* Background */
-
 body{
-height:100vh;
-display:flex;
-align-items:center;
-justify-content:center;
-overflow:hidden;
-
-/* Image background */
-background: url("{{ url_for('static', filename='motion_bg.png') }}") no-repeat center center;
-background-size: cover;
-position: relative;
+  min-height:100vh;
+  font-family:Inter,"Segoe UI",sans-serif;
+  background:#f5f9ff;
+  color:var(--text);
+  display:flex;
+  overflow:hidden;
 }
+.shell{width:100%;min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr}
 
-/* Add motion overlay */
-body::before{
-content:"";
-position:absolute;
-top:0;
-left:0;
-width:100%;
-height:100%;
-
-/* soft animated gradient overlay */
-background: linear-gradient(-45deg, rgba(0,31,63,0.7), rgba(0,63,127,0.6), rgba(0,116,217,0.5), rgba(0,31,63,0.7));
-background-size:400% 400%;
-animation:bgMove 15s ease infinite;
-z-index:0;
+/* Brand side */
+.brand-panel{
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  padding:70px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 15% 15%,rgba(25,200,255,.35),transparent 30%),
+    radial-gradient(circle at 90% 85%,rgba(0,116,255,.35),transparent 35%),
+    linear-gradient(145deg,#031b42,#0754ad 58%,#0878f9);
 }
-
-
-@keyframes bgMove{
-0%{background-position:0% 50%}
-50%{background-position:100% 50%}
-100%{background-position:0% 50%}
+.brand-panel:before,.brand-panel:after{
+  content:"";
+  position:absolute;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:50%;
 }
-
-/* Blobs */
-
-.blob{
-position:absolute;
-border-radius:50%;
-filter:blur(60px);
-opacity:.5;
-animation:float 14s infinite ease-in-out;
-z-index:0;
+.brand-panel:before{width:520px;height:520px;right:-240px;top:-190px}
+.brand-panel:after{width:420px;height:420px;left:-250px;bottom:-220px}
+.brand-content{position:relative;z-index:2;max-width:590px}
+.logo-row{display:flex;align-items:center;gap:14px;margin-bottom:70px}
+.logo{
+  width:54px;height:54px;object-fit:contain;border-radius:14px;
+  background:rgba(255,255,255,.12);padding:7px;
 }
-
-.blob1{
-width:350px;
-height:350px;
-background:linear-gradient(45deg,#00eaff,#0074ff);
-top:-100px;
-left:-100px;
+.brand-name{font-size:19px;font-weight:800;letter-spacing:.4px}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 13px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.09);border-radius:30px;
+  font-size:12px;font-weight:700;letter-spacing:.5px;
+  margin-bottom:24px;
 }
-
-.blob2{
-width:300px;
-height:300px;
-background:linear-gradient(45deg,#00c6ff,#0072ff);
-bottom:-80px;
-right:-80px;
-animation-delay:3s;
+.dot{width:7px;height:7px;border-radius:50%;background:#55e7a7;box-shadow:0 0 12px #55e7a7}
+h1{font-size:clamp(42px,5vw,70px);line-height:1.02;letter-spacing:-2.8px;margin-bottom:24px}
+.brand-copy{font-size:17px;line-height:1.8;color:rgba(255,255,255,.76);max-width:500px}
+.features{display:flex;gap:12px;flex-wrap:wrap;margin-top:38px}
+.feature{
+  display:flex;align-items:center;gap:9px;
+  padding:11px 14px;border-radius:12px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.1);
+  font-size:12px;color:rgba(255,255,255,.9)
 }
+.feature i{color:#7ee7ff}
 
-.blob3{
-width:250px;
-height:250px;
-background:linear-gradient(45deg,#00f2fe,#4facfe);
-top:40%;
-left:60%;
-animation-delay:6s;
+/* Decorative mascot */
+.mascot{
+  position:absolute;right:8%;bottom:7%;
+  width:150px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.2));
+  animation:float 4s ease-in-out infinite;z-index:2
 }
+@keyframes float{50%{transform:translateY(-12px) rotate(1deg)}}
 
-@keyframes float{
-0%{transform:translateY(0px)}
-50%{transform:translateY(-40px)}
-100%{transform:translateY(0px)}
+/* Login side */
+.login-panel{
+  background:#fff;display:flex;align-items:center;justify-content:center;
+  padding:50px;position:relative;
 }
-
-/* Login Card */
-
-.login-card{
-width:380px;
-padding:45px;
-border-radius:20px;
-background:rgba(255,255,255,0.08);
-backdrop-filter:blur(18px);
-border:1px solid rgba(255,255,255,0.25);
-box-shadow:0 20px 60px rgba(0,0,0,0.5);
-color:white;
-animation:fadeUp 1s ease;
-position:relative;
-z-index:10;
+.login-wrap{width:min(420px,100%)}
+.mobile-logo{display:none}
+.welcome{margin-bottom:34px}
+.welcome h2{font-size:34px;letter-spacing:-1.2px;margin-bottom:9px}
+.welcome p{color:var(--muted);font-size:14px;line-height:1.6}
+.form-group{margin-bottom:19px}
+.form-label{display:block;font-size:12px;font-weight:700;margin-bottom:8px;color:#30435f}
+.input-wrap{position:relative}
+.input-wrap i.left-icon{
+  position:absolute;left:15px;top:50%;transform:translateY(-50%);
+  color:#8da0b9;font-size:14px;pointer-events:none
 }
-
-@keyframes fadeUp{
-from{opacity:0; transform:translateY(40px);}
-to{opacity:1; transform:translateY(0);}
+input[type=email],input[type=password],input[type=text]{
+  width:100%;height:52px;border:1px solid var(--border);border-radius:13px;
+  outline:none;background:#fbfdff;color:var(--text);font:500 14px Inter;
+  padding:0 45px 0 43px;transition:.2s
 }
-
-.login-card h2{
-font-size:30px;
-margin-bottom:10px;
-}
-
-.subtitle{
-font-size:14px;
-color:#9ee7ff;
-margin-bottom:25px;
-}
-
-/* Inputs */
-
-.input-group{
-position:relative;
-margin-bottom:25px;
-}
-
-input{
-width:100%;
-padding:12px;
-background:transparent;
-border:none;
-border-bottom:1px solid rgba(255,255,255,0.4);
-color:white;
-font-size:16px;
-outline:none;
-}
-
 input:focus{
-border-bottom:1px solid #00eaff;
+  border-color:#78b9ff;box-shadow:0 0 0 4px rgba(8,120,249,.09);background:#fff
 }
-
-input::placeholder{
-color:rgba(255,255,255,0.6);
+input::placeholder{color:#a7b3c4}
+.toggle{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  border:0;background:none;color:#8da0b9;cursor:pointer;padding:6px
 }
-
-/* Password Toggle */
-
-.toggle-password{
-position:absolute;
-right:5px;
-top:50%;
-transform:translateY(-50%);
-cursor:pointer;
+.options{display:flex;align-items:center;justify-content:space-between;margin:3px 0 24px}
+.remember{display:flex;align-items:center;gap:9px;font-size:12px;color:#62728a;cursor:pointer}
+.remember input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer}
+.forgot{font-size:12px;font-weight:700;color:var(--blue);text-decoration:none}
+.login-btn{
+  width:100%;height:53px;border:0;border-radius:13px;
+  background:linear-gradient(135deg,#0878f9,#0757c8);
+  color:#fff;font:700 14px Inter;cursor:pointer;
+  box-shadow:0 12px 25px rgba(8,120,249,.22);transition:.2s
 }
-
-/* Checkbox */
-
-label{
-display:flex;
-align-items:center;
-gap:8px;
-font-size:14px;
-margin-top:10px;
-}
-
-/* Button */
-
-button{
-width:100%;
-margin-top:25px;
-padding:14px;
-border:none;
-border-radius:30px;
-font-size:16px;
-cursor:pointer;
-background:linear-gradient(45deg,#00c6ff,#0072ff);
-color:white;
-}
-
-/* Spinner */
-
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 15px 30px rgba(8,120,249,.28)}
+.login-btn:disabled{opacity:.75;cursor:wait;transform:none}
 .spinner{
-display:none;
-margin:auto;
-margin-top:15px;
-border:3px solid rgba(255,255,255,.3);
-border-top:3px solid white;
-border-radius:50%;
-width:25px;
-height:25px;
-animation:spin 1s linear infinite;
+  display:none;width:18px;height:18px;margin:0 auto;
+  border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;
+  animation:spin .8s linear infinite
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-box{
+  display:none;padding:12px 14px;border-radius:11px;margin-bottom:18px;
+  background:#fff1f2;color:#c52b3f;border:1px solid #ffd6db;font-size:12px;
+}
+.error-box.show{display:block}
+.security{
+  display:flex;justify-content:center;align-items:center;gap:7px;
+  color:#98a5b6;font-size:11px;margin-top:25px
+}
+.security i{color:#55a978}
+.footer{position:absolute;bottom:22px;color:#a1adbd;font-size:10px}
+
+
+/* Help link */
+.help-trigger{
+  border:0;
+  background:none;
+  padding:0;
+  cursor:pointer;
+  font:700 12px Inter;
+  color:var(--blue);
 }
 
-@keyframes spin{
-to{transform:rotate(360deg);}
+/* Help modal */
+.help-overlay{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(4,20,45,.55);
+  backdrop-filter:blur(7px);
 }
-
-/* Mascot */
-
-.assistant{
-position:absolute;
-left:40px;
-bottom:40px;
-display:flex;
-flex-direction:column;
-align-items:center;
-animation:floatAssistant 4s ease-in-out infinite;
-pointer-events:none;
-z-index:1;
+.help-overlay.show{display:flex}
+.help-modal{
+  width:min(430px,100%);
+  background:#fff;
+  border:1px solid #e5edf8;
+  border-radius:22px;
+  padding:30px;
+  position:relative;
+  box-shadow:0 25px 70px rgba(0,25,65,.25);
+  animation:helpIn .22s ease-out;
 }
-
-@keyframes floatAssistant{
-0%{transform:translateY(0)}
-50%{transform:translateY(-15px)}
-100%{transform:translateY(0)}
+@keyframes helpIn{
+  from{opacity:0;transform:translateY(12px) scale(.98)}
+  to{opacity:1;transform:translateY(0) scale(1)}
 }
-
-.assistant img{
-width:120px;
+.help-close{
+  position:absolute;
+  right:18px;
+  top:18px;
+  width:34px;
+  height:34px;
+  border:0;
+  border-radius:50%;
+  background:#f2f6fb;
+  color:#718096;
+  cursor:pointer;
 }
-
-/* Speech */
-
-.speech{
-margin-top:10px;
-background:white;
-color:#003f7f;
-padding:8px 14px;
-border-radius:20px;
-font-size:13px;
-font-weight:bold;
+.help-icon{
+  width:50px;
+  height:50px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:15px;
+  color:#0878f9;
+  background:#eaf4ff;
+  font-size:20px;
+  margin-bottom:18px;
 }
-
-/* Shake only */
-
-.shake{
-animation:shake 0.4s;
+.help-modal h3{
+  font-size:22px;
+  letter-spacing:-.6px;
+  color:var(--text);
+  margin-bottom:8px;
 }
-
-@keyframes shake{
-0%{transform:translateX(0);}
-25%{transform:translateX(-6px);}
-50%{transform:translateX(6px);}
-75%{transform:translateX(-6px);}
-100%{transform:translateX(0);}
+.help-intro{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.65;
+  margin-bottom:20px;
 }
+.support-list{display:grid;gap:10px}
+.support-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:13px;
+  border:1px solid #e7edf6;
+  border-radius:14px;
+  text-decoration:none;
+  color:var(--text);
+  transition:.18s;
+}
+.support-item:hover{
+  border-color:#9bc9ff;
+  background:#f8fbff;
+  transform:translateY(-1px);
+}
+.support-avatar{
+  width:38px;
+  height:38px;
+  flex:0 0 38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:11px;
+  background:#edf6ff;
+  color:#0878f9;
+}
+.support-item span:nth-child(2){
+  min-width:0;
+  flex:1;
+}
+.support-item strong{
+  display:block;
+  font-size:12px;
+  margin-bottom:3px;
+}
+.support-item small{
+  display:block;
+  color:#718096;
+  font-size:10px;
+  overflow-wrap:anywhere;
+}
+.support-arrow{color:#9aaabd;font-size:11px}
+.help-note{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  margin-top:18px;
+  padding:11px 12px;
+  border-radius:11px;
+  background:#f6f9fd;
+  color:#718096;
+  font-size:10px;
+  line-height:1.5;
+}
+.help-note i{color:#0878f9;margin-top:2px}
 
 /* Mobile */
-
-@media(max-width:768px){
-.assistant{display:none;}
+@media(max-width:900px){
+  body{overflow:auto}
+  .shell{grid-template-columns:1fr}
+  .brand-panel{display:none}
+  .login-panel{min-height:100vh;padding:30px 22px}
+  .mobile-logo{display:flex;align-items:center;justify-content:center;margin-bottom:38px}
+  .mobile-logo img{width:52px;height:52px;object-fit:contain}
+  .footer{position:static;margin-top:35px;text-align:center}
 }
-
+@media(max-width:430px){
+  .welcome h2{font-size:29px}
+  .login-panel{padding:25px 18px}
+}
 </style>
 </head>
 
 <body>
+<div class="shell">
 
-<!-- Mascot -->
-<div class="assistant">
-<img id="mascotImg" src="{{ url_for('static', filename='salt-mascot.png') }}">
-<div class="speech" id="mascotText">
-Hi 👋 I'm Salty!<br>Login to continue
-</div>
-</div>
+  <section class="brand-panel">
+    <div class="brand-content">
+      <div class="logo-row">
+        <img class="logo" src="{{ url_for('static', filename='salt-logo.png') }}" alt="SALT">
+        <span class="brand-name">SALT Workforce Web Application</span>
+      </div>
 
-<!-- Background -->
-<div class="blob blob1"></div>
-<div class="blob blob2"></div>
-<div class="blob blob3"></div>
+      <div class="eyebrow"><span class="dot"></span> WORKFORCE MANAGEMENT</div>
 
-<!-- Login Card -->
-<div class="login-card">
+      <h1>Work smarter.<br>Stay connected.</h1>
 
-<h2>SALT Workforce Portal</h2>
-<p class="subtitle">Secure employee management system</p>
+      <p class="brand-copy">
+        One secure workspace for attendance, tasks, employees and everyday operations.
+        Everything your team needs, right where it belongs.
+      </p>
 
-<form id="loginForm" action="/login" method="POST">
+      <div class="features">
+        <div class="feature"><i class="fa-solid fa-shield-halved"></i> Secure access</div>
+        <div class="feature"><i class="fa-solid fa-clock"></i> Live attendance</div>
+        <div class="feature"><i class="fa-solid fa-list-check"></i> Task management</div>
+      </div>
+    </div>
 
-<div class="input-group">
-<input type="email" name="email" placeholder="Email address" required>
-</div>
+    <img class="mascot" src="{{ url_for('static', filename='salt-mascot.png') }}" alt="">
+  </section>
 
-<div class="input-group">
-<input type="password" id="password" name="password" placeholder="Password" required>
-<i class="fa-solid fa-eye toggle-password" onclick="togglePassword()"></i>
-</div>
+  <main class="login-panel">
+    <div class="login-wrap">
 
-<label>
-<input type="checkbox" name="remember"> Remember me
-</label>
+      <div class="mobile-logo">
+        <img src="{{ url_for('static', filename='salt-logo.png') }}" alt="SALT">
+      </div>
 
-<button type="submit" id="loginBtn">Login</button>
+      <div class="welcome">
+        <h2>Welcome back 👋</h2>
+        <p>Sign in to continue to your SALT workforce workspace.</p>
+      </div>
 
-<div class="spinner" id="spinner"></div>
+      <div class="error-box" id="errorBox">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span id="errorText">Invalid email or password.</span>
+      </div>
 
-</form>
+      <form id="loginForm" action="/login" method="POST" autocomplete="on">
 
+        <div class="form-group">
+          <label class="form-label" for="email">EMAIL ADDRESS</label>
+          <div class="input-wrap">
+            <i class="fa-regular fa-envelope left-icon"></i>
+            <input type="email" id="email" name="email"
+                   placeholder="you@example.com"
+                   autocomplete="username" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">PASSWORD</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-lock left-icon"></i>
+            <input type="password" id="password" name="password"
+                   placeholder="Enter your password"
+                   autocomplete="current-password" required>
+            <button type="button" class="toggle" onclick="togglePassword()" aria-label="Show password">
+              <i id="eyeIcon" class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="options">
+          <label class="remember">
+            <input type="checkbox" id="remember" name="remember" value="1">
+            <span>Remember me for 30 days</span>
+          </label>
+          <button type="button" class="forgot help-trigger" onclick="openHelp()">Need help?</button>
+        </div>
+
+        <button type="submit" class="login-btn" id="loginBtn">
+          <span id="btnText">Sign in</span>
+          <span class="spinner" id="spinner"></span>
+        </button>
+
+      </form>
+
+      <div class="security">
+        <i class="fa-solid fa-shield-halved"></i>
+        Secure SALT Workforce Web Application
+      </div>
+
+      <!-- Help Modal -->
+      <div class="help-overlay" id="helpOverlay" onclick="closeHelp(event)">
+        <div class="help-modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+          <button type="button" class="help-close" onclick="closeHelp()" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+
+          <div class="help-icon">
+            <i class="fa-solid fa-headset"></i>
+          </div>
+
+          <h3 id="helpTitle">Need help signing in?</h3>
+          <p class="help-intro">
+            If you're having trouble accessing the SALT Workforce Portal,
+            contact one of the support administrators below.
+          </p>
+
+          <div class="support-list">
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=sokyere%40saltuniversity.edu.gh" target="_blank" rel="noopener noreferrer" class="support-item">
+              <span class="support-avatar"><i class="fa-solid fa-user"></i></span>
+              <span>
+                <strong>SALT Support</strong>
+                <small>sokyere@saltuniversity.edu.gh</small>
+              </span>
+              <i class="fa-solid fa-arrow-up-right-from-square support-arrow"></i>
+            </a>
+
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=sosafo%40saltuniversity.edu.gh" target="_blank" rel="noopener noreferrer" class="support-item">
+              <span class="support-avatar"><i class="fa-solid fa-user"></i></span>
+              <span>
+                <strong>SALT Support</strong>
+                <small>sosafo@saltuniversity.edu.gh</small>
+              </span>
+              <i class="fa-solid fa-arrow-up-right-from-square support-arrow"></i>
+            </a>
+          </div>
+
+          <div class="help-note">
+            <i class="fa-solid fa-circle-info"></i>
+            For password resets, please contact an administrator.
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">© {{ now().year if now is defined else '2026' }} SALT University College</div>
+    </div>
+  </main>
 </div>
 
 <script>
 
-/* Password toggle */
+function openHelp(){
+  document.getElementById("helpOverlay").classList.add("show");
+  document.body.style.overflow="hidden";
+}
+
+function closeHelp(event){
+  if(event && event.target !== document.getElementById("helpOverlay")) return;
+  document.getElementById("helpOverlay").classList.remove("show");
+  document.body.style.overflow="";
+}
+
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"){
+    document.getElementById("helpOverlay").classList.remove("show");
+    document.body.style.overflow="";
+  }
+});
+
 function togglePassword(){
-const pass = document.getElementById("password");
-const icon = document.querySelector(".toggle-password");
+  const pass=document.getElementById("password");
+  const icon=document.getElementById("eyeIcon");
+  const button=document.querySelector(".toggle");
 
-if(pass.type === "password"){
-pass.type = "text";
-icon.classList.replace("fa-eye","fa-eye-slash");
-}else{
-pass.type = "password";
-icon.classList.replace("fa-eye-slash","fa-eye");
-}
-}
-
-/* Mascot reactions (TEXT ONLY) */
-function mascotReact(type){
-
-const img = document.getElementById("mascotImg");
-const text = document.getElementById("mascotText");
-
-if(type === "error"){
-text.innerHTML = "Oops 😢<br>Invalid email or password";
-img.classList.add("shake");
+  if(pass.type==="password"){
+    pass.type="text";
+    icon.classList.replace("fa-eye","fa-eye-slash");
+    button.setAttribute("aria-label","Hide password");
+  }else{
+    pass.type="password";
+    icon.classList.replace("fa-eye-slash","fa-eye");
+    button.setAttribute("aria-label","Show password");
+  }
 }
 
-if(type === "success"){
-text.innerHTML = "Welcome 🎉<br>Login successful!";
+const form=document.getElementById("loginForm");
+const btn=document.getElementById("loginBtn");
+const btnText=document.getElementById("btnText");
+const spinner=document.getElementById("spinner");
+const errorBox=document.getElementById("errorBox");
+
+const savedEmail=localStorage.getItem("salt_saved_email");
+if(savedEmail){
+  document.getElementById("email").value=savedEmail;
+  document.getElementById("remember").checked=true;
 }
 
-if(type === "typing"){
-text.innerHTML = "Good,You are 🤔<br>Typing...";
-}
+form.addEventListener("submit",function(e){
+  errorBox.classList.remove("show");
 
-setTimeout(()=>{
-img.classList.remove("shake");
-},500);
+  const email=document.getElementById("email").value.trim();
+  const password=document.getElementById("password").value;
+  const remember=document.getElementById("remember").checked;
 
-}
+  if(!email || !password){
+    e.preventDefault();
+    document.getElementById("errorText").textContent="Please enter your email and password.";
+    errorBox.classList.add("show");
+    return;
+  }
 
-/* Typing reaction */
-document.querySelectorAll("input").forEach(input=>{
-input.addEventListener("focus", ()=>{
-mascotReact("typing");
-});
-});
+  if(remember){
+    localStorage.setItem("salt_saved_email",email);
+  }else{
+    localStorage.removeItem("salt_saved_email");
+  }
 
-/* Submit */
-document.getElementById("loginForm").addEventListener("submit", function(e){
-
-const email = document.querySelector("input[name='email']").value;
-const password = document.querySelector("input[name='password']").value;
-
-if(email === "" || password === ""){
-e.preventDefault();
-mascotReact("error");
-return;
-}
-
-const btn = document.getElementById("loginBtn");
-const spinner = document.getElementById("spinner");
-
-btn.disabled = true;
-btn.innerText = "Logging in...";
-spinner.style.display = "block";
-
+  btn.disabled=true;
+  btnText.style.display="none";
+  spinner.style.display="block";
 });
 
+document.getElementById("password").addEventListener("keydown",function(e){
+  if(e.key==="Enter") form.requestSubmit();
+});
 </script>
-
 </body>
 </html>
