@@ -3466,7 +3466,7 @@ def save_employee():
         conn.close()
 
 
-@app.route('/admin/edit_employee/<int:id>', methods=['GET','POST'])
+@app.route('/admin/edit_employee/<int:id>', methods=['GET', 'POST'])
 def edit_employee(id):
 
     if session.get('role') != 'admin':
@@ -3476,6 +3476,7 @@ def edit_employee(id):
     c = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
+
         if request.method == 'POST':
 
             name = request.form.get('name', '').strip()
@@ -3483,13 +3484,18 @@ def edit_employee(id):
             phone = request.form.get('phone', '').strip()
             department = request.form.get('department', '').strip()
             position = request.form.get('position', '').strip()
-            role = request.form.get('role', 'employee').strip().lower()
+
+            role = request.form.get(
+                'role',
+                'staff'
+            ).strip().lower()
 
             if not name or not email:
                 return "Name and email are required.", 400
 
-            if role not in ('admin', 'employee', 'staff'):
-                role = 'employee'
+            # Only two roles are allowed.
+            if role not in ('admin', 'staff'):
+                role = 'staff'
 
             c.execute("""
                 UPDATE employees
@@ -3514,6 +3520,7 @@ def edit_employee(id):
             conn.commit()
 
             return redirect('/admin/employees')
+
 
         c.execute("""
             SELECT
