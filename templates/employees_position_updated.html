@@ -869,6 +869,7 @@ data-role="{{ emp['role']|lower }}">
   <option value="{{ supervisor['id'] }}">
     {{ supervisor['name'] }}{% if supervisor['position'] %} — {{ supervisor['position'] }}{% endif %}
   </option>
+  {% endif %}
 {% endfor %}
 </select>
 </div>

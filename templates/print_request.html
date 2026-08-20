@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{{ req.request_no }} — {{ req.title }}</title>
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #111;
+            margin: 0;
+            background: #f4f6f8;
+        }
+
+        .sheet {
+            max-width: 900px;
+            margin: 30px auto;
+            background: #fff;
+            padding: 42px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.08);
+        }
+
+        /* =========================
+           HEADER
+        ========================== */
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #0b4f86;
+            padding-bottom: 18px;
+        }
+
+        .logo {
+            display: block;
+            width: 210px;
+            height: auto;
+            max-height: 150px;
+            object-fit: contain;
+            object-position: center;
+            margin: 0 auto 14px auto;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #0b4f86;
+            font-size: 23px;
+            font-weight: 700;
+        }
+
+        .header h2 {
+            margin: 7px 0 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .request-number {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        /* =========================
+           MEMO DETAILS
+        ========================== */
+
+        .meta {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+        }
+
+        .meta td {
+            border: 1px solid #cfd6dd;
+            padding: 9px;
+        }
+
+        .meta td:first-child {
+            font-weight: bold;
+            width: 145px;
+            background: #f7f9fb;
+        }
+
+        .memo {
+            line-height: 1.75;
+            font-size: 14px;
+        }
+
+        /* =========================
+           REQUISITION
+        ========================== */
+
+        h3 {
+            color: #0b4f86;
+            margin-top: 28px;
+            font-size: 15px;
+        }
+
+        .items {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 18px 0;
+        }
+
+        .items th,
+        .items td {
+            border: 1px solid #cfd6dd;
+            padding: 8px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .items th {
+            background: #eef5fa;
+        }
+
+        /* =========================
+           APPROVAL RECORD
+        ========================== */
+
+        .signatures {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 20px;
+        }
+
+        .sig {
+            border: 1px solid #cfd6dd;
+            min-height: 120px;
+            padding: 12px;
+            font-size: 12px;
+        }
+
+        .sig strong {
+            color: #0b4f86;
+            font-size: 13px;
+        }
+
+        .signature-image {
+            max-width: 120px;
+            max-height: 50px;
+            object-fit: contain;
+            display: block;
+            margin: 8px 0;
+        }
+
+        /* =========================
+           PRINT BUTTON
+        ========================== */
+
+        .printbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 18px;
+        }
+
+        .printbar button {
+            border: 0;
+            background: #0b4f86;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        /* =========================
+           PRINT
+        ========================== */
+
+        @media print {
+            body {
+                background: #fff;
+            }
+
+            .sheet {
+                margin: 0;
+                box-shadow: none;
+                max-width: none;
+                padding: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        @media(max-width:650px) {
+            .sheet {
+                padding: 20px;
+            }
+
+            .signatures {
+                grid-template-columns: 1fr;
+            }
+
+            .logo {
+                width: 75px;
+                height: 75px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="sheet">
+
+    <!-- PRINT BUTTON -->
+    <div class="printbar no-print">
+        <button onclick="window.print()">
+            Print official copy
+        </button>
+    </div>
+
+
+    <!-- =========================
+         UNIVERSITY HEADER
+    ========================== -->
+
+    <div class="header">
+
+        <!-- YOUR LOGO -->
+        <img
+            src="{{ url_for('static', filename='images/SALT-logo 1.png') }}"
+            alt="SALT University College Logo"
+            class="logo"
+        >
+
+        <h1>SALT UNIVERSITY COLLEGE</h1>
+
+        <h2>REQUEST MEMO &amp; APPROVAL RECORD</h2>
+
+        <div class="request-number">
+            {{ req.request_no }}
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         MEMO INFORMATION
+    ========================== -->
+
+    <table class="meta">
+
+        <tr>
+            <td>To</td>
+            <td>{{ req.memo_to or '—' }}</td>
+        </tr>
+
+        <tr>
+            <td>From</td>
+            <td>{{ req.memo_from or '—' }}</td>
+        </tr>
+
+        <tr>
+            <td>CC</td>
+            <td>{{ req.memo_cc or '—' }}</td>
+        </tr>
+
+        <tr>
+            <td>Date</td>
+            <td>{{ req.memo_date or '—' }}</td>
+        </tr>
+
+        <tr>
+            <td>Subject</td>
+            <td>{{ req.memo_subject or req.title }}</td>
+        </tr>
+
+    </table>
+
+
+    <!-- =========================
+         MEMO BODY
+    ========================== -->
+
+    <div class="memo">
+        {{ req.memo_body|replace('\n','<br>')|safe }}
+    </div>
+
+
+    <!-- =========================
+         REQUISITION
+    ========================== -->
+
+    {% if items %}
+
+        <h3>REQUISITION</h3>
+
+        <table class="items">
+
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Amount (GH₵)</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for i in items %}
+
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ i.description }}</td>
+                    <td>{{ i.quantity }}</td>
+                    <td>{{ '%.2f'|format(i.unit_price) }}</td>
+                    <td>{{ '%.2f'|format(i.amount) }}</td>
+                </tr>
+
+                {% endfor %}
+
+                <tr>
+                    <th colspan="4" style="text-align:right">
+                        Total
+                    </th>
+
+                    <th>
+                        {{ '%.2f'|format(req.total_amount or 0) }}
+                    </th>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    {% endif %}
+
+
+    <!-- =========================
+         APPROVAL RECORD
+    ========================== -->
+
+    <h3>APPROVAL RECORD</h3>
+
+    <div class="signatures">
+
+        {% for s in steps %}
+
+        <div class="sig">
+
+            <strong>
+                {{ s.position }}
+            </strong>
+
+            <br>
+
+            {{ s.approver_name }}
+
+            <br><br>
+
+            Status:
+            {{ s.status|replace('_',' ')|title }}
+
+            <br>
+
+            {% if s.acted_at %}
+                Date:
+                {{ s.acted_at.strftime('%d %b %Y, %I:%M %p') }}
+            {% endif %}
+
+            {% if s.signature_path %}
+                <br>
+
+                <img
+                    src="{{ url_for('static', filename=s.signature_path) }}"
+                    class="signature-image"
+                    alt="Signature"
+                >
+            {% endif %}
+
+            {% if s.comment %}
+                <br>
+
+                Comment:
+                {{ s.comment }}
+            {% endif %}
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+</body>
+</html>
