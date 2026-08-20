@@ -20,6 +20,7 @@ from routes.chat import (
     chat_bp,
     register_chat_socketio
 )
+from request_workflow import register_request_workflow
 from cloudinary import uploader
 import cloudinary
 import cloudinary_config
@@ -308,6 +309,21 @@ def init_db():
 
     try:
         c.execute("ALTER TABLE employees ADD COLUMN position TEXT")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE employees ADD COLUMN can_approve_requests BOOLEAN DEFAULT FALSE")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE employees ADD COLUMN immediate_supervisor_id INTEGER")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE employees ADD COLUMN signature_path TEXT")
     except:
         pass
 
@@ -1165,6 +1181,31 @@ def dashboard():
         session['user_id']
     )
 
+    # -------------------------
+    # Request workflow counters
+    # -------------------------
+    request_pending_approvals = 0
+    request_my_pending = 0
+
+    try:
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM request_steps
+            WHERE approver_id=%s AND status='pending'
+        """, (session['user_id'],))
+        request_pending_approvals = c.fetchone()['count']
+
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM requests
+            WHERE requester_id=%s
+              AND status NOT IN ('completed','rejected')
+        """, (session['user_id'],))
+        request_my_pending = c.fetchone()['count']
+    except Exception:
+        request_pending_approvals = 0
+        request_my_pending = 0
+
 
 
     # -------------------------
@@ -1300,6 +1341,9 @@ def dashboard():
         clockins_today=clockins_today,
 
         notification_count=notification_count,
+
+        request_pending_approvals=request_pending_approvals,
+        request_my_pending=request_my_pending,
 
         clocked_in=clocked_in,
         clocked_out=clocked_out,
@@ -3179,6 +3223,9 @@ def admin_employees():
                 phone,
                 department,
                 position,
+                can_approve_requests,
+                immediate_supervisor_id,
+                signature_path,
                 profile_pic,
                 theme,
                 profile_pic_public_id
@@ -3217,6 +3264,9 @@ def add_employee():
         password = request.form.get("password")
 
         role = request.form.get("role", "staff")
+        position = request.form.get("position", "").strip()
+        can_approve_requests = request.form.get("can_approve_requests") == "1"
+        immediate_supervisor_id = request.form.get("immediate_supervisor_id") or None
 
 
 
@@ -3244,11 +3294,17 @@ def add_employee():
                 name,
                 email,
                 password,
-                role
+                role,
+                position,
+                can_approve_requests,
+                immediate_supervisor_id
             )
 
             VALUES
             (
+                %s,
+                %s,
+                %s,
                 %s,
                 %s,
                 %s,
@@ -3259,7 +3315,10 @@ def add_employee():
             name,
             email,
             hashed_password,
-            role
+            role,
+            position,
+            can_approve_requests,
+            immediate_supervisor_id
         ))
 
 
@@ -3293,6 +3352,8 @@ def save_employee():
     phone = request.form.get('phone', '').strip()
     department = request.form.get('department', '').strip()
     position = request.form.get('position', '').strip()
+    can_approve_requests = request.form.get('can_approve_requests') == '1'
+    immediate_supervisor_id = request.form.get('immediate_supervisor_id') or None
     role = request.form.get('role', 'employee').strip().lower()
     password = request.form.get('password', '').strip()
 
@@ -3346,6 +3407,8 @@ def save_employee():
                         phone=%s,
                         department=%s,
                         position=%s,
+                        can_approve_requests=%s,
+                        immediate_supervisor_id=%s,
                         role=%s,
                         password=%s
                     WHERE id=%s
@@ -3355,6 +3418,8 @@ def save_employee():
                     phone,
                     department,
                     position,
+                    can_approve_requests,
+                    immediate_supervisor_id,
                     role,
                     hashed_password,
                     employee_id
@@ -3368,6 +3433,8 @@ def save_employee():
                         phone=%s,
                         department=%s,
                         position=%s,
+                        can_approve_requests=%s,
+                        immediate_supervisor_id=%s,
                         role=%s
                     WHERE id=%s
                 """, (
@@ -3376,6 +3443,8 @@ def save_employee():
                     phone,
                     department,
                     position,
+                    can_approve_requests,
+                    immediate_supervisor_id,
                     role,
                     employee_id
                 ))
@@ -3425,11 +3494,13 @@ def save_employee():
                 phone,
                 department,
                 position,
+                can_approve_requests,
+                immediate_supervisor_id,
                 theme
             )
             VALUES
             (
-                %s,%s,%s,%s,%s,%s,%s,%s
+                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s
             )
             RETURNING id
         """, (
@@ -3440,6 +3511,8 @@ def save_employee():
             phone,
             department,
             position,
+            can_approve_requests,
+            immediate_supervisor_id,
             'light'
         ))
 
@@ -3484,6 +3557,8 @@ def edit_employee(id):
             phone = request.form.get('phone', '').strip()
             department = request.form.get('department', '').strip()
             position = request.form.get('position', '').strip()
+            can_approve_requests = request.form.get('can_approve_requests') == '1'
+            immediate_supervisor_id = request.form.get('immediate_supervisor_id') or None
 
             role = request.form.get(
                 'role',
@@ -3505,6 +3580,8 @@ def edit_employee(id):
                     phone=%s,
                     department=%s,
                     position=%s,
+                    can_approve_requests=%s,
+                    immediate_supervisor_id=%s,
                     role=%s
                 WHERE id=%s
             """, (
@@ -3513,6 +3590,8 @@ def edit_employee(id):
                 phone,
                 department,
                 position,
+                can_approve_requests,
+                immediate_supervisor_id,
                 role,
                 id
             ))
@@ -3531,6 +3610,9 @@ def edit_employee(id):
                 phone,
                 department,
                 position,
+                can_approve_requests,
+                immediate_supervisor_id,
+                signature_path,
                 profile_pic,
                 theme,
                 profile_pic_public_id
@@ -5800,6 +5882,7 @@ def logout():
 try:
     init_db()
     create_admin()
+    register_request_workflow(app)
     print("✅ Database initialized successfully.")
 
 except Exception as e:

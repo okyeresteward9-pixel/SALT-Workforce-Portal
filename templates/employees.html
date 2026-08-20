@@ -16,7 +16,7 @@ body{margin:0;background:#f4f7fb}
 .page-title h2{margin:0 0 5px;color:#172033;font-size:27px}
 .page-title p{margin:0;color:#718096;font-size:14px}
 .add-employee-btn{border:0;cursor:pointer;background:linear-gradient(135deg,#0756c9,#087cf0);color:#fff;padding:12px 18px;border-radius:10px;font-weight:700;box-shadow:0 6px 18px rgba(7,86,201,.2)}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:18px}
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:15px;margin-bottom:18px}
 .stat-card{background:#fff;border:1px solid #e7edf5;border-radius:14px;padding:17px;box-shadow:0 5px 18px rgba(16,24,40,.05)}
 .stat-card .label{color:#718096;font-size:13px;margin-bottom:7px}
 .stat-card .value{color:#172033;font-size:25px;font-weight:800}
@@ -48,6 +48,7 @@ td{padding:15px 16px;border-top:1px solid #edf1f6;color:#334155;font-size:14px}t
 .modal-footer{display:flex;justify-content:flex-end;gap:9px;padding:17px 22px;border-top:1px solid #edf1f6}
 .cancel-btn,.save-btn{border:0;border-radius:9px;padding:11px 17px;cursor:pointer;font-weight:700}.cancel-btn{background:#eef2f7;color:#475569}.save-btn{background:#0756c9;color:#fff}
 .toast{position:fixed;right:25px;bottom:25px;z-index:2000;background:#172033;color:#fff;padding:13px 17px;border-radius:10px;box-shadow:0 12px 35px rgba(0,0,0,.2);display:none;max-width:350px}.toast.show{display:block}
+@media(max-width:1100px){.stats-row{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.employee-page{padding:16px}.page-header{align-items:flex-start;flex-direction:column}.toolbar{flex-direction:column}.filter-select{width:100%}.form-grid{grid-template-columns:1fr}.form-group.full{grid-column:auto}}
 
@@ -707,6 +708,7 @@ td{padding:15px 16px;border-top:1px solid #edf1f6;color:#334155;font-size:14px}t
 <div class="stat-card"><div class="label">Admins</div><div class="value">{{ employees|selectattr('role','equalto','admin')|list|length }}</div></div>
 <div class="stat-card"><div class="label">Staff</div><div class="value">{{ employees|rejectattr('role','equalto','admin')|list|length }}</div></div>
 <div class="stat-card"><div class="label">Departments</div><div class="value">{{ employees|map(attribute='department')|select|unique|list|length }}</div></div>
+<div class="stat-card"><div class="label">Request Approvers</div><div class="value">{{ employees|selectattr('can_approve_requests')|list|length }}</div></div>
 </div>
 
 <div class="toolbar">
@@ -752,7 +754,12 @@ data-role="{{ emp['role']|lower }}">
 </td>
 
 <td>{{ emp['department'] or '—' }}</td>
-<td>{{ emp['position'] or '—' }}</td>
+<td>
+  {{ emp['position'] or '—' }}
+  {% if emp['can_approve_requests'] %}
+    <span style="display:block;margin-top:5px;font-size:10px;font-weight:800;color:#15803d;">✓ Can approve requests</span>
+  {% endif %}
+</td>
 <td>{{ emp['phone'] or '—' }}</td>
 
 <td>
@@ -774,6 +781,8 @@ data-role="{{ emp['role']|lower }}">
     data-phone="{{ (emp['phone'] or '')|e }}"
     data-department="{{ (emp['department'] or '')|e }}"
     data-position="{{ (emp['position'] or '')|e }}"
+    data-can-approve="{{ 1 if emp['can_approve_requests'] else 0 }}"
+    data-supervisor-id="{{ emp['immediate_supervisor_id'] or '' }}"
     onclick="openEditModal(this)">
     <i class="fas fa-pen"></i>
 </button>
@@ -849,7 +858,19 @@ data-role="{{ emp['role']|lower }}">
 
 <div class="form-group">
 <label>Position</label>
-<input id="employee_position" name="position" type="text" placeholder="Registrar">
+<input id="employee_position" name="position" type="text" placeholder="e.g. Ag. Registrar, President, Accountant">
+</div>
+
+<div class="form-group">
+<label>Immediate Supervisor</label>
+<select id="employee_supervisor" name="immediate_supervisor_id">
+<option value="">No immediate supervisor</option>
+{% for supervisor in employees %}
+  <option value="{{ supervisor['id'] }}">
+    {{ supervisor['name'] }}{% if supervisor['position'] %} — {{ supervisor['position'] }}{% endif %}
+  </option>
+{% endfor %}
+</select>
 </div>
 
 <div class="form-group">
@@ -858,6 +879,14 @@ data-role="{{ emp['role']|lower }}">
 <option value="staff">Staff</option>
 <option value="admin">Admin</option>
 </select>
+</div>
+
+<div class="form-group full">
+<label style="display:flex;align-items:center;gap:9px;cursor:pointer;">
+<input id="employee_can_approve" name="can_approve_requests" type="checkbox" value="1" style="width:18px;height:18px;">
+<span>Can approve requests</span>
+</label>
+<div class="password-note">Only authorized approvers will appear in the Request approval selections.</div>
 </div>
 
 <div class="form-group full">
@@ -953,6 +982,9 @@ data-role="{{ emp['role']|lower }}">
 
         document.getElementById("employee_id").value = "";
         document.getElementById("employee_role").value = "staff";
+        document.getElementById("employee_position").value = "";
+        document.getElementById("employee_supervisor").value = "";
+        document.getElementById("employee_can_approve").checked = false;
         document.getElementById("employee_password").value = "";
         document.getElementById("employee_password").required = true;
 
@@ -986,6 +1018,12 @@ data-role="{{ emp['role']|lower }}">
             button.getAttribute("data-department") || "";
         document.getElementById("employee_position").value =
             button.getAttribute("data-position") || "";
+
+        document.getElementById("employee_supervisor").value =
+            button.getAttribute("data-supervisor-id") || "";
+
+        document.getElementById("employee_can_approve").checked =
+            button.getAttribute("data-can-approve") === "1";
 
         document.getElementById("employee_role").value =
             button.getAttribute("data-role") === "admin" ? "admin" : "staff";
