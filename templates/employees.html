@@ -908,6 +908,7 @@ data-role="{{ emp['role']|lower }}">
 <script>
 (function () {
     "use strict";
+
     const sidebar = document.getElementById("sidebar");
     const toggleBtn = document.getElementById("toggle-btn");
 
@@ -923,10 +924,7 @@ data-role="{{ emp['role']|lower }}">
         document.addEventListener("click", function (event) {
             if (window.innerWidth > 850) return;
 
-            if (
-                sidebar.contains(event.target) ||
-                toggleBtn.contains(event.target)
-            ) {
+            if (sidebar.contains(event.target) || toggleBtn.contains(event.target)) {
                 return;
             }
 
@@ -936,14 +934,10 @@ data-role="{{ emp['role']|lower }}">
 
     function showToast(message, success) {
         const toast = document.getElementById("toast");
-
         if (!toast) return;
 
         toast.textContent = message;
-        toast.style.background = success === false
-            ? "#b91c1c"
-            : "#172033";
-
+        toast.style.background = success === false ? "#b91c1c" : "#172033";
         toast.classList.add("show");
 
         window.setTimeout(function () {
@@ -955,113 +949,120 @@ data-role="{{ emp['role']|lower }}">
 
     window.openAddModal = function () {
         const form = document.getElementById("employeeForm");
-
         if (form) form.reset();
 
         document.getElementById("employee_id").value = "";
         document.getElementById("employee_role").value = "staff";
-        document.getElementById("employeeModalTitle").textContent = "Add Employee";
-        document.getElementById("passwordRequired").style.display = "inline";
+        document.getElementById("employee_password").value = "";
         document.getElementById("employee_password").required = true;
+
+        document.getElementById("employeeModalTitle").textContent = "Add Employee";
+        document.getElementById("saveEmployeeBtn").innerHTML =
+            '<i class="fas fa-save"></i> Save Employee';
+
+        document.getElementById("passwordRequired").style.display = "inline";
         document.getElementById("passwordNote").textContent =
             "Required when creating a new employee.";
 
         document.getElementById("employeeModal").classList.add("show");
     };
 
-    window.openEditModal = function (employee) {
-        document.getElementById("employee_id").value = employee.id;
-        document.getElementById("employee_name").value = employee.name || "";
-        document.getElementById("employee_email").value = employee.email || "";
-        document.getElementById("employee_phone").value = employee.phone || "";
-        document.getElementById("employee_department").value = employee.department || "";
-        document.getElementById("employee_position").value = employee.position || "";
+    window.openEditModal = function (button) {
+        const id = button.getAttribute("data-id");
+
+        if (!id) {
+            showToast("Employee ID is missing. Please click Edit again.", false);
+            return;
+        }
+
+        document.getElementById("employee_id").value = id;
+        document.getElementById("employee_name").value =
+            button.getAttribute("data-name") || "";
+        document.getElementById("employee_email").value =
+            button.getAttribute("data-email") || "";
+        document.getElementById("employee_phone").value =
+            button.getAttribute("data-phone") || "";
+        document.getElementById("employee_department").value =
+            button.getAttribute("data-department") || "";
+        document.getElementById("employee_position").value =
+            button.getAttribute("data-position") || "";
 
         document.getElementById("employee_role").value =
-            employee.role === "admin"
-                ? "admin"
-                : "staff";
+            button.getAttribute("data-role") === "admin" ? "admin" : "staff";
 
         document.getElementById("employee_password").value = "";
         document.getElementById("employee_password").required = false;
+
+        document.getElementById("employeeModalTitle").textContent = "Edit Employee";
+        document.getElementById("saveEmployeeBtn").innerHTML =
+            '<i class="fas fa-save"></i> Update Employee';
+
         document.getElementById("passwordRequired").style.display = "none";
         document.getElementById("passwordNote").textContent =
             "Leave blank to keep the current password.";
 
-        document.getElementById("employeeModalTitle").textContent = "Edit Employee";
         document.getElementById("employeeModal").classList.add("show");
+    };
+
+    window.closeModal = function (id) {
+        const modal = document.getElementById(id);
+        if (modal) modal.classList.remove("show");
     };
 
     window.openPasswordModal = function (button) {
         document.getElementById("password_employee_id").value =
-            button.dataset.id;
+            button.getAttribute("data-id") || "";
 
         document.getElementById("password_employee_name").textContent =
-            button.dataset.name || "";
+            button.getAttribute("data-name") || "";
 
         document.getElementById("reset_password").value = "";
         document.getElementById("passwordModal").classList.add("show");
     };
 
-    window.closeModal = function (id) {
-        const modal = document.getElementById(id);
-
-        if (modal) {
-            modal.classList.remove("show");
-        }
-    };
-
-    window.addEventListener("click", function (event) {
-        if (event.target.classList.contains("modal")) {
-            event.target.classList.remove("show");
-        }
-    });
-
     window.saveEmployee = async function (event) {
         event.preventDefault();
 
-        const button = document.getElementById("saveEmployeeBtn");
         const form = document.getElementById("employeeForm");
+        const button = document.getElementById("saveEmployeeBtn");
+        const id = document.getElementById("employee_id").value.trim();
+        const editing =
+            document.getElementById("employeeModalTitle").textContent === "Edit Employee";
 
-        if (!button || !form) return;
+        if (editing && !id) {
+            showToast("Employee ID is missing. Please click Edit again.", false);
+            return;
+        }
 
         const original = button.innerHTML;
-
         button.disabled = true;
-        button.innerHTML =
-            '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
         try {
+            const formData = new FormData(form);
+            formData.set("employee_id", id);
+
             const response = await fetch("/admin/save_employee", {
                 method: "POST",
-                body: new FormData(form),
-                headers: {
-                    "X-Requested-With": "XMLHttpRequest"
-                }
+                body: formData,
+                headers: {"X-Requested-With": "XMLHttpRequest"}
             });
 
-            const contentType =
-                response.headers.get("content-type") || "";
+            const contentType = response.headers.get("content-type") || "";
 
             if (!contentType.includes("application/json")) {
-                const text = await response.text();
-                throw new Error(
-                    text || "Server returned an unexpected response."
-                );
+                throw new Error(await response.text() || "Unexpected server response.");
             }
 
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                showToast(
-                    data.message || "Unable to save employee.",
-                    false
-                );
+                showToast(data.message || "Unable to save employee.", false);
                 return;
             }
 
-            showToast(data.message, true);
             closeModal("employeeModal");
+            showToast(data.message || "Employee saved successfully.", true);
 
             window.setTimeout(function () {
                 window.location.reload();
@@ -1069,10 +1070,7 @@ data-role="{{ emp['role']|lower }}">
 
         } catch (error) {
             console.error("SAVE EMPLOYEE ERROR:", error);
-            showToast(
-                error.message || "Something went wrong.",
-                false
-            );
+            showToast(error.message || "Something went wrong.", false);
         } finally {
             button.disabled = false;
             button.innerHTML = original;
@@ -1082,17 +1080,16 @@ data-role="{{ emp['role']|lower }}">
     window.resetPassword = async function (event) {
         event.preventDefault();
 
-        const id =
-            document.getElementById("password_employee_id").value;
+        const id = document.getElementById("password_employee_id").value;
+        const password = document.getElementById("reset_password").value;
 
-        const password =
-            document.getElementById("reset_password").value;
+        if (!id) {
+            showToast("Employee ID is missing.", false);
+            return;
+        }
 
         if (!password || password.length < 4) {
-            showToast(
-                "Password must be at least 4 characters.",
-                false
-            );
+            showToast("Password must be at least 4 characters.", false);
             return;
         }
 
@@ -1101,61 +1098,44 @@ data-role="{{ emp['role']|lower }}">
 
         try {
             const response = await fetch(
-                "/admin/reset_password/" + id,
-                {
-                    method: "POST",
-                    body: formData,
-                    headers: {
-                        "X-Requested-With": "XMLHttpRequest"
-                    }
-                }
+                "/admin/reset_password/" + encodeURIComponent(id),
+                {method: "POST", body: formData}
             );
 
-            const contentType =
-                response.headers.get("content-type") || "";
+            const contentType = response.headers.get("content-type") || "";
 
             if (!contentType.includes("application/json")) {
-                const text = await response.text();
-                throw new Error(
-                    text || "Server returned an unexpected response."
-                );
+                throw new Error(await response.text() || "Unexpected server response.");
             }
 
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                showToast(
-                    data.message || "Unable to reset password.",
-                    false
-                );
+                showToast(data.message || "Unable to reset password.", false);
                 return;
             }
 
             closeModal("passwordModal");
-            document.getElementById("reset_password").value = "";
-
-            showToast(
-                data.message || "Password reset successfully.",
-                true
-            );
+            showToast(data.message || "Password reset successfully.", true);
 
         } catch (error) {
             console.error("RESET PASSWORD ERROR:", error);
-            showToast(
-                error.message || "Something went wrong.",
-                false
-            );
+            showToast(error.message || "Something went wrong.", false);
         }
     };
 
     window.deleteEmployee = async function (button) {
-        const id = button.dataset.id;
-        const name = button.dataset.name || "this employee";
+        const id = button.getAttribute("data-id");
+        const name = button.getAttribute("data-name") || "this employee";
+
+        if (!id) {
+            showToast("Employee ID is missing.", false);
+            return;
+        }
 
         if (!window.confirm(
             "Delete " + name + "?\n\n" +
-            "This will permanently remove the employee and " +
-            "their related records. This cannot be undone."
+            "This will permanently remove the employee and their related records."
         )) {
             return;
         }
@@ -1165,36 +1145,24 @@ data-role="{{ emp['role']|lower }}">
                 "/admin/delete_employee/" + encodeURIComponent(id),
                 {
                     method: "POST",
-                    headers: {
-                        "X-Requested-With": "XMLHttpRequest"
-                    }
+                    headers: {"X-Requested-With": "XMLHttpRequest"}
                 }
             );
 
-            const contentType =
-                response.headers.get("content-type") || "";
+            const contentType = response.headers.get("content-type") || "";
 
             if (!contentType.includes("application/json")) {
-                const text = await response.text();
-                throw new Error(
-                    text || "Server returned an unexpected response."
-                );
+                throw new Error(await response.text() || "Unexpected server response.");
             }
 
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                showToast(
-                    data.message || "Unable to delete employee.",
-                    false
-                );
+                showToast(data.message || "Unable to delete employee.", false);
                 return;
             }
 
-            showToast(
-                data.message || "Employee deleted successfully.",
-                true
-            );
+            showToast(data.message || "Employee deleted successfully.", true);
 
             window.setTimeout(function () {
                 window.location.reload();
@@ -1202,22 +1170,18 @@ data-role="{{ emp['role']|lower }}">
 
         } catch (error) {
             console.error("DELETE EMPLOYEE ERROR:", error);
-            showToast(
-                error.message || "Something went wrong while deleting.",
-                false
-            );
+            showToast(error.message || "Something went wrong.", false);
         }
     };
 
-    window.filterStaff = function () {
-        const search =
-            document.getElementById("employeeSearch").value
-                .toLowerCase()
-                .trim();
+    window.filterEmployees = function () {
+        const search = (
+            document.getElementById("employeeSearch").value || ""
+        ).toLowerCase().trim();
 
-        const role =
-            document.getElementById("roleFilter").value
-                .toLowerCase();
+        const role = (
+            document.getElementById("roleFilter").value || ""
+        ).toLowerCase();
 
         document.querySelectorAll(".employee-row").forEach(function (row) {
             const text = [
@@ -1226,25 +1190,21 @@ data-role="{{ emp['role']|lower }}">
                 row.dataset.phone || "",
                 row.dataset.department || "",
                 row.dataset.position || ""
-            ].join(" ");
+            ].join(" ").toLowerCase();
 
-            const matchesSearch =
-                !search || text.includes(search);
-
-            const rowRole =
-                row.dataset.role === "admin"
-                    ? "admin"
-                    : "staff";
-
-            const matchesRole =
-                !role || rowRole === role;
+            const rowRole = row.dataset.role === "admin" ? "admin" : "staff";
 
             row.style.display =
-                matchesSearch && matchesRole
-                    ? ""
-                    : "none";
+                (!search || text.includes(search)) &&
+                (!role || rowRole === role) ? "" : "none";
         });
     };
+
+    window.addEventListener("click", function (event) {
+        if (event.target.classList.contains("modal")) {
+            event.target.classList.remove("show");
+        }
+    });
 })();
 </script>
 </body>
