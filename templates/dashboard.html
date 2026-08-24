@@ -3177,10 +3177,13 @@ document.addEventListener("DOMContentLoaded", function () {
     );
 
     /* ---------------------------------------------------------
-       Initial stored notifications
-       --------------------------------------------------------- */
+    Initial stored notifications
+    --------------------------------------------------------- */
 
     loadNotifications();
+
+    // Live notification polling — every 10 seconds
+    setInterval(loadNotifications, 10000);
 
 });
 </script>
