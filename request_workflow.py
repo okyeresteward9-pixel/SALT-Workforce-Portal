@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_from_directory, abort
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_from_directory, abort, jsonify
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import os
@@ -291,10 +291,7 @@ def new_request():
         return redirect("/")
 
     conn = get_db()
-    c = conn.cursor()
 
-    # Immediate Supervisor is optional and may be ANY employee.
-    # The remaining stages are restricted to authorized office positions.
     supervisors = employees_for_supervisor(conn)
     registrars = approvers_for_position(conn, ["Registrar", "Ag. Registrar"])
     presidents = approvers_for_position(conn, ["President"])
@@ -310,82 +307,93 @@ def new_request():
         memo_date = request.form.get("memo_date", datetime.now().strftime("%Y-%m-%d"))
         memo_subject = request.form.get("memo_subject", title).strip()
         memo_body = request.form.get("memo_body", "").strip()
-        finance = request.form.get("finance_related") == "yes"
 
+        is_draft = request.form.get("save_draft") == "yes"
+
+        # A draft still needs enough information to be useful/editable.
         if not title or not memo_body:
             flash("Please complete the request title and memo body.", "error")
             conn.close()
             return redirect(url_for("requests_bp.new_request"))
 
+        finance = request.form.get("finance_related") == "yes"
+
+        # Only require/validate approval route when actually submitting.
         selected = []
-        supervisor_id = request.form.get("supervisor_id")
-        registrar_id = request.form.get("registrar_id")
-        president_id = request.form.get("president_id")
-        auditor_id = request.form.get("auditor_id")
-        accountant_id = request.form.get("accountant_id")
+        if not is_draft:
+            supervisor_id = request.form.get("supervisor_id")
+            registrar_id = request.form.get("registrar_id")
+            president_id = request.form.get("president_id")
+            auditor_id = request.form.get("auditor_id")
+            accountant_id = request.form.get("accountant_id")
 
-        # Validate restricted approval stages against their authorized lists.
-        # The immediate supervisor is different: any existing employee may be selected.
-        def valid_id(rows, value):
-            if not value:
-                return False
-            try:
-                target = int(value)
-            except ValueError:
-                return False
-            return any(int(row["id"]) == target for row in rows)
+            def valid_id(rows, value):
+                if not value:
+                    return False
+                try:
+                    target = int(value)
+                except (TypeError, ValueError):
+                    return False
+                return any(int(row["id"]) == target for row in rows)
 
-        if supervisor_id:
-            try:
-                supervisor_id_int = int(supervisor_id)
-            except (TypeError, ValueError):
-                flash("Invalid immediate supervisor selected.", "error")
+            if supervisor_id:
+                try:
+                    supervisor_id_int = int(supervisor_id)
+                except (TypeError, ValueError):
+                    flash("Invalid immediate supervisor selected.", "error")
+                    conn.close()
+                    return redirect(url_for("requests_bp.new_request"))
+
+                c = conn.cursor()
+                c.execute("SELECT id FROM employees WHERE id=%s", (supervisor_id_int,))
+                if not c.fetchone():
+                    flash("Selected immediate supervisor does not exist.", "error")
+                    conn.close()
+                    return redirect(url_for("requests_bp.new_request"))
+                selected.append((supervisor_id_int, "supervisor"))
+
+            if not valid_id(registrars, registrar_id):
+                flash("Please select an authorized Registrar or Ag. Registrar.", "error")
                 conn.close()
                 return redirect(url_for("requests_bp.new_request"))
 
-            c.execute(
-                "SELECT id FROM employees WHERE id=%s",
-                (supervisor_id_int,)
-            )
-            if not c.fetchone():
-                flash("Selected immediate supervisor does not exist.", "error")
+            if not valid_id(presidents, president_id):
+                flash("Please select an authorized President.", "error")
                 conn.close()
                 return redirect(url_for("requests_bp.new_request"))
 
-            selected.append((supervisor_id_int, "supervisor"))
+            selected.extend([
+                (int(registrar_id), "registrar"),
+                (int(president_id), "president")
+            ])
 
-        if not valid_id(registrars, registrar_id):
-            flash("Please select an authorized Registrar or Ag. Registrar.", "error")
-            conn.close()
-            return redirect(url_for("requests_bp.new_request"))
-        if not valid_id(presidents, president_id):
-            flash("Please select an authorized President.", "error")
-            conn.close()
-            return redirect(url_for("requests_bp.new_request"))
+            if finance:
+                if not valid_id(auditors, auditor_id):
+                    flash("Please select an authorized Internal Auditor.", "error")
+                    conn.close()
+                    return redirect(url_for("requests_bp.new_request"))
+                if not valid_id(accountants, accountant_id):
+                    flash("Please select an authorized Accountant.", "error")
+                    conn.close()
+                    return redirect(url_for("requests_bp.new_request"))
 
-        selected.append((int(registrar_id), "registrar"))
-        selected.append((int(president_id), "president"))
+                selected.extend([
+                    (int(auditor_id), "auditor"),
+                    (int(accountant_id), "accountant")
+                ])
 
-        if finance:
-            if not valid_id(auditors, auditor_id):
-                flash("Please select an authorized Internal Auditor.", "error")
+            approver_ids = [x[0] for x in selected]
+            if len(approver_ids) != len(set(approver_ids)):
+                flash("Each approval stage must use a different person.", "error")
                 conn.close()
                 return redirect(url_for("requests_bp.new_request"))
-            if not valid_id(accountants, accountant_id):
-                flash("Please select an authorized Accountant.", "error")
-                conn.close()
-                return redirect(url_for("requests_bp.new_request"))
-            selected.append((int(auditor_id), "auditor"))
-            selected.append((int(accountant_id), "accountant"))
 
-        approver_ids = [x[0] for x in selected]
-        if len(approver_ids) != len(set(approver_ids)):
-            flash("Each approval stage must use a different person.", "error")
-            conn.close()
-            return redirect(url_for("requests_bp.new_request"))
-
+        c = conn.cursor()
         req_no = next_request_no(c)
         created = now()
+
+        status = "draft" if is_draft else "submitted"
+        current_step = 0 if is_draft else 1
 
         c.execute("""
             INSERT INTO requests
@@ -397,20 +405,23 @@ def new_request():
         """, (
             req_no, session["user_id"], request_type, title, memo_to, memo_from,
             memo_cc, memo_date, memo_subject, memo_body, finance,
-            "submitted", 1, created, created
+            status, current_step, created, created
         ))
         request_id = c.fetchone()["id"]
 
-        for order, (approver_id, position_key) in enumerate(selected, start=1):
-            c.execute("""
-                INSERT INTO request_steps
-                (request_id, step_order, approver_id, position, status)
-                VALUES (%s,%s,%s,%s,%s)
-            """, (
-                request_id, order, approver_id,
-                APPROVER_POSITIONS[position_key],
-                "pending" if order == 1 else "waiting"
-            ))
+        # Save approval route only when submitting. A draft can be completed
+        # later through Edit & Submit.
+        if not is_draft:
+            for order, (approver_id, position_key) in enumerate(selected, start=1):
+                c.execute("""
+                    INSERT INTO request_steps
+                    (request_id, step_order, approver_id, position, status)
+                    VALUES (%s,%s,%s,%s,%s)
+                """, (
+                    request_id, order, approver_id,
+                    APPROVER_POSITIONS[position_key],
+                    "pending" if order == 1 else "waiting"
+                ))
 
         descriptions = request.form.getlist("item_description[]")
         quantities = request.form.getlist("item_quantity[]")
@@ -426,8 +437,10 @@ def new_request():
                 unit_price = float(prices[i] or 0)
             except (ValueError, IndexError):
                 quantity, unit_price = 0, 0
+
             amount = quantity * unit_price
             total += amount
+
             c.execute("""
                 INSERT INTO request_requisition_items
                 (request_id, description, quantity, unit_price, amount)
@@ -446,9 +459,26 @@ def new_request():
             os.path.join("static", "request_uploads")
         )
 
+        if is_draft:
+            add_history(
+                conn,
+                request_id,
+                session["user_id"],
+                "Draft Saved",
+                "Request saved as draft."
+            )
+            conn.commit()
+            conn.close()
+            flash(f"Request {req_no} saved as a draft.", "success")
+            return redirect(url_for("requests_bp.detail", request_id=request_id))
+
         first = selected[0][0]
         first_position = APPROVER_POSITIONS[selected[0][1]]
-        notify(conn, first, f"New request {req_no} requires your approval ({first_position}).")
+        notify(
+            conn,
+            first,
+            f"New request {req_no} requires your approval ({first_position})."
+        )
         add_history(conn, request_id, session["user_id"], "Submitted")
 
         conn.commit()
@@ -510,6 +540,444 @@ def detail(request_id):
         req=req, steps=steps, attachments=attachments, items=items,
         history=history, current=current, is_current_approver=is_current_approver
     )
+
+
+def _editable_request(req):
+    """Requests may only be edited before submission, or after return/rejection."""
+    return req["status"] in {"draft", "returned", "rejected"}
+
+
+def _delete_request_files(conn, request_id):
+    """Remove stored attachment files for a request."""
+    c = conn.cursor()
+    c.execute(
+        "SELECT stored_name FROM request_attachments WHERE request_id=%s",
+        (request_id,)
+    )
+    rows = c.fetchall()
+
+    folder = os.path.join(
+        os.getcwd(),
+        "static",
+        "request_uploads",
+        str(request_id)
+    )
+
+    for row in rows:
+        filename = os.path.basename(row["stored_name"])
+        path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(path):
+                os.remove(path)
+        except OSError as exc:
+            print("REQUEST ATTACHMENT DELETE WARNING:", repr(exc))
+
+    try:
+        if os.path.isdir(folder) and not os.listdir(folder):
+            os.rmdir(folder)
+    except OSError:
+        pass
+
+
+def _load_edit_options(conn):
+    return (
+        employees_for_supervisor(conn),
+        approvers_for_position(conn, ["Registrar", "Ag. Registrar"]),
+        approvers_for_position(conn, ["President"]),
+        approvers_for_position(conn, ["Internal Auditor"]),
+        approvers_for_position(conn, ["Accountant"]),
+    )
+
+
+def _parse_edit_route(conn):
+    """Read and validate the approval route from the edit form."""
+    supervisors = employees_for_supervisor(conn)
+    registrars = approvers_for_position(conn, ["Registrar", "Ag. Registrar"])
+    presidents = approvers_for_position(conn, ["President"])
+    auditors = approvers_for_position(conn, ["Internal Auditor"])
+    accountants = approvers_for_position(conn, ["Accountant"])
+
+    selected = []
+
+    supervisor_id = request.form.get("supervisor_id")
+    registrar_id = request.form.get("registrar_id")
+    president_id = request.form.get("president_id")
+    auditor_id = request.form.get("auditor_id")
+    accountant_id = request.form.get("accountant_id")
+    finance = request.form.get("finance_related") == "yes"
+
+    def valid_id(rows, value):
+        if not value:
+            return False
+        try:
+            target = int(value)
+        except (TypeError, ValueError):
+            return False
+        return any(int(row["id"]) == target for row in rows)
+
+    if supervisor_id:
+        try:
+            supervisor_id_int = int(supervisor_id)
+        except (TypeError, ValueError):
+            raise ValueError("Invalid immediate supervisor selected.")
+
+        c = conn.cursor()
+        c.execute("SELECT id FROM employees WHERE id=%s", (supervisor_id_int,))
+        if not c.fetchone():
+            raise ValueError("Selected immediate supervisor does not exist.")
+
+        selected.append((supervisor_id_int, "supervisor"))
+
+    if not valid_id(registrars, registrar_id):
+        raise ValueError("Please select an authorized Registrar or Ag. Registrar.")
+
+    if not valid_id(presidents, president_id):
+        raise ValueError("Please select an authorized President.")
+
+    selected.append((int(registrar_id), "registrar"))
+    selected.append((int(president_id), "president"))
+
+    if finance:
+        if not valid_id(auditors, auditor_id):
+            raise ValueError("Please select an authorized Internal Auditor.")
+        if not valid_id(accountants, accountant_id):
+            raise ValueError("Please select an authorized Accountant.")
+
+        selected.append((int(auditor_id), "auditor"))
+        selected.append((int(accountant_id), "accountant"))
+
+    approver_ids = [x[0] for x in selected]
+    if len(approver_ids) != len(set(approver_ids)):
+        raise ValueError("Each approval stage must use a different person.")
+
+    return selected, finance, (
+        supervisors,
+        registrars,
+        presidents,
+        auditors,
+        accountants,
+    )
+
+
+@requests_bp.route("/<int:request_id>/edit", methods=["GET", "POST"])
+def edit_request(request_id):
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db()
+    req = get_request(conn, request_id)
+
+    if not req:
+        conn.close()
+        return "Request not found", 404
+
+    if req["requester_id"] != session["user_id"] and session.get("role") != "admin":
+        conn.close()
+        return "Access Denied", 403
+
+    if not _editable_request(req):
+        conn.close()
+        flash(
+            "This request can no longer be edited because it is already in the approval process.",
+            "error"
+        )
+        return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT * FROM request_requisition_items
+        WHERE request_id=%s ORDER BY id
+    """, (request_id,))
+    items = c.fetchall()
+
+    c.execute("""
+        SELECT * FROM request_attachments
+        WHERE request_id=%s ORDER BY id
+    """, (request_id,))
+    attachments = c.fetchall()
+
+    c.execute("""
+        SELECT s.*, e.name AS approver_name
+        FROM request_steps s
+        JOIN employees e ON e.id=s.approver_id
+        WHERE s.request_id=%s
+        ORDER BY s.step_order
+    """, (request_id,))
+    old_steps = c.fetchall()
+
+    supervisors, registrars, presidents, auditors, accountants = _load_edit_options(conn)
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        request_type = request.form.get("request_type", "memo")
+        memo_to = request.form.get("memo_to", "").strip()
+        memo_from = request.form.get("memo_from", session.get("name", "")).strip()
+        memo_cc = request.form.get("memo_cc", "").strip()
+        memo_date = request.form.get(
+            "memo_date",
+            datetime.now().strftime("%Y-%m-%d")
+        )
+        memo_subject = request.form.get("memo_subject", title).strip()
+        memo_body = request.form.get("memo_body", "").strip()
+
+        if not title or not memo_body:
+            flash("Please complete the request title and memo body.", "error")
+            conn.close()
+            return redirect(url_for("requests_bp.edit_request", request_id=request_id))
+
+        try:
+            selected, finance, _ = _parse_edit_route(conn)
+        except ValueError as exc:
+            flash(str(exc), "error")
+            conn.close()
+            return redirect(url_for("requests_bp.edit_request", request_id=request_id))
+
+        now_value = now()
+
+        # Replace the old approval route with the newly selected route.
+        c.execute(
+            "DELETE FROM request_steps WHERE request_id=%s",
+            (request_id,)
+        )
+
+        for order, (approver_id, position_key) in enumerate(selected, start=1):
+            c.execute("""
+                INSERT INTO request_steps
+                (request_id, step_order, approver_id, position, status)
+                VALUES (%s,%s,%s,%s,%s)
+            """, (
+                request_id,
+                order,
+                approver_id,
+                APPROVER_POSITIONS[position_key],
+                "pending" if order == 1 else "waiting"
+            ))
+
+        # Replace requisition items.
+        c.execute(
+            "DELETE FROM request_requisition_items WHERE request_id=%s",
+            (request_id,)
+        )
+
+        descriptions = request.form.getlist("item_description[]")
+        quantities = request.form.getlist("item_quantity[]")
+        prices = request.form.getlist("item_unit_price[]")
+        total = 0.0
+
+        for i, description in enumerate(descriptions):
+            description = description.strip()
+            if not description:
+                continue
+
+            try:
+                quantity = float(quantities[i] or 0)
+                unit_price = float(prices[i] or 0)
+            except (ValueError, IndexError):
+                quantity, unit_price = 0, 0
+
+            amount = quantity * unit_price
+            total += amount
+
+            c.execute("""
+                INSERT INTO request_requisition_items
+                (request_id, description, quantity, unit_price, amount)
+                VALUES (%s,%s,%s,%s,%s)
+            """, (
+                request_id,
+                description,
+                quantity,
+                unit_price,
+                amount
+            ))
+
+        # Keep existing attachments unless the edit form explicitly asks
+        # for all attachments to be replaced.
+        if request.form.get("replace_attachments") == "yes":
+            _delete_request_files(conn, request_id)
+            c.execute(
+                "DELETE FROM request_attachments WHERE request_id=%s",
+                (request_id,)
+            )
+
+        save_attachments(
+            conn,
+            request_id,
+            request.files.getlist("attachments"),
+            os.path.join("static", "request_uploads")
+        )
+
+        # A successful edit is a fresh submission. Existing history remains.
+        c.execute("""
+            UPDATE requests
+            SET request_type=%s,
+                title=%s,
+                memo_to=%s,
+                memo_from=%s,
+                memo_cc=%s,
+                memo_date=%s,
+                memo_subject=%s,
+                memo_body=%s,
+                is_finance_related=%s,
+                total_amount=%s,
+                status='submitted',
+                current_step=1,
+                updated_at=%s,
+                completed_at=NULL
+            WHERE id=%s
+        """, (
+            request_type,
+            title,
+            memo_to,
+            memo_from,
+            memo_cc,
+            memo_date,
+            memo_subject,
+            memo_body,
+            finance,
+            total,
+            now_value,
+            request_id
+        ))
+
+        add_history(
+            conn,
+            request_id,
+            session["user_id"],
+            "Resubmitted" if req["status"] in {"returned", "rejected"} else "Edited and Submitted"
+        )
+
+        first = selected[0][0]
+        first_position = APPROVER_POSITIONS[selected[0][1]]
+
+        notify(
+            conn,
+            first,
+            f"Request {req['request_no']} has been resubmitted and requires your approval ({first_position})."
+        )
+
+        conn.commit()
+        conn.close()
+
+        flash("Request updated and resubmitted successfully.", "success")
+        return redirect(
+            url_for("requests_bp.detail", request_id=request_id)
+        )
+
+    conn.close()
+
+    return render_template(
+        "edit_request.html",
+        req=req,
+        items=items,
+        attachments=attachments,
+        old_steps=old_steps,
+        supervisors=supervisors,
+        registrars=registrars,
+        presidents=presidents,
+        auditors=auditors,
+        accountants=accountants,
+        today=datetime.now().strftime("%Y-%m-%d")
+    )
+
+
+@requests_bp.route("/<int:request_id>/delete", methods=["POST"])
+def delete_request(request_id):
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db()
+    req = get_request(conn, request_id)
+
+    if not req:
+        conn.close()
+        return "Request not found", 404
+
+    if req["requester_id"] != session["user_id"] and session.get("role") != "admin":
+        conn.close()
+        return "Access Denied", 403
+
+    # Delete is intentionally limited to drafts, returned requests,
+    # and rejected requests. Active approvals and completed requests
+    # remain as part of the institutional audit trail.
+    if req["status"] not in {"draft", "returned", "rejected"}:
+        conn.close()
+        flash(
+            "This request cannot be deleted because it is already in the active approval process.",
+            "error"
+        )
+        return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+    c = conn.cursor()
+
+    # Save an audit entry only while the request still exists.
+    add_history(
+        conn,
+        request_id,
+        session["user_id"],
+        "Deleted",
+        request.form.get("comment", "").strip() or None
+    )
+
+    _delete_request_files(conn, request_id)
+
+    # request_steps, attachments, requisition items and history have
+    # ON DELETE CASCADE relationships.
+    c.execute(
+        "DELETE FROM requests WHERE id=%s AND requester_id=%s",
+        (request_id, req["requester_id"])
+    )
+
+    conn.commit()
+    conn.close()
+
+    flash(f"Request {req['request_no']} was deleted.", "success")
+    return redirect(url_for("requests_bp.index"))
+
+
+@requests_bp.route("/api/dashboard-counts")
+def dashboard_counts():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 403
+
+    conn = get_db()
+
+    try:
+        c = conn.cursor()
+
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM request_steps
+            WHERE approver_id=%s
+              AND status='pending'
+        """, (session["user_id"],))
+
+        pending_approvals = c.fetchone()["count"]
+
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM requests
+            WHERE requester_id=%s
+              AND status NOT IN ('completed', 'rejected')
+        """, (session["user_id"],))
+
+        my_pending = c.fetchone()["count"]
+
+        return jsonify({
+            "pending_approvals": int(pending_approvals or 0),
+            "my_pending": int(my_pending or 0)
+        })
+
+    except Exception as exc:
+        print("REQUEST LIVE COUNTER ERROR:", repr(exc))
+        return jsonify({
+            "pending_approvals": 0,
+            "my_pending": 0
+        }), 500
+
+    finally:
+        conn.close()
+
 
 @requests_bp.route("/<int:request_id>/approve", methods=["POST"])
 def approve(request_id):
@@ -620,6 +1088,154 @@ def approvals():
     rows = c.fetchall()
     conn.close()
     return render_template("approval_inbox.html", requests=rows)
+
+
+@requests_bp.route("/<int:request_id>/submit", methods=["POST"])
+def submit_draft(request_id):
+    """Submit an existing draft into the approval workflow."""
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db()
+
+    try:
+        req = get_request(conn, request_id)
+
+        if not req:
+            return "Request not found", 404
+
+        if req["requester_id"] != session["user_id"] and session.get("role") != "admin":
+            return "Access Denied", 403
+
+        if req["status"] != "draft":
+            flash("Only draft requests can be submitted.", "error")
+            return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+        c = conn.cursor()
+
+        # Read the selected approval route stored by the draft.
+        # Drafts are allowed to exist without a route; route validation
+        # happens here when the requester actually submits.
+        supervisor_id = request.form.get("supervisor_id")
+        registrar_id = request.form.get("registrar_id")
+        president_id = request.form.get("president_id")
+        auditor_id = request.form.get("auditor_id")
+        accountant_id = request.form.get("accountant_id")
+
+        finance = bool(req["is_finance_related"])
+
+        supervisors = employees_for_supervisor(conn)
+        registrars = approvers_for_position(conn, ["Registrar", "Ag. Registrar"])
+        presidents = approvers_for_position(conn, ["President"])
+        auditors = approvers_for_position(conn, ["Internal Auditor"])
+        accountants = approvers_for_position(conn, ["Accountant"])
+
+        def valid_id(rows, value):
+            if not value:
+                return False
+            try:
+                target = int(value)
+            except (TypeError, ValueError):
+                return False
+            return any(int(row["id"]) == target for row in rows)
+
+        selected = []
+
+        if supervisor_id:
+            try:
+                supervisor_id_int = int(supervisor_id)
+            except (TypeError, ValueError):
+                flash("Invalid immediate supervisor selected.", "error")
+                return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+            if not valid_id(supervisors, supervisor_id):
+                flash("Selected immediate supervisor does not exist.", "error")
+                return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+            selected.append((supervisor_id_int, "supervisor"))
+
+        if not valid_id(registrars, registrar_id):
+            flash("Please select an authorized Registrar or Ag. Registrar.", "error")
+            return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+        if not valid_id(presidents, president_id):
+            flash("Please select an authorized President.", "error")
+            return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+        selected.append((int(registrar_id), "registrar"))
+        selected.append((int(president_id), "president"))
+
+        if finance:
+            if not valid_id(auditors, auditor_id):
+                flash("Please select an authorized Internal Auditor.", "error")
+                return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+            if not valid_id(accountants, accountant_id):
+                flash("Please select an authorized Accountant.", "error")
+                return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+            selected.append((int(auditor_id), "auditor"))
+            selected.append((int(accountant_id), "accountant"))
+
+        approver_ids = [x[0] for x in selected]
+        if len(approver_ids) != len(set(approver_ids)):
+            flash("Each approval stage must use a different person.", "error")
+            return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+        # Remove any old route created during editing, then rebuild it.
+        c.execute("DELETE FROM request_steps WHERE request_id=%s", (request_id,))
+
+        for order, (approver_id, position_key) in enumerate(selected, start=1):
+            c.execute("""
+                INSERT INTO request_steps
+                (request_id, step_order, approver_id, position, status)
+                VALUES (%s,%s,%s,%s,%s)
+            """, (
+                request_id,
+                order,
+                approver_id,
+                APPROVER_POSITIONS[position_key],
+                "pending" if order == 1 else "waiting"
+            ))
+
+        acted = now()
+
+        c.execute("""
+            UPDATE requests
+            SET status='submitted',
+                current_step=1,
+                updated_at=%s
+            WHERE id=%s
+        """, (acted, request_id))
+
+        add_history(
+            conn,
+            request_id,
+            session["user_id"],
+            "Submitted",
+            "Draft submitted for approval."
+        )
+
+        first = selected[0][0]
+        first_position = APPROVER_POSITIONS[selected[0][1]]
+
+        notify(
+            conn,
+            first,
+            f"New request {req['request_no']} requires your approval ({first_position})."
+        )
+
+        conn.commit()
+
+        flash("Request submitted successfully.", "success")
+        return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
 
 @requests_bp.route("/<int:request_id>/attachment/<int:attachment_id>")
 def attachment(request_id, attachment_id):
@@ -779,7 +1395,7 @@ def register_request_workflow(app):
             c.execute("""
                 SELECT COUNT(*) AS count FROM requests
                 WHERE requester_id=%s
-                  AND status NOT IN ('completed','rejected')
+                  AND status IN ('submitted','pending_approval','returned')
             """, (session["user_id"],))
             my_pending = c.fetchone()["count"]
             conn.close()

@@ -1,13 +1,432 @@
 {% extends "request_base.html" %}
 {% block title %}SALT — {{ req.request_no }}{% endblock %}
+
 {% block content %}
-<div class="rq-hero"><div><div class="rq-eyebrow">{{ req.request_no }}</div><h1>{{ req.title }}</h1><p>Submitted by {{ req.requester_name }}{% if req.requester_department %} · {{ req.requester_department }}{% endif %} · {{ req.created_at.strftime('%d %b %Y, %I:%M %p') if req.created_at else '' }}</p></div><div class="rq-actions"><a class="rq-btn" href="{{ url_for('requests_bp.index') }}">← Requests</a><a class="rq-btn" href="{{ url_for('requests_bp.print_request', request_id=req.id) }}" target="_blank">Print / Official Copy</a></div></div>
-{% if is_current_approver %}<div class="rq-alert"><strong>Action required.</strong> This request is currently waiting for your approval. Review the package before making a decision.</div>{% endif %}
-<div class="rq-grid3"><div class="rq-stat"><div class="rq-stat-label">Status</div><div class="rq-stat-value" style="font-size:18px"><span class="rq-status rq-status-{{ req.status }}">{{ req.status|replace('_',' ')|title }}</span></div></div><div class="rq-stat"><div class="rq-stat-label">Finance-related</div><div class="rq-stat-value" style="font-size:18px">{{ 'Yes' if req.is_finance_related else 'No' }}</div></div><div class="rq-stat"><div class="rq-stat-label">Total amount</div><div class="rq-stat-value" style="font-size:18px">GH₵ {{ '%.2f'|format(req.total_amount or 0) }}</div></div></div>
-<div class="rq-card"><div class="rq-card-head"><div><h2>Approval progress</h2><div class="rq-card-sub">See who has approved and who has the request now.</div></div></div><div class="rq-progress">{% for s in steps %}<div class="rq-progress-card {{ s.status }}"><div style="font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase">Step {{ s.step_order }}</div><strong style="display:block;color:var(--navy);margin-top:6px;font-size:12px">{{ s.position }}</strong><div style="font-size:12px;margin-top:4px">{{ s.approver_name }}</div><div style="margin-top:9px"><span class="rq-status rq-status-{{ s.status }}">{{ s.status|replace('_',' ')|title }}</span></div>{% if s.acted_at %}<div class="rq-request-no" style="margin-top:8px">{{ s.acted_at.strftime('%d %b %Y, %I:%M %p') }}</div>{% endif %}{% if s.comment %}<div style="margin-top:9px;font-size:11px;color:var(--muted)">“{{ s.comment }}”</div>{% endif %}</div>{% endfor %}</div></div>
-<div class="rq-grid2"><div><div class="rq-card"><div class="rq-card-head"><div><h2>Memo</h2><div class="rq-card-sub">Official request memorandum</div></div></div><div class="rq-summary-row"><span>To</span><strong>{{ req.memo_to or '—' }}</strong></div><div class="rq-summary-row"><span>From</span><strong>{{ req.memo_from or '—' }}</strong></div><div class="rq-summary-row"><span>CC</span><strong>{{ req.memo_cc or '—' }}</strong></div><div class="rq-summary-row"><span>Date</span><strong>{{ req.memo_date or '—' }}</strong></div><div class="rq-summary-row"><span>Subject</span><strong>{{ req.memo_subject or req.title }}</strong></div><div style="margin-top:18px;line-height:1.75;font-size:13px">{{ req.memo_body|replace('\n','<br>')|safe }}</div></div>
-{% if items %}<div class="rq-card"><div class="rq-card-head"><div><h2>Requisition</h2><div class="rq-card-sub">Items attached to this request.</div></div></div><div class="rq-table-wrap"><table class="rq-table" style="min-width:620px"><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody>{% for i in items %}<tr><td>{{ loop.index }}</td><td>{{ i.description }}</td><td>{{ i.quantity }}</td><td>GH₵ {{ '%.2f'|format(i.unit_price) }}</td><td>GH₵ {{ '%.2f'|format(i.amount) }}</td></tr>{% endfor %}</tbody><tfoot><tr><th colspan="4" style="text-align:right">Total</th><th>GH₵ {{ '%.2f'|format(req.total_amount or 0) }}</th></tr></tfoot></table></div></div>{% endif %}</div>
-<div><div class="rq-card"><div class="rq-card-head"><div><h2>Attachments</h2><div class="rq-card-sub">Supporting documents.</div></div></div>{% if attachments %}{% for a in attachments %}<a class="rq-attachment" href="{{ url_for('requests_bp.attachment', request_id=req.id, attachment_id=a.id) }}" target="_blank"><span>📎 {{ a.original_name }}</span><span>View →</span></a>{% endfor %}{% else %}<div class="rq-empty" style="padding:25px 10px">No attachments.</div>{% endif %}</div>
-<div class="rq-card"><div class="rq-card-head"><div><h2>Request history</h2><div class="rq-card-sub">Complete audit trail.</div></div></div><div class="rq-history">{% for h in history %}<div class="rq-history-item"><strong>{{ h.action }} · {{ h.actor_name }}</strong><p>{{ h.created_at.strftime('%d %b %Y, %I:%M %p') if h.created_at else '' }}{% if h.comment %}<br>{{ h.comment }}{% endif %}</p></div>{% endfor %}</div></div></div></div>
-{% if is_current_approver %}<div class="rq-card rq-approval"><div class="rq-card-head"><div><h2>Your decision</h2><div class="rq-card-sub">Add a comment and optional signature, then choose an action.</div></div></div><form method="POST" enctype="multipart/form-data"><label class="rq-form" style="display:block;font-size:12px;font-weight:850;color:#344054">Comment<textarea name="comment" rows="4" placeholder="Optional comment for the requester"></textarea></label><div class="rq-file" style="margin-top:12px"><strong>Signature (optional)</strong><div class="rq-muted" style="font-size:11px;margin-top:4px">Upload your signature image for this approval.</div><input type="file" name="signature" accept=".png,.jpg,.jpeg,.webp"></div><div class="rq-actions" style="margin-top:18px"><button class="rq-btn rq-warning" type="submit" formaction="{{ url_for('requests_bp.return_request', request_id=req.id) }}">↩ Return</button><button class="rq-btn rq-danger" type="submit" formaction="{{ url_for('requests_bp.reject', request_id=req.id) }}">✕ Reject</button><button class="rq-btn rq-success" type="submit" formaction="{{ url_for('requests_bp.approve', request_id=req.id) }}">✓ Approve request</button></div></form></div>{% endif %}
+
+<div class="rq-hero">
+    <div>
+        <div class="rq-eyebrow">{{ req.request_no }}</div>
+        <h1>{{ req.title }}</h1>
+        <p>
+            Submitted by {{ req.requester_name }}
+            {% if req.requester_department %}
+                · {{ req.requester_department }}
+            {% endif %}
+            · {{ req.created_at.strftime('%d %b %Y, %I:%M %p') if req.created_at else '' }}
+        </p>
+    </div>
+
+    <div class="rq-actions">
+        <a class="rq-btn" href="{{ url_for('requests_bp.index') }}">
+            ← Requests
+        </a>
+
+        <a class="rq-btn"
+           href="{{ url_for('requests_bp.print_request', request_id=req.id) }}"
+           target="_blank">
+            Print / Official Copy
+        </a>
+
+        {% if req.requester_id == session.get('user_id') or session.get('role') == 'admin' %}
+
+            {% if req.status == 'draft' %}
+
+                <a class="rq-btn rq-primary"
+                   href="{{ url_for('requests_bp.edit_request', request_id=req.id) }}">
+                    ✎ Edit Request
+                </a>
+
+                <form method="POST"
+                      action="{{ url_for('requests_bp.submit_draft', request_id=req.id) }}"
+                      onsubmit="return confirm('Submit this draft for approval? Once submitted, it will enter the approval workflow.')"
+                      style="margin:0">
+                    <button class="rq-btn rq-success" type="submit">
+                        ✓ Submit Request
+                    </button>
+                </form>
+
+                <form method="POST"
+                      action="{{ url_for('requests_bp.delete_request', request_id=req.id) }}"
+                      onsubmit="return confirm('Delete this draft? This cannot be undone.')"
+                      style="margin:0">
+                    <button class="rq-btn rq-danger" type="submit">
+                        🗑 Delete
+                    </button>
+                </form>
+
+            {% elif req.status in ['returned', 'rejected'] %}
+
+                <a class="rq-btn rq-primary"
+                   href="{{ url_for('requests_bp.edit_request', request_id=req.id) }}">
+                    ✎ Edit &amp; Resubmit
+                </a>
+
+            {% endif %}
+
+        {% endif %}
+    </div>
+</div>
+
+{% if is_current_approver %}
+<div class="rq-alert">
+    <strong>Action required.</strong>
+    This request is currently waiting for your approval.
+    Review the package before making a decision.
+</div>
+{% endif %}
+
+{% if req.requester_id == session.get('user_id') and req.status in ['returned','rejected'] %}
+<div class="rq-alert"
+     style="{% if req.status == 'rejected' %}background:#ffebe9;border-color:#f2c5c0;color:#8d2118{% endif %}">
+    <strong>
+        {% if req.status == 'returned' %}
+            Returned for correction.
+        {% else %}
+            Request rejected.
+        {% endif %}
+    </strong>
+    Review the approval history below, edit the request if needed, and resubmit it.
+</div>
+{% endif %}
+
+<div class="rq-grid3">
+
+    <div class="rq-stat">
+        <div class="rq-stat-label">Status</div>
+        <div class="rq-stat-value" style="font-size:18px">
+            <span class="rq-status rq-status-{{ req.status }}">
+                {{ req.status|replace('_',' ')|title }}
+            </span>
+        </div>
+    </div>
+
+    <div class="rq-stat">
+        <div class="rq-stat-label">Finance-related</div>
+        <div class="rq-stat-value" style="font-size:18px">
+            {{ 'Yes' if req.is_finance_related else 'No' }}
+        </div>
+    </div>
+
+    <div class="rq-stat">
+        <div class="rq-stat-label">Total amount</div>
+        <div class="rq-stat-value" style="font-size:18px">
+            GH₵ {{ '%.2f'|format(req.total_amount or 0) }}
+        </div>
+    </div>
+
+</div>
+
+<div class="rq-card">
+
+    <div class="rq-card-head">
+        <div>
+            <h2>Approval progress</h2>
+            <div class="rq-card-sub">
+                See who has approved and who has the request now.
+            </div>
+        </div>
+    </div>
+
+    <div class="rq-progress">
+
+        {% for s in steps %}
+
+        <div class="rq-progress-card {{ s.status }}">
+
+            <div style="font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase">
+                Step {{ s.step_order }}
+            </div>
+
+            <strong style="display:block;color:var(--navy);margin-top:6px;font-size:12px">
+                {{ s.position }}
+            </strong>
+
+            <div style="font-size:12px;margin-top:4px">
+                {{ s.approver_name }}
+            </div>
+
+            <div style="margin-top:9px">
+                <span class="rq-status rq-status-{{ s.status }}">
+                    {{ s.status|replace('_',' ')|title }}
+                </span>
+            </div>
+
+            {% if s.acted_at %}
+            <div class="rq-request-no" style="margin-top:8px">
+                {{ s.acted_at.strftime('%d %b %Y, %I:%M %p') }}
+            </div>
+            {% endif %}
+
+            {% if s.comment %}
+            <div style="margin-top:9px;font-size:11px;color:var(--muted)">
+                “{{ s.comment }}”
+            </div>
+            {% endif %}
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+<div class="rq-grid2">
+
+    <div>
+
+        <div class="rq-card">
+
+            <div class="rq-card-head">
+                <div>
+                    <h2>Memo</h2>
+                    <div class="rq-card-sub">
+                        Official request memorandum
+                    </div>
+                </div>
+            </div>
+
+            <div class="rq-summary-row">
+                <span>To</span>
+                <strong>{{ req.memo_to or '—' }}</strong>
+            </div>
+
+            <div class="rq-summary-row">
+                <span>From</span>
+                <strong>{{ req.memo_from or '—' }}</strong>
+            </div>
+
+            <div class="rq-summary-row">
+                <span>CC</span>
+                <strong>{{ req.memo_cc or '—' }}</strong>
+            </div>
+
+            <div class="rq-summary-row">
+                <span>Date</span>
+                <strong>{{ req.memo_date or '—' }}</strong>
+            </div>
+
+            <div class="rq-summary-row">
+                <span>Subject</span>
+                <strong>{{ req.memo_subject or req.title }}</strong>
+            </div>
+
+            <div style="margin-top:18px;line-height:1.75;font-size:13px">
+                {{ req.memo_body|replace('\n','<br>')|safe }}
+            </div>
+
+        </div>
+
+        {% if items %}
+
+        <div class="rq-card">
+
+            <div class="rq-card-head">
+                <div>
+                    <h2>Requisition</h2>
+                    <div class="rq-card-sub">
+                        Items attached to this request.
+                    </div>
+                </div>
+            </div>
+
+            <div class="rq-table-wrap">
+
+                <table class="rq-table" style="min-width:620px">
+
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Description</th>
+                            <th>Qty</th>
+                            <th>Unit price</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for i in items %}
+
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ i.description }}</td>
+                            <td>{{ i.quantity }}</td>
+                            <td>GH₵ {{ '%.2f'|format(i.unit_price) }}</td>
+                            <td>GH₵ {{ '%.2f'|format(i.amount) }}</td>
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                    <tfoot>
+                        <tr>
+                            <th colspan="4" style="text-align:right">
+                                Total
+                            </th>
+                            <th>
+                                GH₵ {{ '%.2f'|format(req.total_amount or 0) }}
+                            </th>
+                        </tr>
+                    </tfoot>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <div>
+
+        <div class="rq-card">
+
+            <div class="rq-card-head">
+                <div>
+                    <h2>Attachments</h2>
+                    <div class="rq-card-sub">
+                        Supporting documents.
+                    </div>
+                </div>
+            </div>
+
+            {% if attachments %}
+
+                {% for a in attachments %}
+
+                <a class="rq-attachment"
+                   href="{{ url_for('requests_bp.attachment', request_id=req.id, attachment_id=a.id) }}"
+                   target="_blank">
+
+                    <span>📎 {{ a.original_name }}</span>
+                    <span>View →</span>
+
+                </a>
+
+                {% endfor %}
+
+            {% else %}
+
+                <div class="rq-empty" style="padding:25px 10px">
+                    No attachments.
+                </div>
+
+            {% endif %}
+
+        </div>
+
+        <div class="rq-card">
+
+            <div class="rq-card-head">
+                <div>
+                    <h2>Request history</h2>
+                    <div class="rq-card-sub">
+                        Complete audit trail.
+                    </div>
+                </div>
+            </div>
+
+            <div class="rq-history">
+
+                {% for h in history %}
+
+                <div class="rq-history-item">
+
+                    <strong>
+                        {{ h.action }} · {{ h.actor_name }}
+                    </strong>
+
+                    <p>
+                        {{ h.created_at.strftime('%d %b %Y, %I:%M %p') if h.created_at else '' }}
+
+                        {% if h.comment %}
+                            <br>{{ h.comment }}
+                        {% endif %}
+                    </p>
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% if is_current_approver %}
+
+<div class="rq-card rq-approval">
+
+    <div class="rq-card-head">
+        <div>
+            <h2>Your decision</h2>
+            <div class="rq-card-sub">
+                Add a comment and optional signature, then choose an action.
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+
+        <label class="rq-form"
+               style="display:block;font-size:12px;font-weight:850;color:#344054">
+
+            Comment
+
+            <textarea name="comment"
+                      rows="4"
+                      placeholder="Optional comment for the requester"></textarea>
+
+        </label>
+
+        <div class="rq-file" style="margin-top:12px">
+
+            <strong>Signature (optional)</strong>
+
+            <div class="rq-muted"
+                 style="font-size:11px;margin-top:4px">
+                Upload your signature image for this approval.
+            </div>
+
+            <input type="file"
+                   name="signature"
+                   accept=".png,.jpg,.jpeg,.webp">
+
+        </div>
+
+        <div class="rq-actions" style="margin-top:18px">
+
+            <button class="rq-btn rq-warning"
+                    type="submit"
+                    formaction="{{ url_for('requests_bp.return_request', request_id=req.id) }}">
+                ↩ Return
+            </button>
+
+            <button class="rq-btn rq-danger"
+                    type="submit"
+                    formaction="{{ url_for('requests_bp.reject', request_id=req.id) }}">
+                ✕ Reject
+            </button>
+
+            <button class="rq-btn rq-success"
+                    type="submit"
+                    formaction="{{ url_for('requests_bp.approve', request_id=req.id) }}">
+                ✓ Approve request
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endif %}
+
 {% endblock %}

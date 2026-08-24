@@ -3,7 +3,7 @@
 {% block content %}
 <div class="rq-hero"><div><div class="rq-eyebrow">Request centre</div><h1>Create a request</h1><p>Prepare your memo, add a requisition when needed, choose the approval route and submit.</p></div></div>
 <div class="rq-stepper">{% for n,label in [(1,'Details'),(2,'Requisition'),(3,'Approval route'),(4,'Attachments'),(5,'Review & submit')] %}<div class="rq-stepper-item{% if n==1 %} active{% endif %}" data-step="{{ n }}"><span class="rq-stepper-number">{{ n }}</span>{{ label }}</div>{% endfor %}</div>
-<form method="POST" enctype="multipart/form-data" id="requestForm" class="rq-form">
+<form method="POST" enctype="multipart/form-data" id="requestForm" class="rq-form" onsubmit="return prepareRequestSubmit(event);">
 <section class="rq-card rq-panel" data-panel="1"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">01</div><div><h2>Request details</h2><div class="rq-card-sub">Start with the official memo information.</div></div></div></div>
 <div class="rq-grid2"><label>Request type<select name="request_type"><option value="memo">Memo Request</option><option value="memo_requisition">Memo + Requisition</option></select></label><label>Request title / subject<input name="title" id="title" required placeholder="e.g. Purchase of office supplies"></label></div>
 <div class="rq-grid2"><label>To<input name="memo_to" placeholder="President / Ag. Registrar"></label><label>From<input name="memo_from" value="{{ session.get('name','') }}"></label></div>
@@ -19,13 +19,21 @@
 <div class="rq-finance"><strong style="color:var(--navy)">Is this finance-related?</strong><div class="rq-radio-row" style="margin-top:10px"><label class="rq-radio"><input type="radio" name="finance_related" value="no" checked onchange="toggleFinance()"> No — normal route</label><label class="rq-radio"><input type="radio" name="finance_related" value="yes" onchange="toggleFinance()"> Yes — include Finance</label></div>
 <div id="financeFields" class="rq-hidden" style="margin-top:14px"><div class="rq-grid2"><label>Internal Auditor<select name="auditor_id"><option value="">Select authorized approver</option>{% for e in auditors %}<option value="{{ e.id }}">{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label><label>Accountant<select name="accountant_id"><option value="">Select authorized approver</option>{% for e in accountants %}<option value="{{ e.id }}">{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label></div></div></div></div></section>
 <section class="rq-card rq-panel rq-hidden" data-panel="4"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">04</div><div><h2>Supporting attachments</h2><div class="rq-card-sub">Add quotations, invoices, receipts, requisitions or other documents.</div></div></div></div><div class="rq-file"><strong>Attach supporting files</strong><div class="rq-muted" style="font-size:11px;margin-top:4px">PDF, Word, Excel, CSV and images are supported.</div><input type="file" id="attachments" name="attachments" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp"></div><div id="fileList" style="margin-top:12px"></div></section>
-<section class="rq-card rq-panel rq-hidden" data-panel="5"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">05</div><div><h2>Review & submit</h2><div class="rq-card-sub">Check the package before it enters the approval workflow.</div></div></div></div><div class="rq-review"><div><div class="rq-summary-row"><span>Title</span><strong id="reviewTitle">—</strong></div><div class="rq-summary-row"><span>Subject</span><strong id="reviewSubject">—</strong></div><div class="rq-summary-row"><span>Finance-related</span><strong id="reviewFinance">No</strong></div><div class="rq-summary-row"><span>Attachments</span><strong id="reviewFiles">0 files</strong></div></div><div class="rq-card" style="margin:0;background:#fbfdff;box-shadow:none"><div class="rq-card-sub">Approval route</div><div id="reviewRoute" style="margin-top:10px;font-size:12px;line-height:1.8;color:var(--navy)"></div></div></div><div class="rq-alert" style="margin-top:18px">After submission, the request moves automatically through the selected approval stages. You can track every decision.</div></section>
-<div class="rq-form-actions"><button type="button" class="rq-btn" id="backBtn" onclick="changeStep(-1)">← Back</button><div style="display:flex;gap:9px"><a class="rq-btn" href="{{ url_for('requests_bp.index') }}">Cancel</a><button type="button" class="rq-btn rq-primary" id="nextBtn" onclick="changeStep(1)">Continue →</button><button type="submit" class="rq-btn rq-primary rq-hidden" id="submitBtn">Submit Request ✓</button></div></div>
+<section class="rq-card rq-panel rq-hidden" data-panel="5"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">05</div><div><h2>Review & submit</h2><div class="rq-card-sub">Check the package before saving it as a draft or sending it into the approval workflow.</div></div></div></div><div class="rq-review"><div><div class="rq-summary-row"><span>Title</span><strong id="reviewTitle">—</strong></div><div class="rq-summary-row"><span>Subject</span><strong id="reviewSubject">—</strong></div><div class="rq-summary-row"><span>Finance-related</span><strong id="reviewFinance">No</strong></div><div class="rq-summary-row"><span>Attachments</span><strong id="reviewFiles">0 files</strong></div></div><div class="rq-card" style="margin:0;background:#fbfdff;box-shadow:none"><div class="rq-card-sub">Approval route</div><div id="reviewRoute" style="margin-top:10px;font-size:12px;line-height:1.8;color:var(--navy)"></div></div></div><div class="rq-alert" style="margin-top:18px">Save as Draft keeps the request out of the approval workflow. Submit Request sends it to the first selected approver and starts the approval chain.</div></section>
+<div class="rq-form-actions">
+<button type="button" class="rq-btn" id="backBtn" onclick="changeStep(-1)">← Back</button>
+<div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end">
+<a class="rq-btn" href="{{ url_for('requests_bp.index') }}">Cancel</a>
+<button type="submit" class="rq-btn" id="saveDraftBtn" name="save_draft" value="yes" formnovalidate>Save as Draft</button>
+<button type="button" class="rq-btn rq-primary" id="nextBtn" onclick="changeStep(1)">Continue →</button>
+<button type="submit" class="rq-btn rq-primary rq-hidden" id="submitBtn" name="submit_request" value="yes">Submit Request ✓</button>
+</div>
+</div>
 </form>
 {% endblock %}
 {% block scripts %}<script>
 let currentStep=1;const panels=[...document.querySelectorAll('.rq-panel')];
-function showStep(n){currentStep=n;panels.forEach(p=>p.classList.toggle('rq-hidden',+p.dataset.panel!==n));document.querySelectorAll('.rq-stepper-item').forEach((x,i)=>{x.classList.toggle('active',i+1===n);x.classList.toggle('done',i+1<n)});document.getElementById('backBtn').style.visibility=n===1?'hidden':'visible';document.getElementById('nextBtn').classList.toggle('rq-hidden',n===5);document.getElementById('submitBtn').classList.toggle('rq-hidden',n!==5);if(n===5)buildReview();window.scrollTo({top:0,behavior:'smooth'})}
+function showStep(n){currentStep=n;panels.forEach(p=>p.classList.toggle('rq-hidden',+p.dataset.panel!==n));document.querySelectorAll('.rq-stepper-item').forEach((x,i)=>{x.classList.toggle('active',i+1===n);x.classList.toggle('done',i+1<n)});document.getElementById('backBtn').style.visibility=n===1?'hidden':'visible';document.getElementById('nextBtn').classList.toggle('rq-hidden',n===5);document.getElementById('submitBtn').classList.toggle('rq-hidden',n!==5);document.getElementById('saveDraftBtn').classList.toggle('rq-hidden',n!==5);if(n===5)buildReview();window.scrollTo({top:0,behavior:'smooth'})}
 function validateStep(n){if(n===1){let t=document.getElementById('title'),b=document.getElementById('memo_body');if(!t.value.trim()){t.reportValidity();return false}if(!b.value.trim()){b.reportValidity();return false}}if(n===3){let r=document.querySelector('[name=registrar_id]'),p=document.querySelector('[name=president_id]');if(!r.value){r.reportValidity();return false}if(!p.value){p.reportValidity();return false}if(document.querySelector('[name=finance_related]:checked').value==='yes'){let a=document.querySelector('[name=auditor_id]'),ac=document.querySelector('[name=accountant_id]');if(!a.value){a.reportValidity();return false}if(!ac.value){ac.reportValidity();return false}}}return true}
 function changeStep(d){if(d>0&&!validateStep(currentStep))return;showStep(Math.min(5,Math.max(1,currentStep+d)))}
 function addItem(){let row=document.createElement('div');row.className='rq-item-row';row.innerHTML='<input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price (GH₵)"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button>';document.getElementById('items').appendChild(row);bindTotals()}
@@ -33,5 +41,27 @@ function removeItem(b){let rows=document.querySelectorAll('#items .rq-item-row')
 function bindTotals(){document.querySelectorAll('[name="item_quantity[]"],[name="item_unit_price[]"]').forEach(x=>x.addEventListener('input',updateTotal))}function updateTotal(){let t=0;document.querySelectorAll('#items .rq-item-row').forEach(r=>t+=(parseFloat(r.querySelector('[name="item_quantity[]"]').value)||0)*(parseFloat(r.querySelector('[name="item_unit_price[]"]').value)||0));document.getElementById('estimate').textContent='GH₵ '+t.toFixed(2)}
 function toggleFinance(){let yes=document.querySelector('[name=finance_related]:checked').value==='yes';document.getElementById('financeFields').classList.toggle('rq-hidden',!yes)}
 function buildReview(){document.getElementById('reviewTitle').textContent=document.getElementById('title').value||'—';document.getElementById('reviewSubject').textContent=document.getElementById('memo_subject').value||document.getElementById('title').value||'—';let f=document.querySelector('[name=finance_related]:checked').value==='yes';document.getElementById('reviewFinance').textContent=f?'Yes — Finance route':'No — normal route';let files=document.getElementById('attachments').files.length;document.getElementById('reviewFiles').textContent=files+' file'+(files===1?'':'s');let names=[];[['supervisor_id','Immediate Supervisor'],['registrar_id','Registrar / Ag. Registrar'],['president_id','President'],['auditor_id','Internal Auditor'],['accountant_id','Accountant']].forEach(([n,l])=>{let e=document.querySelector('[name='+n+']');if(e&&e.value&&(!['auditor_id','accountant_id'].includes(n)||f))names.push(l+': '+e.options[e.selectedIndex].text.split(' — ')[0])});document.getElementById('reviewRoute').innerHTML=names.join('<br>↓<br>')}
+function prepareRequestSubmit(event){
+    const submitter = event.submitter;
+    if(submitter && submitter.name === 'save_draft'){
+        // Drafts still need the basic request details to be useful/editable.
+        const title=document.getElementById('title');
+        const body=document.getElementById('memo_body');
+        if(!title.value.trim()){
+            event.preventDefault();
+            title.focus();
+            alert('Please enter a request title before saving the draft.');
+            return false;
+        }
+        if(!body.value.trim()){
+            event.preventDefault();
+            body.focus();
+            alert('Please enter the memo/request body before saving the draft.');
+            return false;
+        }
+        return true;
+    }
+    return true;
+}
 document.getElementById('attachments').addEventListener('change',e=>{let box=document.getElementById('fileList');box.innerHTML='';[...e.target.files].forEach(f=>{let d=document.createElement('div');d.className='rq-attachment';d.innerHTML='<span>📎 '+f.name+'</span><span class="rq-muted">'+Math.max(1,Math.round(f.size/1024))+' KB</span>';box.appendChild(d)})});bindTotals();showStep(1);
 </script>{% endblock %}

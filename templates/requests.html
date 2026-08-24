@@ -1,7 +1,7 @@
 {% extends "request_base.html" %}
 {% block title %}SALT — My Requests{% endblock %}
 {% block content %}
-<div class="rq-hero"><div><div class="rq-eyebrow">Requests workspace</div><h1>Requests</h1><p>Submit, monitor and follow every approval stage from one place.</p></div><div class="rq-actions"></div></div>
+<div class="rq-hero"><div><div class="rq-eyebrow">Requests workspace</div><h1>My Requests</h1><p>Submit, monitor and follow every approval stage from one place.</p></div><div class="rq-actions"><a class="rq-btn rq-primary" href="{{ url_for('requests_bp.new_request') }}">＋ New Request</a></div></div>
 {% set ns = namespace(active=0, completed=0) %}
 {% for r in my_requests %}{% if r.status in ['submitted','pending','pending_approval','returned'] %}{% set ns.active=ns.active+1 %}{% endif %}{% if r.status=='completed' %}{% set ns.completed=ns.completed+1 %}{% endif %}{% endfor %}
 {% if pending %}<div class="rq-alert"><strong>{{ pending }} approval{{ 's' if pending != 1 else '' }} waiting for your action.</strong> <a href="{{ url_for('requests_bp.approvals') }}">Open Pending Approvals →</a></div>{% endif %}
@@ -9,7 +9,13 @@
 <div class="rq-card"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">▣</div><div><h2>Request history</h2><div class="rq-card-sub">Your submitted requests and their current stage.</div></div></div></div>
 <div class="rq-tabs"><button class="rq-tab active" data-filter="all">All</button><button class="rq-tab" data-filter="submitted">Submitted</button><button class="rq-tab" data-filter="pending">In review</button><button class="rq-tab" data-filter="completed">Completed</button><button class="rq-tab" data-filter="returned">Returned</button><button class="rq-tab" data-filter="rejected">Rejected</button></div>
 {% if my_requests %}<div class="rq-table-wrap"><table class="rq-table" id="requestTable"><thead><tr><th>Request</th><th>Submitted</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody>
-{% for r in my_requests %}<tr data-status="{{ r.status }}"><td><div class="rq-request-title">{{ r.title }}</div><div class="rq-request-no">{{ r.request_no }}</div></td><td>{{ r.created_at.strftime('%d %b %Y') if r.created_at else '—' }}</td><td>{{ r.request_type|replace('_',' ')|title }}</td><td><span class="rq-status rq-status-{{ r.status }}">{{ r.status|replace('_',' ')|title }}</span></td><td><a class="rq-btn" href="{{ url_for('requests_bp.detail', request_id=r.id) }}">View →</a></td></tr>{% endfor %}
+{% for r in my_requests %}<tr data-status="{{ r.status }}"><td><div class="rq-request-title">{{ r.title }}</div><div class="rq-request-no">{{ r.request_no }}</div></td><td>{{ r.created_at.strftime('%d %b %Y') if r.created_at else '—' }}</td><td>{{ r.request_type|replace('_',' ')|title }}</td><td><span class="rq-status rq-status-{{ r.status }}">{{ r.status|replace('_',' ')|title }}</span></td><td><div class="rq-actions" style="justify-content:flex-start">
+<a class="rq-btn" href="{{ url_for('requests_bp.detail', request_id=r.id) }}">View →</a>
+{% if r.status in ['draft','returned','rejected'] %}
+<a class="rq-btn rq-primary" href="{{ url_for('requests_bp.edit_request', request_id=r.id) }}">✎ Edit</a>
+<form method="POST" action="{{ url_for('requests_bp.delete_request', request_id=r.id) }}" onsubmit="return confirm('Delete this request? This cannot be undone.')" style="margin:0"><button class="rq-btn rq-danger" type="submit">🗑 Delete</button></form>
+{% endif %}
+</div></td></tr>{% endfor %}
 </tbody></table></div>{% else %}<div class="rq-empty"><div class="rq-empty-icon">＋</div><h3>No requests yet</h3><p>Create your first request and track the approval journey here.</p><div style="margin-top:16px"><a class="rq-btn rq-primary" href="{{ url_for('requests_bp.new_request') }}">Create first request</a></div></div>{% endif %}
 </div>
 {% endblock %}
