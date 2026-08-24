@@ -1,7 +1,7 @@
 {% extends "request_base.html" %}
 {% block title %}SALT — My Requests{% endblock %}
 {% block content %}
-<div class="rq-hero"><div><div class="rq-eyebrow">Requests workspace</div><h1>My Requests</h1><p>Submit, monitor and follow every approval stage from one place.</p></div><div class="rq-actions"><a class="rq-btn rq-primary" href="{{ url_for('requests_bp.new_request') }}">＋ New Request</a></div></div>
+<div class="rq-hero"><div><div class="rq-eyebrow">Requests workspace</div><h1>My Requests</h1><p>Submit, monitor and follow every approval stage from one place.</p></div><div class="rq-actions"></div></div>
 {% set ns = namespace(active=0, completed=0) %}
 {% for r in my_requests %}{% if r.status in ['submitted','pending','pending_approval','returned'] %}{% set ns.active=ns.active+1 %}{% endif %}{% if r.status=='completed' %}{% set ns.completed=ns.completed+1 %}{% endif %}{% endfor %}
 {% if pending %}<div class="rq-alert"><strong>{{ pending }} approval{{ 's' if pending != 1 else '' }} waiting for your action.</strong> <a href="{{ url_for('requests_bp.approvals') }}">Open Pending Approvals →</a></div>{% endif %}
