@@ -3,8 +3,10 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 import os
 import uuid
+import json
 
 from database import get_db
+from push_notifications import send_web_push
 
 requests_bp = Blueprint("requests_bp", __name__, url_prefix="/requests")
 
@@ -126,11 +128,55 @@ def next_request_no(c):
     return prefix + f"{number:04d}"
 
 def notify(conn, user_id, message):
+    """
+    Create the normal SALT notification and also send a desktop
+    browser push notification to every registered device for
+    the recipient.
+
+    Web Push is best-effort: a push failure must never break
+    the request approval workflow.
+    """
+
     c = conn.cursor()
+
     c.execute(
         "INSERT INTO notifications (user_id, message, created_at) VALUES (%s,%s,%s)",
         (user_id, message, now())
     )
+
+    try:
+
+        c.execute("""
+            SELECT subscription
+            FROM push_subscriptions
+            WHERE user_id=%s
+        """, (
+            user_id,
+        ))
+
+        push_rows = c.fetchall()
+
+        for push_row in push_rows:
+
+            subscription = push_row["subscription"]
+
+            if isinstance(subscription, str):
+                subscription = json.loads(subscription)
+
+            send_web_push(
+                subscription=subscription,
+                title="SALT Portal",
+                body=message,
+                url="/requests/",
+                tag=f"request-notification-{user_id}"
+            )
+
+    except Exception as push_error:
+
+        print(
+            "REQUEST DESKTOP PUSH SKIPPED:",
+            repr(push_error)
+        )
 
 def add_history(conn, request_id, actor_id, action, comment=None):
     c = conn.cursor()

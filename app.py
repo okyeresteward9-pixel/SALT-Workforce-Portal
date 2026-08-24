@@ -24,6 +24,8 @@ from request_workflow import register_request_workflow
 from cloudinary import uploader
 import cloudinary
 import cloudinary_config
+import json
+from push_notifications import get_vapid_public_key
 
 app = Flask(__name__)
 app.register_blueprint(chat_bp)
@@ -135,6 +137,21 @@ def init_db():
         is_read INTEGER DEFAULT 0,
         created_at TEXT
     )''')
+
+    # -------------------------
+    # WEB PUSH SUBSCRIPTIONS
+    # -------------------------
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL
+            REFERENCES employees(id)
+            ON DELETE CASCADE,
+        endpoint TEXT NOT NULL UNIQUE,
+        subscription JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+    """)
 
     # -------------------------
     # ANNOUNCEMENTS TABLE
@@ -901,6 +918,84 @@ def inject_user():
     return dict(user=None)
 
 # -------------------------
+# WEB PUSH
+# -------------------------
+
+@app.route("/api/push/public-key")
+def push_public_key():
+
+    if 'user_id' not in session:
+        return jsonify({"publicKey": ""}), 401
+
+    return jsonify({
+        "publicKey": get_vapid_public_key()
+    })
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+def push_subscribe():
+
+    if 'user_id' not in session:
+        return jsonify({
+            "success": False,
+            "message": "Unauthorized"
+        }), 401
+
+    subscription = request.get_json(silent=True)
+
+    if not subscription or not subscription.get("endpoint"):
+        return jsonify({
+            "success": False,
+            "message": "Invalid push subscription."
+        }), 400
+
+    conn = get_db()
+    c = conn.cursor()
+
+    try:
+        c.execute("""
+            INSERT INTO push_subscriptions
+            (
+                user_id,
+                endpoint,
+                subscription
+            )
+            VALUES
+            (
+                %s,
+                %s,
+                %s::jsonb
+            )
+            ON CONFLICT (endpoint)
+            DO UPDATE SET
+                user_id = EXCLUDED.user_id,
+                subscription = EXCLUDED.subscription
+        """, (
+            session['user_id'],
+            subscription['endpoint'],
+            json.dumps(subscription)
+        ))
+
+        conn.commit()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        conn.rollback()
+        print("PUSH SUBSCRIPTION ERROR:", repr(e))
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to save push subscription."
+        }), 500
+
+    finally:
+        conn.close()
+
+
+# -------------------------
 # Dashboard
 # -------------------------
 @app.route('/dashboard')
@@ -1437,6 +1532,14 @@ def clockout():
 
     return redirect('/dashboard')
 
+@app.route("/service-worker.js")
+def service_worker():
+    return send_from_directory(
+        os.path.join(app.root_path, "static", "js"),
+        "service-worker.js",
+        mimetype="application/javascript"
+    )
+
 # -------------------------
 # Notifications helper
 # -------------------------
@@ -1496,6 +1599,40 @@ def create_notification(user_id, message, created_at=None):
             },
             room=f"user_{int(user_id)}"
         )
+
+        # Browser/desktop push is deliberately best-effort.
+        # If push is unavailable, the normal SALT notification
+        # system above continues to work normally.
+        try:
+            from push_notifications import send_web_push
+
+            c.execute("""
+                SELECT subscription
+                FROM push_subscriptions
+                WHERE user_id=%s
+            """, (int(user_id),))
+
+            push_rows = c.fetchall()
+
+            for push_row in push_rows:
+                subscription = push_row["subscription"]
+
+                if isinstance(subscription, str):
+                    subscription = json.loads(subscription)
+
+                send_web_push(
+                    subscription=subscription,
+                    title="SALT Portal",
+                    body=message,
+                    url="/dashboard",
+                    tag=f"salt-notification-{notification_id}"
+                )
+
+        except Exception as push_error:
+            print(
+                "DESKTOP PUSH SKIPPED:",
+                repr(push_error)
+            )
 
         return notification_id
 

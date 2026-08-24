@@ -1,0 +1,39 @@
+SALT WEB PUSH — FIRST SETUP
+
+1. Install the Python package:
+
+   pip install pywebpush
+
+2. Generate VAPID keys.
+
+   Use a trusted VAPID key generator or the pywebpush tooling available
+   in your environment.
+
+3. Add these environment variables to your deployment:
+
+   VAPID_PUBLIC_KEY=YOUR_PUBLIC_KEY
+   VAPID_PRIVATE_KEY=YOUR_PRIVATE_KEY
+   VAPID_CLAIM_EMAIL=mailto:admin@saltuniversity.edu.gh
+
+4. Copy these files:
+
+   static/js/service-worker.js
+   static/js/web-push.js
+   push_notifications.py
+
+5. The next backend step is to add:
+
+   /api/push/public-key
+   /api/push/subscribe
+
+   and a PostgreSQL push_subscriptions table.
+
+6. Then chat.py will call send_web_push() whenever a new chat
+   message is created.
+
+IMPORTANT:
+- Do not put the VAPID private key in JavaScript.
+- Do not commit the private key to GitHub.
+- Production Web Push requires HTTPS.
+- The user must click an "Enable desktop notifications" button once
+  to grant browser permission.

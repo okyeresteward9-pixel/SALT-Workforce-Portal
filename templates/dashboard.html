@@ -1687,6 +1687,82 @@
         <!-- DASHBOARD CONTENT -->
         <div class="content">
 
+            <!-- =====================================================
+                 SALT DESKTOP NOTIFICATIONS
+                 ===================================================== -->
+            <section id="desktopNotificationCard"
+                     style="
+                        margin-bottom:22px;
+                        padding:16px 18px;
+                        border:1px solid #d8e7f5;
+                        border-radius:16px;
+                        background:#ffffff;
+                        box-shadow:0 10px 30px rgba(15,76,151,.08);
+                        display:flex;
+                        align-items:center;
+                        justify-content:space-between;
+                        gap:15px;
+                        flex-wrap:wrap;
+                     ">
+
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="
+                        width:42px;
+                        height:42px;
+                        border-radius:12px;
+                        display:grid;
+                        place-items:center;
+                        background:#eef6ff;
+                        color:#1769c2;
+                        flex:0 0 42px;
+                    ">
+                        <i class="fas fa-desktop"></i>
+                    </div>
+
+                    <div>
+                        <div style="
+                            color:#17365f;
+                            font-size:14px;
+                            font-weight:850;
+                        ">
+                            Desktop Notifications
+                        </div>
+
+                        <div id="desktopNotificationStatus"
+                             style="
+                                margin-top:3px;
+                                color:#6b7c93;
+                                font-size:11px;
+                                line-height:1.5;
+                             ">
+                            Get SALT notifications on your computer even when
+                            you are not on the Dashboard.
+                        </div>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    id="enableDesktopNotifications"
+                    style="
+                        border:0;
+                        border-radius:10px;
+                        padding:10px 15px;
+                        background:#1769c2;
+                        color:#ffffff;
+                        font-size:11px;
+                        font-weight:850;
+                        cursor:pointer;
+                        box-shadow:0 6px 16px rgba(15,76,151,.14);
+                    "
+                >
+                    <i class="fas fa-bell"></i>
+                    Enable
+                </button>
+
+            </section>
+
+
             <section class="dashboard-hero salt-slideshow" aria-label="SALT University College highlights">
 
     <div class="salt-slide active">
@@ -3402,6 +3478,255 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
     });
+
+});
+</script>
+
+
+<script>
+/* =========================================================
+   SALT DESKTOP WEB PUSH
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const button =
+        document.getElementById("enableDesktopNotifications");
+
+    const status =
+        document.getElementById("desktopNotificationStatus");
+
+    if (!button || !status) {
+        return;
+    }
+
+    function setStatus(text) {
+        status.textContent = text;
+    }
+
+    function setEnabled() {
+        button.innerHTML =
+            '<i class="fas fa-check"></i> Enabled';
+
+        button.disabled = true;
+        button.style.opacity = "0.75";
+        button.style.cursor = "default";
+
+        setStatus(
+            "Desktop notifications are enabled on this computer."
+        );
+    }
+
+    async function enableDesktopNotifications() {
+
+        if (!("Notification" in window)) {
+
+            setStatus(
+                "This browser does not support desktop notifications."
+            );
+
+            return;
+        }
+
+        if (!("serviceWorker" in navigator)) {
+
+            setStatus(
+                "This browser does not support service workers."
+            );
+
+            return;
+        }
+
+        button.disabled = true;
+        button.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> Enabling...';
+
+        try {
+
+            const permission =
+                await Notification.requestPermission();
+
+            if (permission !== "granted") {
+
+                button.disabled = false;
+                button.innerHTML =
+                    '<i class="fas fa-bell"></i> Enable';
+
+                setStatus(
+                    "Notifications were not allowed. " +
+                    "Please allow notifications in your browser settings."
+                );
+
+                return;
+            }
+
+            const keyResponse =
+                await fetch(
+                    "/api/push/public-key",
+                    {
+                        cache: "no-store"
+                    }
+                );
+
+            if (!keyResponse.ok) {
+                throw new Error(
+                    "Unable to get push public key."
+                );
+            }
+
+            const keyData =
+                await keyResponse.json();
+
+            if (!keyData.publicKey) {
+                throw new Error(
+                    "VAPID public key is not configured."
+                );
+            }
+
+            const registration =
+                await navigator.serviceWorker.register(
+                    "/service-worker.js",
+                    {
+                        scope: "/"
+                    }
+                );
+
+            await navigator.serviceWorker.ready;
+
+            let subscription =
+                await registration.pushManager.getSubscription();
+
+            if (!subscription) {
+
+                const padding =
+                    "=".repeat(
+                        (4 - keyData.publicKey.length % 4) % 4
+                    );
+
+                const base64 =
+                    (keyData.publicKey + padding)
+                    .replace(/-/g, "+")
+                    .replace(/_/g, "/");
+
+                const raw =
+                    atob(base64);
+
+                const applicationServerKey =
+                    new Uint8Array(raw.length);
+
+                for (let i = 0; i < raw.length; i++) {
+                    applicationServerKey[i] =
+                        raw.charCodeAt(i);
+                }
+
+                subscription =
+                    await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey:
+                            applicationServerKey
+                    });
+            }
+
+            const saveResponse =
+                await fetch(
+                    "/api/push/subscribe",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+                        body:
+                            JSON.stringify(subscription)
+                    }
+                );
+
+            const saveData =
+                await saveResponse.json();
+
+            if (!saveResponse.ok || !saveData.success) {
+                throw new Error(
+                    saveData.message ||
+                    "Unable to save notification subscription."
+                );
+            }
+
+            setEnabled();
+
+            /*
+             * Small confirmation using the same browser permission.
+             * This is only shown after successful registration.
+             */
+            try {
+                new Notification(
+                    "SALT Workforce Portal",
+                    {
+                        body:
+                            "Desktop notifications are now enabled."
+                    }
+                );
+            } catch (e) {
+                console.log(
+                    "Confirmation notification skipped:",
+                    e
+                );
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Desktop notification setup failed:",
+                error
+            );
+
+            button.disabled = false;
+            button.innerHTML =
+                '<i class="fas fa-bell"></i> Enable';
+
+            setStatus(
+                error.message ||
+                "Unable to enable desktop notifications."
+            );
+        }
+    }
+
+    button.addEventListener(
+        "click",
+        enableDesktopNotifications
+    );
+
+    /*
+     * Restore the enabled state when Dashboard is opened again.
+     */
+    if (
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        "serviceWorker" in navigator
+    ) {
+
+        navigator.serviceWorker.ready
+            .then(function (registration) {
+
+                return registration.pushManager
+                    .getSubscription();
+
+            })
+            .then(function (subscription) {
+
+                if (subscription) {
+                    setEnabled();
+                }
+
+            })
+            .catch(function (error) {
+
+                console.log(
+                    "Push subscription check skipped:",
+                    error
+                );
+
+            });
+    }
 
 });
 </script>
