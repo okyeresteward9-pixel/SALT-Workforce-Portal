@@ -368,19 +368,18 @@ def new_request():
             ])
 
             if finance:
-                if not valid_id(auditors, auditor_id):
-                    flash("Please select an authorized Internal Auditor.", "error")
-                    conn.close()
-                    return redirect(url_for("requests_bp.new_request"))
-                if not valid_id(accountants, accountant_id):
-                    flash("Please select an authorized Accountant.", "error")
-                    conn.close()
-                    return redirect(url_for("requests_bp.new_request"))
-
-                selected.extend([
-                    (int(auditor_id), "auditor"),
-                    (int(accountant_id), "accountant")
-                ])
+                if auditor_id:
+                    if not valid_id(auditors, auditor_id):
+                        flash("Please select an authorized Internal Auditor.", "error")
+                        conn.close()
+                        return redirect(url_for("requests_bp.new_request"))
+                    selected.append((int(auditor_id), "auditor"))
+                if accountant_id:
+                    if not valid_id(accountants, accountant_id):
+                        flash("Please select an authorized Accountant.", "error")
+                        conn.close()
+                        return redirect(url_for("requests_bp.new_request"))
+                    selected.append((int(accountant_id), "accountant"))
 
             approver_ids = [x[0] for x in selected]
             if len(approver_ids) != len(set(approver_ids)):
@@ -479,7 +478,7 @@ def new_request():
             first,
             f"New request {req_no} requires your approval ({first_position})."
         )
-        add_history(conn, request_id, session["user_id"], "Submitted")
+        add_history(conn, request_id, session["user_id"], "Submitted", "Request submitted for approval.")
 
         conn.commit()
         conn.close()
@@ -638,13 +637,14 @@ def _parse_edit_route(conn):
     selected.append((int(president_id), "president"))
 
     if finance:
-        if not valid_id(auditors, auditor_id):
-            raise ValueError("Please select an authorized Internal Auditor.")
-        if not valid_id(accountants, accountant_id):
-            raise ValueError("Please select an authorized Accountant.")
-
-        selected.append((int(auditor_id), "auditor"))
-        selected.append((int(accountant_id), "accountant"))
+        if auditor_id:
+            if not valid_id(auditors, auditor_id):
+                raise ValueError("Please select an authorized Internal Auditor.")
+            selected.append((int(auditor_id), "auditor"))
+        if accountant_id:
+            if not valid_id(accountants, accountant_id):
+                raise ValueError("Please select an authorized Accountant.")
+            selected.append((int(accountant_id), "accountant"))
 
     approver_ids = [x[0] for x in selected]
     if len(approver_ids) != len(set(approver_ids)):
@@ -1166,16 +1166,16 @@ def submit_draft(request_id):
         selected.append((int(president_id), "president"))
 
         if finance:
-            if not valid_id(auditors, auditor_id):
-                flash("Please select an authorized Internal Auditor.", "error")
-                return redirect(url_for("requests_bp.detail", request_id=request_id))
-
-            if not valid_id(accountants, accountant_id):
-                flash("Please select an authorized Accountant.", "error")
-                return redirect(url_for("requests_bp.detail", request_id=request_id))
-
-            selected.append((int(auditor_id), "auditor"))
-            selected.append((int(accountant_id), "accountant"))
+            if auditor_id:
+                if not valid_id(auditors, auditor_id):
+                    flash("Please select an authorized Internal Auditor.", "error")
+                    return redirect(url_for("requests_bp.detail", request_id=request_id))
+                selected.append((int(auditor_id), "auditor"))
+            if accountant_id:
+                if not valid_id(accountants, accountant_id):
+                    flash("Please select an authorized Accountant.", "error")
+                    return redirect(url_for("requests_bp.detail", request_id=request_id))
+                selected.append((int(accountant_id), "accountant"))
 
         approver_ids = [x[0] for x in selected]
         if len(approver_ids) != len(set(approver_ids)):
