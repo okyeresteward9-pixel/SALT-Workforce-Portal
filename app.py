@@ -3017,76 +3017,173 @@ def admin_tasks():
 def admin_reply_task(id):
 
     if 'role' not in session or session['role'] != 'admin':
-        return "Access Denied"
+        return jsonify({
+            "status": "error",
+            "message": "Access Denied"
+        }), 403
 
+    message = request.form.get(
+        'admin_reply',
+        ''
+    ).strip()
 
-    message = request.form['admin_reply']
+    parent_comment_id = request.form.get(
+        'parent_comment_id'
+    )
 
-    parent_comment_id = request.form.get('parent_comment_id')
-
+    if not message:
+        return jsonify({
+            "status": "error",
+            "message": "Reply cannot be empty."
+        }), 400
 
     conn = get_db()
 
-    c = conn.cursor()
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
+
+    try:
+
+        # =====================================================
+        # FIND TASK
+        # =====================================================
+
+        c.execute("""
+            SELECT
+                id,
+                assigned_to,
+                title
+            FROM tasks
+            WHERE id = %s
+        """, (id,))
+
+        task_owner = c.fetchone()
+
+        if not task_owner:
+
+            return jsonify({
+                "status": "error",
+                "message": "Task not found."
+            }), 404
 
 
+        # =====================================================
+        # INSERT ADMIN REPLY
+        # =====================================================
 
-    c.execute("""
-        INSERT INTO task_comments
+        c.execute("""
+            INSERT INTO task_comments
+            (
+                task_id,
+                sender_id,
+                sender_role,
+                message,
+                parent_comment_id,
+                visibility,
+                created_at
+            )
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )
+            RETURNING id
+        """,
         (
-            task_id,
-            sender_id,
-            sender_role,
+            id,
+            session['user_id'],
+            'admin',
             message,
             parent_comment_id,
-            visibility,
-            created_at
+            'public',
+            datetime.now()
+        ))
+
+        new_comment = c.fetchone()
+
+        comment_id = (
+            new_comment["id"]
+            if new_comment
+            else None
         )
 
-        VALUES
-        (
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s
+
+        # =====================================================
+        # SAVE
+        # =====================================================
+
+        conn.commit()
+
+
+        # =====================================================
+        # NOTIFY EMPLOYEE
+        # =====================================================
+
+        employee_id = task_owner["assigned_to"]
+
+        if employee_id:
+
+            try:
+
+                create_notification(
+                    employee_id,
+                    f"Admin replied to your task: {task_owner['title']}"
+                )
+
+            except Exception as notification_error:
+
+                print(
+                    "ADMIN REPLY NOTIFICATION ERROR:",
+                    notification_error
+                )
+
+
+        # =====================================================
+        # JSON RESPONSE
+        # =====================================================
+
+        return jsonify({
+
+            "status": "success",
+
+            "message":
+                "Reply posted successfully.",
+
+            "task_id": id,
+
+            "comment_id": comment_id
+
+        }), 200
+
+
+    except Exception as e:
+
+        conn.rollback()
+
+        print(
+            "ADMIN REPLY TASK ERROR:",
+            repr(e)
         )
 
-    """,
-    (
-        id,
-        session['user_id'],
-        'admin',
-        message,
-        parent_comment_id,
-        'public',
-        datetime.now()
-    ))
+        return jsonify({
+
+            "status": "error",
+
+            "message":
+                "Unable to post the reply."
+
+        }), 500
 
 
+    finally:
 
-    # Find the employee who owns the task so the reply can
-    # trigger a real-time notification.
-    c.execute("""
-        SELECT assigned_to, title
-        FROM tasks
-        WHERE id=%s
-    """, (id,))
-
-    task_owner = c.fetchone()
-
-    conn.commit()
-    conn.close()
-
-    if task_owner and task_owner[0] != session["user_id"]:
-        create_notification(
-            task_owner[0],
-            f"Admin replied to your task: {task_owner[1]}"
-        )
-
-    return redirect('/admin/tasks')
+        conn.close()
 
 @app.route(
     '/delete_task/<int:task_id>',
