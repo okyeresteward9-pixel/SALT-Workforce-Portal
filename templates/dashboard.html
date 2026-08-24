@@ -1941,11 +1941,12 @@
 
                     {% elif clocked_in and not clocked_out %}
 
-                        <form method="POST" action="/clockout" style="margin:0;">
-                            <button type="submit" class="btn red">
-                                <i class="fas fa-sign-out-alt"></i> Clock Out
-                            </button>
-                        </form>
+                    <form method="POST" action="/clockout" style="margin:0;"
+                            onsubmit="return confirm('Are you sure you want to clock out?');">
+                        <button type="submit" class="btn red">
+                            <i class="fas fa-sign-out-alt"></i> Clock Out
+                        </button>
+                    </form>
 
                     {% elif clocked_out %}
 
