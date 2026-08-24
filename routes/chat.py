@@ -26,9 +26,11 @@ from datetime import datetime
 
 import time
 import os
+import json
 
 from cloudinary import uploader
 import cloudinary_config
+from push_notifications import send_web_push
 
 
 # ==========================================
@@ -314,7 +316,50 @@ def messages(user_id=None):
 
         conn.commit()
 
+        # Existing instant in-app delivery.
         emit_new_message(new_message)
+
+        # Desktop/browser push notification.
+        # Best-effort: a push failure must never break chat.
+        try:
+
+            c.execute("""
+                SELECT subscription
+                FROM push_subscriptions
+                WHERE user_id=%s
+            """, (
+                user_id,
+            ))
+
+            push_rows = c.fetchall()
+
+            push_body = (
+                message
+                if message
+                else "📎 Sent an attachment"
+            )
+
+            for push_row in push_rows:
+
+                subscription = push_row["subscription"]
+
+                if isinstance(subscription, str):
+                    subscription = json.loads(subscription)
+
+                send_web_push(
+                    subscription=subscription,
+                    title=f"New message from {session['name']}",
+                    body=push_body,
+                    url=f"/messages/{session['user_id']}",
+                    tag=f"chat-message-{new_message['id']}"
+                )
+
+        except Exception as push_error:
+
+            print(
+                "CHAT DESKTOP PUSH SKIPPED:",
+                repr(push_error)
+            )
 
         conn.close()
 
