@@ -129,54 +129,131 @@ def next_request_no(c):
 
 def notify(conn, user_id, message):
     """
-    Create the normal SALT notification and also send a desktop
-    browser push notification to every registered device for
-    the recipient.
+    Create a SALT notification and deliver it through:
+    1. Database notification
+    2. Socket.IO live notification
+    3. Desktop/browser Web Push
 
-    Web Push is best-effort: a push failure must never break
-    the request approval workflow.
+    Notification failures must never break the request workflow.
     """
+
+    if not user_id or not message:
+        return
 
     c = conn.cursor()
 
-    c.execute(
-        "INSERT INTO notifications (user_id, message, created_at) VALUES (%s,%s,%s)",
-        (user_id, message, now())
-    )
-
     try:
+        # --------------------------------------------------
+        # SAVE NORMAL NOTIFICATION
+        # --------------------------------------------------
 
         c.execute("""
-            SELECT subscription
-            FROM push_subscriptions
-            WHERE user_id=%s
+            INSERT INTO notifications
+            (
+                user_id,
+                message,
+                is_read,
+                created_at
+            )
+            VALUES
+            (
+                %s,
+                %s,
+                FALSE,
+                %s
+            )
+            RETURNING id
         """, (
             user_id,
+            message,
+            now()
         ))
 
-        push_rows = c.fetchall()
+        row = c.fetchone()
+        notification_id = row["id"] if row else None
 
-        for push_row in push_rows:
+        # --------------------------------------------------
+        # LIVE SOCKET.IO NOTIFICATION
+        # --------------------------------------------------
 
-            subscription = push_row["subscription"]
+        socketio = getattr(requests_bp, "socketio", None)
 
-            if isinstance(subscription, str):
-                subscription = json.loads(subscription)
+        if socketio and notification_id:
 
-            send_web_push(
-                subscription=subscription,
-                title="SALT Portal",
-                body=message,
-                url="/requests/",
-                tag=f"request-notification-{user_id}"
+            try:
+                socketio.emit(
+                    "new_notification",
+                    {
+                        "id": notification_id,
+                        "message": message,
+                        "created_at": now().strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
+                        "is_read": False
+                    },
+                    room=f"user_{int(user_id)}"
+                )
+
+            except Exception as socket_error:
+
+                print(
+                    "REQUEST SOCKET NOTIFICATION ERROR:",
+                    repr(socket_error)
+                )
+
+        # --------------------------------------------------
+        # DESKTOP / BROWSER PUSH
+        # --------------------------------------------------
+
+        try:
+
+            c.execute("""
+                SELECT subscription
+                FROM push_subscriptions
+                WHERE user_id=%s
+            """, (
+                user_id,
+            ))
+
+            push_rows = c.fetchall()
+
+            for push_row in push_rows:
+
+                subscription = push_row["subscription"]
+
+                if isinstance(
+                    subscription,
+                    str
+                ):
+                    subscription = json.loads(
+                        subscription
+                    )
+
+                send_web_push(
+                    subscription=subscription,
+                    title="SALT Portal",
+                    body=message,
+                    url="/requests/",
+                    tag=f"request-notification-{notification_id}"
+                )
+
+        except Exception as push_error:
+
+            print(
+                "REQUEST DESKTOP PUSH SKIPPED:",
+                repr(push_error)
             )
 
-    except Exception as push_error:
+        return notification_id
+
+    except Exception as e:
 
         print(
-            "REQUEST DESKTOP PUSH SKIPPED:",
-            repr(push_error)
+            "REQUEST NOTIFICATION ERROR:",
+            repr(e)
         )
+
+        return None
 
 def add_history(conn, request_id, actor_id, action, comment=None):
     c = conn.cursor()
@@ -1376,9 +1453,11 @@ def save_signature():
     flash("Signature saved.", "success")
     return redirect("/settings/profile")
 
-def register_request_workflow(app):
+def register_request_workflow(app, socketio=None):
     init_request_tables()
     app.register_blueprint(requests_bp)
+
+    requests_bp.socketio = socketio
 
     @app.context_processor
     def request_dashboard_counts():

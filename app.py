@@ -6116,7 +6116,8 @@ def logout():
 try:
     init_db()
     create_admin()
-    register_request_workflow(app)
+    register_request_workflow(app, socketio)
+
     print("✅ Database initialized successfully.")
 
 except Exception as e:
