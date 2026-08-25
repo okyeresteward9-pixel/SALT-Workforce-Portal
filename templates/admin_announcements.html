@@ -1648,8 +1648,23 @@ tbody tr:hover {
                                 <input
                                     type="file"
                                     name="file"
+                                    id="announcement-file"
                                     class="form-control"
+                                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
                                 >
+
+                                <small
+                                    style="
+                                        color:#64748b;
+                                        display:block;
+                                        margin-top:7px;
+                                        line-height:1.5;
+                                    "
+                                >
+                                    <i class="fas fa-circle-info"></i>
+                                    Maximum file size: <strong>10 MB</strong>.
+                                    Images and PDFs are recommended.
+                                </small>
 
                             </div>
 
@@ -2262,11 +2277,14 @@ tbody tr:hover {
 
                     <small
                         style="
-                            color:#94a3b8;
+                            color:#64748b;
                             display:block;
                             margin-top:6px;
+                            line-height:1.5;
                         "
                     >
+                        <i class="fas fa-circle-info"></i>
+                        Maximum file size: <strong>10 MB</strong>.
                         Leave empty to keep the current attachment.
                     </small>
 
@@ -2499,6 +2517,117 @@ tbody tr:hover {
         };
     
     
+        /* =====================================================
+           10 MB ANNOUNCEMENT ATTACHMENT LIMIT
+           ===================================================== */
+
+        const MAX_ANNOUNCEMENT_FILE_SIZE =
+            10 * 1024 * 1024;
+
+        function validateAnnouncementFile(input, label) {
+
+            if (
+                !input ||
+                !input.files ||
+                !input.files.length
+            ) {
+                return true;
+            }
+
+            const file = input.files[0];
+
+            if (file.size > MAX_ANNOUNCEMENT_FILE_SIZE) {
+
+                const sizeMB =
+                    (file.size / (1024 * 1024)).toFixed(2);
+
+                showToast(
+                    `${label || "Attachment"} is too large (${sizeMB} MB). Maximum allowed size is 10 MB.`,
+                    false
+                );
+
+                input.value = "";
+
+                return false;
+            }
+
+            return true;
+        }
+
+
+        const createFileInput =
+            document.getElementById(
+                "announcement-file"
+            );
+
+        if (createFileInput) {
+
+            createFileInput.addEventListener(
+                "change",
+                function () {
+
+                    validateAnnouncementFile(
+                        this,
+                        "Attachment"
+                    );
+
+                }
+            );
+
+        }
+
+
+        const createForm =
+            document.querySelector(
+                'form[action="/admin/announcements"]'
+            );
+
+        if (createForm) {
+
+            createForm.addEventListener(
+                "submit",
+                function (event) {
+
+                    if (
+                        createFileInput &&
+                        !validateAnnouncementFile(
+                            createFileInput,
+                            "Attachment"
+                        )
+                    ) {
+
+                        event.preventDefault();
+
+                    }
+
+                }
+            );
+
+        }
+
+
+        const editFileInput =
+            document.getElementById(
+                "edit-file"
+            );
+
+        if (editFileInput) {
+
+            editFileInput.addEventListener(
+                "change",
+                function () {
+
+                    validateAnnouncementFile(
+                        this,
+                        "Replacement attachment"
+                    );
+
+                }
+            );
+
+        }
+
+
         /* =====================================================
            EDIT
            ===================================================== */
