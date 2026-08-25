@@ -4479,7 +4479,7 @@ def download_announcement_file(id):
     return send_from_directory(
         folder,
         filename,
-        as_attachment=True,
+        as_attachment=False,
         download_name=(
             announcement['file_name']
             or filename
