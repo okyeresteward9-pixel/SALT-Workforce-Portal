@@ -5,6 +5,13 @@ import os
 import uuid
 import json
 
+import cloudinary
+import cloudinary.uploader
+try:
+    from cloudinary_config import *  # noqa: F401,F403
+except Exception as cloudinary_config_error:
+    print("CLOUDINARY CONFIG WARNING:", repr(cloudinary_config_error))
+
 from database import get_db
 from push_notifications import send_web_push
 
@@ -81,9 +88,14 @@ def init_request_tables():
             id SERIAL PRIMARY KEY,
             request_id INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
             original_name TEXT NOT NULL,
-            stored_name TEXT NOT NULL,
+            stored_name TEXT,
             uploaded_by INTEGER NOT NULL REFERENCES employees(id),
-            uploaded_at TIMESTAMP NOT NULL
+            uploaded_at TIMESTAMP NOT NULL,
+            cloudinary_url TEXT,
+            cloudinary_public_id TEXT,
+            cloudinary_resource_type TEXT,
+            file_size BIGINT,
+            mime_type TEXT
         )
     """)
     c.execute("""
@@ -107,6 +119,11 @@ def init_request_tables():
         )
     """)
     # Employee signature storage used by the approval workflow.
+    c.execute("ALTER TABLE request_attachments ADD COLUMN IF NOT EXISTS cloudinary_url TEXT")
+    c.execute("ALTER TABLE request_attachments ADD COLUMN IF NOT EXISTS cloudinary_public_id TEXT")
+    c.execute("ALTER TABLE request_attachments ADD COLUMN IF NOT EXISTS cloudinary_resource_type TEXT")
+    c.execute("ALTER TABLE request_attachments ADD COLUMN IF NOT EXISTS file_size BIGINT")
+    c.execute("ALTER TABLE request_attachments ADD COLUMN IF NOT EXISTS mime_type TEXT")
     c.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS signature_path TEXT")
     conn.commit()
     conn.close()
@@ -284,11 +301,31 @@ def can_view_request(conn, req):
     )
     return bool(c.fetchone())
 
-def save_attachments(conn, request_id, files, upload_root):
-    folder = os.path.join(upload_root, str(request_id))
-    os.makedirs(folder, exist_ok=True)
+def _cloudinary_ready():
+    return bool(
+        os.environ.get("CLOUDINARY_CLOUD_NAME")
+        and os.environ.get("CLOUDINARY_API_KEY")
+        and os.environ.get("CLOUDINARY_API_SECRET")
+    )
+
+
+def save_attachments(conn, request_id, files, upload_root=None):
+    """
+    Upload request attachments to Cloudinary and store the Cloudinary
+    metadata in PostgreSQL.
+
+    Cloudinary is the source of truth for new request files. If a database
+    insert fails after an upload, the uploaded Cloudinary asset is removed
+    so we do not leave orphaned files behind.
+    """
+    if not _cloudinary_ready():
+        raise RuntimeError(
+            "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, "
+            "CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET."
+        )
 
     c = conn.cursor()
+    uploaded_assets = []
 
     try:
         for file in files:
@@ -296,23 +333,91 @@ def save_attachments(conn, request_id, files, upload_root):
                 continue
 
             original = secure_filename(file.filename)
-            stored = f"{uuid.uuid4().hex}_{original}"
+            if not original:
+                continue
 
-            file.save(os.path.join(folder, stored))
+            # Capture the size before Cloudinary consumes the stream.
+            file_size = getattr(file, "content_length", None)
+            if not file_size:
+                try:
+                    current_pos = file.stream.tell()
+                    file.stream.seek(0, os.SEEK_END)
+                    file_size = file.stream.tell()
+                    file.stream.seek(current_pos)
+                except Exception:
+                    file_size = None
+
+            result = cloudinary.uploader.upload(
+                file,
+                resource_type="auto",
+                folder=f"SALT-Workforce-Portal/requests/{request_id}",
+                use_filename=False,
+                unique_filename=True,
+                overwrite=False,
+                context={
+                    "request_id": str(request_id),
+                    "original_name": original,
+                },
+            )
+
+            public_id = result.get("public_id")
+            secure_url = result.get("secure_url") or result.get("url")
+            resource_type = result.get("resource_type") or "image"
+
+            if not public_id or not secure_url:
+                raise RuntimeError(
+                    f"Cloudinary did not return a usable URL for {original}."
+                )
+
+            uploaded_assets.append({
+                "public_id": public_id,
+                "resource_type": resource_type,
+            })
 
             c.execute("""
                 INSERT INTO request_attachments
-                (request_id, original_name, stored_name, uploaded_by, uploaded_at)
-                VALUES (%s,%s,%s,%s,%s)
+                (
+                    request_id,
+                    original_name,
+                    stored_name,
+                    uploaded_by,
+                    uploaded_at,
+                    cloudinary_url,
+                    cloudinary_public_id,
+                    cloudinary_resource_type,
+                    file_size,
+                    mime_type
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (
                 request_id,
                 original,
-                stored,
+                None,
                 session["user_id"],
-                now()
+                now(),
+                secure_url,
+                public_id,
+                resource_type,
+                file_size,
+                getattr(file, "mimetype", None),
             ))
-    finally:
-        c.close()
+
+    except Exception:
+        # PostgreSQL rollback does not remove Cloudinary assets, so clean up
+        # anything uploaded during this call before re-raising the error.
+        for asset in uploaded_assets:
+            try:
+                cloudinary.uploader.destroy(
+                    asset["public_id"],
+                    resource_type=asset["resource_type"],
+                    invalidate=True,
+                )
+            except Exception as cleanup_error:
+                print(
+                    "CLOUDINARY UPLOAD CLEANUP ERROR:",
+                    repr(cleanup_error)
+                )
+        raise
 
 def approvers_for_position(conn, positions):
     """Return only employees authorized to approve for the specified office positions."""
@@ -623,37 +728,47 @@ def _editable_request(req):
     return req["status"] in {"draft", "returned", "rejected"}
 
 
-def _delete_request_files(conn, request_id):
-    """Remove stored attachment files for a request."""
-    c = conn.cursor()
-    c.execute(
-        "SELECT stored_name FROM request_attachments WHERE request_id=%s",
-        (request_id,)
-    )
-    rows = c.fetchall()
+def _delete_cloudinary_attachment(attachment):
+    """Delete a Cloudinary asset when the attachment has one."""
+    public_id = attachment.get("cloudinary_public_id")
+    if not public_id:
+        # Legacy local attachment: there is no Cloudinary asset to delete.
+        return
 
-    folder = os.path.join(
-        os.getcwd(),
-        "static",
-        "request_uploads",
-        str(request_id)
-    )
-
-    for row in rows:
-        filename = os.path.basename(row["stored_name"])
-        path = os.path.join(folder, filename)
-        try:
-            if os.path.isfile(path):
-                os.remove(path)
-        except OSError as exc:
-            print("REQUEST ATTACHMENT DELETE WARNING:", repr(exc))
+    resource_type = attachment.get("cloudinary_resource_type") or "image"
 
     try:
-        if os.path.isdir(folder) and not os.listdir(folder):
-            os.rmdir(folder)
-    except OSError:
-        pass
+        result = cloudinary.uploader.destroy(
+            public_id,
+            resource_type=resource_type,
+            type="upload",
+            invalidate=True
+        )
 
+        # Cloudinary normally returns "ok" or "not found". A missing asset
+        # should not prevent us from removing its database record.
+        if result.get("result") not in {"ok", "not found"}:
+            print("CLOUDINARY DELETE RESULT:", result)
+
+    except Exception as exc:
+        print(
+            "CLOUDINARY DELETE ERROR:",
+            repr(exc)
+        )
+        raise
+
+
+def _delete_request_files(conn, request_id):
+    """Delete all Cloudinary-backed attachments for a request."""
+    c = conn.cursor()
+    c.execute("""
+        SELECT *
+        FROM request_attachments
+        WHERE request_id=%s
+    """, (request_id,))
+    for row in c.fetchall():
+        if row.get("cloudinary_public_id"):
+            _delete_cloudinary_attachment(row)
 
 def _load_edit_options(conn):
     return (
@@ -868,20 +983,37 @@ def edit_request(request_id):
                 amount
             ))
 
-        # Keep existing attachments unless the edit form explicitly asks
-        # for all attachments to be replaced.
-        if request.form.get("replace_attachments") == "yes":
-            _delete_request_files(conn, request_id)
-            c.execute(
-                "DELETE FROM request_attachments WHERE request_id=%s",
-                (request_id,)
-            )
+        # Remove only the attachments selected by the requester.
+        for raw_id in request.form.getlist("remove_attachment_ids[]"):
+            try:
+                attachment_id = int(raw_id)
+            except (TypeError, ValueError):
+                continue
 
+            c.execute("""
+                SELECT *
+                FROM request_attachments
+                WHERE id=%s AND request_id=%s
+            """, (attachment_id, request_id))
+            att = c.fetchone()
+
+            if att:
+                _delete_cloudinary_attachment(att)
+                c.execute(
+                    "DELETE FROM request_attachments WHERE id=%s AND request_id=%s",
+                    (attachment_id, request_id)
+                )
+                add_history(
+                    conn, request_id, session["user_id"],
+                    "Attachment Removed", att["original_name"]
+                )
+
+        # New files are added to the existing files. This allows a user to
+        # remove an old file and upload its replacement in the same edit.
         save_attachments(
             conn,
             request_id,
-            request.files.getlist("attachments"),
-            os.path.join("static", "request_uploads")
+            request.files.getlist("attachments")
         )
 
         # A successful edit is a fresh submission. Existing history remains.
@@ -1198,6 +1330,9 @@ def submit_draft(request_id):
         president_id = request.form.get("president_id")
         auditor_id = request.form.get("auditor_id")
         accountant_id = request.form.get("accountant_id")
+        if not registrar_id or not president_id:
+            flash("Please review the approval route before submitting this draft.", "error")
+            return redirect(url_for("requests_bp.edit_request", request_id=request_id))
 
         finance = bool(req["is_finance_related"])
 
@@ -1259,6 +1394,10 @@ def submit_draft(request_id):
             flash("Each approval stage must use a different person.", "error")
             return redirect(url_for("requests_bp.detail", request_id=request_id))
 
+        if not selected:
+            flash("Please select at least one approval stage before submitting.", "error")
+            return redirect(url_for("requests_bp.edit_request", request_id=request_id))
+
         # Remove any old route created during editing, then rebuild it.
         c.execute("DELETE FROM request_steps WHERE request_id=%s", (request_id,))
 
@@ -1316,80 +1455,42 @@ def submit_draft(request_id):
 
 @requests_bp.route("/<int:request_id>/attachment/<int:attachment_id>")
 def attachment(request_id, attachment_id):
-
     if "user_id" not in session:
         return redirect("/")
 
     conn = get_db()
-
     try:
         req = get_request(conn, request_id)
-
         if not req or not can_view_request(conn, req):
             return "Access Denied", 403
 
         c = conn.cursor()
-
         c.execute("""
-            SELECT
-                id,
-                request_id,
-                original_name,
-                stored_name
+            SELECT *
             FROM request_attachments
-            WHERE id=%s
-              AND request_id=%s
-        """, (
-            attachment_id,
-            request_id
-        ))
-
+            WHERE id=%s AND request_id=%s
+        """, (attachment_id, request_id))
         att = c.fetchone()
 
         if not att:
             return "Attachment not found", 404
 
-        # --------------------------------------------------
-        # ACTUAL UPLOAD DIRECTORY
-        # --------------------------------------------------
+        if att.get("cloudinary_url"):
+            return redirect(att["cloudinary_url"])
 
-        upload_folder = os.path.join(
-            os.getcwd(),
-            "static",
-            "request_uploads",
-            str(request_id)
-        )
-
-        # --------------------------------------------------
-        # SECURITY
-        # Never allow the database filename to escape
-        # the request's upload folder.
-        # --------------------------------------------------
-
-        filename = os.path.basename(
-            att["stored_name"]
-        )
-
-        full_path = os.path.join(
-            upload_folder,
-            filename
-        )
-
-        # --------------------------------------------------
-        # CHECK FILE EXISTS
-        # --------------------------------------------------
-
-        if not os.path.isfile(full_path):
-            print(
-                "REQUEST ATTACHMENT NOT FOUND:",
-                full_path
-            )
-
+        # Legacy local-file fallback for attachments uploaded before Cloudinary.
+        stored_name = att.get("stored_name")
+        if not stored_name:
             return "Attachment file not found", 404
 
-        # --------------------------------------------------
-        # SHOW FILE IN BROWSER
-        # --------------------------------------------------
+        upload_folder = os.path.join(
+            os.getcwd(), "static", "request_uploads", str(request_id)
+        )
+        filename = os.path.basename(stored_name)
+        full_path = os.path.join(upload_folder, filename)
+
+        if not os.path.isfile(full_path):
+            return "Attachment file not found", 404
 
         return send_from_directory(
             upload_folder,
@@ -1397,7 +1498,59 @@ def attachment(request_id, attachment_id):
             as_attachment=False,
             download_name=att["original_name"]
         )
+    finally:
+        conn.close()
 
+
+@requests_bp.route("/<int:request_id>/attachment/<int:attachment_id>/delete", methods=["POST"])
+def delete_attachment(request_id, attachment_id):
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db()
+    try:
+        req = get_request(conn, request_id)
+
+        if not req:
+            return "Request not found", 404
+
+        if req["requester_id"] != session["user_id"] and session.get("role") != "admin":
+            return "Access Denied", 403
+
+        if not _editable_request(req):
+            flash("Attachments cannot be changed while the request is in approval.", "error")
+            return redirect(url_for("requests_bp.detail", request_id=request_id))
+
+        c = conn.cursor()
+        c.execute("""
+            SELECT *
+            FROM request_attachments
+            WHERE id=%s AND request_id=%s
+        """, (attachment_id, request_id))
+        att = c.fetchone()
+
+        if not att:
+            flash("Attachment not found.", "error")
+            return redirect(url_for("requests_bp.edit_request", request_id=request_id))
+
+        _delete_cloudinary_attachment(att)
+
+        c.execute(
+            "DELETE FROM request_attachments WHERE id=%s AND request_id=%s",
+            (attachment_id, request_id)
+        )
+
+        add_history(
+            conn, request_id, session["user_id"],
+            "Attachment Removed", att["original_name"]
+        )
+
+        conn.commit()
+        flash(f"{att['original_name']} was removed.", "success")
+        return redirect(url_for("requests_bp.edit_request", request_id=request_id))
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
