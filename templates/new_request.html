@@ -39,9 +39,9 @@
 <button type="button" class="rq-btn" id="backBtn" onclick="changeStep(-1)">← Back</button>
 <div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end">
 <a class="rq-btn" href="{{ url_for('requests_bp.index') }}">Cancel</a>
-<button type="submit" class="rq-btn" id="saveDraftBtn" name="save_draft" value="yes" formnovalidate>Save as Draft</button>
+<button type="submit" class="rq-btn" id="saveDraftBtn" name="request_action" value="draft" formnovalidate>Save as Draft</button>
 <button type="button" class="rq-btn rq-primary" id="nextBtn" onclick="changeStep(1)">Continue →</button>
-<button type="submit" class="rq-btn rq-primary rq-hidden" id="submitBtn" name="submit_request" value="yes">Submit Request ✓</button>
+<button type="submit" class="rq-btn rq-primary rq-hidden" id="submitBtn" name="request_action" value="submit">Submit Request ✓</button>
 </div>
 </div>
 </form>
