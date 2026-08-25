@@ -607,88 +607,389 @@
         }
 
         /* -------------------------
-           ANNOUNCEMENTS
+           ANNOUNCEMENTS CAROUSEL
            ------------------------- */
 
         .announcements {
             max-width: none !important;
             width: 100%;
             margin: 0 0 22px !important;
-            padding: 20px !important;
+            padding: 0 !important;
             border: 1px solid var(--salt-border);
             border-radius: 18px !important;
             background: #ffffff;
             box-shadow: var(--salt-shadow) !important;
+            overflow: hidden;
         }
 
-        .announcements h3 {
-            margin: 0 0 16px !important;
-            padding-bottom: 12px;
+        .announcement-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 17px 20px 14px;
             border-bottom: 1px solid #edf2f7;
-            color: var(--salt-blue) !important;
-            font-size: 16px;
+        }
+
+        .announcement-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .announcement-header-icon {
+            width: 36px;
+            height: 36px;
+            flex: 0 0 36px;
+            display: grid;
+            place-items: center;
+            border-radius: 11px;
+            background: #eef6ff;
+            color: #1769c2;
+        }
+
+        .announcement-header h3 {
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            color: #17365f !important;
+            font-size: 15px;
             font-weight: 850;
         }
 
-        .announcements li {
+        .announcement-header p {
+            margin: 2px 0 0;
+            color: #8796a8;
+            font-size: 10px;
+        }
+
+        .announcement-count {
+            min-width: 27px;
+            height: 27px;
+            padding: 0 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: #eaf4ff;
+            color: #1769c2;
+            font-size: 10px;
+            font-weight: 900;
+        }
+
+        .announcement-carousel {
             position: relative;
-            padding: 14px 16px !important;
-            margin-bottom: 10px !important;
-            border: 1px solid #e1eaf4;
-            border-left: 4px solid #1769c2 !important;
-            border-radius: 12px !important;
-            background: #f8fbff !important;
+            min-height: 190px;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 100% 0%, rgba(23,105,194,.08), transparent 34%),
+                linear-gradient(135deg, #ffffff 0%, #f6fbff 100%);
         }
 
-        .announcements li:hover {
-            transform: translateY(-1px) !important;
-            box-shadow: 0 7px 18px rgba(15,76,151,.08) !important;
+        .announcement-slide {
+            position: absolute;
+            inset: 0;
+            padding: 22px 70px 42px 24px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(22px);
+            transition:
+                opacity .42s ease,
+                transform .42s ease,
+                visibility .42s ease;
         }
 
-        .announcements li strong {
-            color: #17365f !important;
-            font-size: 13px;
+        .announcement-slide.active {
+            position: relative;
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
         }
 
-        .announcements li span {
-            color: #50657d !important;
-            line-height: 1.55;
+        .announcement-slide::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, #1769c2, #0b4c98);
         }
 
-        .announcements li small {
-            color: #8796a8 !important;
+        .announcement-slide-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
         }
 
-        .ann-image {
-            margin-top: 12px;
-        }
-
-        .ann-image img {
-            display: block;
-            max-width: min(100%, 520px);
-            max-height: 260px;
-            border-radius: 10px;
-            object-fit: cover;
-            border: 1px solid #dce7f3;
-        }
-
-        .file-link {
+        .announcement-label {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            margin-top: 10px;
-            padding: 7px 10px;
-            border-radius: 8px;
-            background: #edf5ff;
-            color: var(--salt-blue);
-            font-size: 11px;
-            font-weight: 800;
-            text-decoration: none;
+            color: #1769c2;
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: .08em;
+            text-transform: uppercase;
         }
 
-        .file-link:hover {
-            background: var(--salt-blue);
+        .announcement-new {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 7px;
+            border-radius: 999px;
+            background: #eaf8f0;
+            color: #14804a;
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .announcement-slide h4 {
+            margin: 0 0 8px;
+            color: #17365f;
+            font-size: 19px;
+            line-height: 1.25;
+            font-weight: 900;
+        }
+
+        .announcement-slide-message {
+            margin: 0;
+            color: #50657d;
+            font-size: 12px;
+            line-height: 1.65;
+            max-width: 900px;
+            white-space: pre-line;
+            word-break: break-word;
+        }
+
+        .announcement-date {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 12px;
+            color: #8796a8;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .announcement-content-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(250px, 38%);
+            gap: 22px;
+            align-items: center;
+        }
+
+        .announcement-copy {
+            min-width: 0;
+        }
+
+        .announcement-attachment {
+            min-width: 0;
+            align-self: stretch;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .announcement-image-link {
+            display: block;
+            width: 100%;
+            max-width: 430px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #dce7f3;
+            background: #f4f8fc;
+            box-shadow: 0 8px 24px rgba(15,76,151,.09);
+        }
+
+        .announcement-image-link img {
+            display: block;
+            width: 100%;
+            height: 155px;
+            object-fit: cover;
+            transition: transform .25s ease;
+        }
+
+        .announcement-image-link:hover img {
+            transform: scale(1.025);
+        }
+
+        .announcement-pdf-card {
+            width: 100%;
+            max-width: 360px;
+            min-height: 145px;
+            padding: 20px;
+            border: 1px solid #eadede;
+            border-radius: 14px;
+            background: linear-gradient(145deg, #fffafa, #fff);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(170,50,50,.06);
+        }
+
+        .announcement-pdf-icon {
+            width: 46px;
+            height: 46px;
+            margin-bottom: 9px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            background: #fff0f0;
+            color: #c83b3b;
+            font-size: 22px;
+        }
+
+        .announcement-pdf-title {
+            color: #5d3030;
+            font-size: 11px;
+            font-weight: 900;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .announcement-pdf-subtitle {
+            margin-top: 3px;
+            color: #9b8585;
+            font-size: 9px;
+        }
+
+        .announcement-file-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 7px;
+            margin-top: 10px;
+        }
+
+        .announcement-file-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 11px;
+            border-radius: 9px;
+            border: 1px solid #d6e5f3;
+            background: #eef6ff;
+            color: #1769c2;
+            text-decoration: none;
+            font-size: 10px;
+            font-weight: 850;
+            transition: all .2s ease;
+        }
+
+        .announcement-file-button:hover {
+            background: #1769c2;
             color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .announcement-file-button.pdf {
+            background: #fff4f4;
+            color: #c83b3b;
+            border-color: #f0d7d7;
+        }
+
+        .announcement-file-button.pdf:hover {
+            background: #c83b3b;
+            color: #ffffff;
+        }
+
+        .announcement-file-name {
+            margin-top: 6px;
+            color: #8796a8;
+            font-size: 9px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 760px) {
+            .announcement-content-grid {
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+
+            .announcement-attachment {
+                justify-content: flex-start;
+            }
+
+            .announcement-image-link,
+            .announcement-pdf-card {
+                max-width: 100%;
+            }
+
+            .announcement-image-link img {
+                height: 145px;
+            }
+        }
+
+        .announcement-empty {
+            padding: 30px 24px;
+            color: #8796a8;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .announcement-empty i {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 22px;
+            color: #aab9c9;
+        }
+
+        @media (max-width: 760px) {
+            .announcement-carousel {
+                min-height: 220px;
+            }
+
+            .announcement-slide {
+                padding: 19px 20px 55px;
+            }
+
+            .announcement-slide h4 {
+                font-size: 17px;
+            }
+
+            .announcement-slide-message {
+                font-size: 11px;
+            }
+
+            .announcement-carousel-controls {
+                right: 12px;
+                bottom: 10px;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .announcement-header {
+                padding: 14px 15px 12px;
+            }
+
+            .announcement-carousel {
+                min-height: 245px;
+            }
+
+            .announcement-slide {
+                padding: 17px 16px 55px;
+            }
+
+            .announcement-header-icon {
+                width: 32px;
+                height: 32px;
+                flex-basis: 32px;
+            }
+
+            .announcement-slide h4 {
+                font-size: 16px;
+            }
         }
 
         /* -------------------------
@@ -2028,100 +2329,252 @@
 
             </section>
 
-        <!-- Announcements Section -->
-        <div class="announcements">
+        <!-- =====================================================
+             ANNOUNCEMENTS CAROUSEL
+             One card; multiple announcements auto-slide.
+             ===================================================== -->
+        <section class="announcements" aria-label="Latest announcements">
 
-            <h3>
-                <i class="fas fa-bullhorn"></i>
-                Latest Announcements
-            </h3>
+            <div class="announcement-header">
+                <div class="announcement-header-left">
+                    <div class="announcement-header-icon">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+
+                    <div>
+                        <h3>Latest Announcements</h3>
+                        <p>Important updates from SALT University College</p>
+                    </div>
+                </div>
+
+                {% if latest_announcements %}
+                <span class="announcement-count"
+                      title="{{ latest_announcements|length }} announcement(s)">
+                    {{ latest_announcements|length }}
+                </span>
+                {% endif %}
+            </div>
 
             {% if latest_announcements %}
 
-                <ul>
+                <div
+                    class="announcement-carousel"
+                    id="announcementCarousel"
+                    tabindex="0"
+                    aria-live="polite"
+                >
 
-                {% for ann in latest_announcements %}
+                    {% for ann in latest_announcements %}
 
-                    <li>
+                    <article
+                        class="announcement-slide {% if loop.first %}active{% endif %}"
+                        data-announcement-slide="{{ loop.index0 }}"
+                        aria-hidden="{% if loop.first %}false{% else %}true{% endif %}"
+                    >
 
-                        <strong>{{ ann['title'] }}</strong>
+                        <div class="announcement-content-grid">
 
-                        <span>{{ ann['message'] }}</span>
+                            <div class="announcement-copy">
 
+                                <div class="announcement-slide-top">
+                                    <span class="announcement-label">
+                                        <i class="fas fa-bullhorn"></i>
+                                        Announcement
+                                    </span>
 
-                        {% if ann['file_path'] %}
-
-                            {% set file = ann['file_path'].lower() %}
-
-
-                            <!-- 🖼️ IMAGE PREVIEW -->
-                            {% if file.endswith('.png')
-                            or file.endswith('.jpg')
-                            or file.endswith('.jpeg')
-                            or file.endswith('.gif') %}
-
-                                <div class="ann-image">
-
-                                    <img
-                                        src="{{ url_for(
-                                            'download_announcement_file',
-                                            id=ann['id']
-                                        ) }}"
-                                        alt="attachment"
-                                    >
-
+                                    {% if loop.first %}
+                                    <span class="announcement-new">Latest</span>
+                                    {% endif %}
                                 </div>
 
+                                <h4>{{ ann['title'] }}</h4>
 
-                            <!-- 📄 PDF -->
-                            {% elif file.endswith('.pdf') %}
+                                <p class="announcement-slide-message">
+                                    {{ ann['message'] }}
+                                </p>
 
-                                <a
-                                    href="{{ url_for(
-                                        'download_announcement_file',
-                                        id=ann['id']
-                                    ) }}"
-                                    target="_blank"
-                                    class="file-link"
-                                >
-                                    📄 View PDF
-                                </a>
+                                {% if ann['created_at'] %}
+                                <div class="announcement-date">
+                                    <i class="far fa-clock"></i>
+                                    {{ ann['created_at'] }}
+                                </div>
+                                {% endif %}
 
+                            </div>
 
-                            <!-- 📦 OTHER FILES -->
-                            {% else %}
+                            {% if ann['file_path'] %}
+                            {% set ann_file = ann['file_path'].lower() %}
+                            {% set ann_file_name = ann['file_path'].split('/')[-1] %}
 
-                                <a
-                                    href="{{ url_for(
-                                        'download_announcement_file',
-                                        id=ann['id']
-                                    ) }}"
-                                    class="file-link"
-                                >
-                                    📎 Download File
-                                </a>
+                            <div class="announcement-attachment">
 
-                            {% endif %}
+                                {% if ann_file.endswith('.png')
+                                   or ann_file.endswith('.jpg')
+                                   or ann_file.endswith('.jpeg')
+                                   or ann_file.endswith('.gif')
+                                   or ann_file.endswith('.webp') %}
 
+                                    <a
+                                        class="announcement-image-link"
+                                        href="{{ url_for('download_announcement_file', id=ann['id']) }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        title="Open announcement image"
+                                    >
+                                        <img
+                                            src="{{ url_for('download_announcement_file', id=ann['id']) }}"
+                                            alt="{{ ann['title'] }} attachment"
+                                            loading="lazy"
+                                        >
+                                    </a>
+
+                                {% elif ann_file.endswith('.pdf') %}
+
+                                    <div class="announcement-pdf-card">
+
+                                        <div class="announcement-pdf-icon">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </div>
+
+                                        <div class="announcement-pdf-title"
+                                             title="{{ ann_file_name }}">
+                                            {{ ann_file_name }}
+                                        </div>
+
+                                        <div class="announcement-pdf-subtitle">
+                                            PDF attachment
+                                        </div>
+
+                                        <div class="announcement-file-actions">
+
+                                            <a
+                                                class="announcement-file-button pdf"
+                                                href="{{ url_for('download_announcement_file', id=ann['id']) }}"
+                                                target="_blank"
+                                                rel="noopener"
+                                            >
+                                                <i class="fas fa-eye"></i>
+                                                View PDF
+                                            </a>
+
+                                            <a
+                                                class="announcement-file-button"
+                                                href="{{ url_for('download_announcement_file', id=ann['id']) }}"
+                                                download="{{ ann['file_name'] or ann_file_name }}"
+                                            >
+                                                <i class="fas fa-download"></i>
+                                                Download
+                                            </a>
+
+                                        </div>
+
+                                    </div>
+
+                                {% else %}
+
+                                    <div class="announcement-pdf-card">
+
+                                        <div class="announcement-pdf-icon"
+                                             style="background:#eef6ff;color:#1769c2;">
+                                            <i class="fas fa-paperclip"></i>
+                                        </div>
+
+                                        <div class="announcement-pdf-title"
+                                             title="{{ ann_file_name }}">
+                                            {{ ann_file_name }}
+                                        </div>
+
+                                        <div class="announcement-pdf-subtitle">
+                                            File attachment
+                                        </div>
+
+                                        <div class="announcement-file-actions">
+
+                                            <a
+                                                class="announcement-file-button"
+                                                href="{{ url_for('download_announcement_file', id=ann['id']) }}"
+                                                download="{{ ann['file_name'] or ann_file_name }}"
+                                            >
+                                                <i class="fas fa-download"></i>
+                                                Download
+                                            </a>
+
+                                        </div>
+
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
                         {% endif %}
 
-                        <small>
-                            {{ ann['created_at'] }}
-                        </small>
+                        </div>
 
-                    </li>
+                    </article>
 
-                {% endfor %}
+                    {% endfor %}
 
-                </ul>
+                    {% if latest_announcements|length > 1 %}
+
+                    <div class="announcement-carousel-controls">
+
+                        <button
+                            type="button"
+                            class="announcement-arrow"
+                            id="announcementPrev"
+                            aria-label="Previous announcement"
+                            title="Previous announcement"
+                        >
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+
+                        <div
+                            class="announcement-dots"
+                            id="announcementDots"
+                            aria-label="Announcement navigation"
+                        >
+                            {% for ann in latest_announcements %}
+                            <button
+                                type="button"
+                                class="announcement-dot {% if loop.first %}active{% endif %}"
+                                data-announcement-dot="{{ loop.index0 }}"
+                                aria-label="Show announcement {{ loop.index }}"
+                                aria-current="{% if loop.first %}true{% else %}false{% endif %}"
+                            ></button>
+                            {% endfor %}
+                        </div>
+
+                        <button
+                            type="button"
+                            class="announcement-arrow"
+                            id="announcementNext"
+                            aria-label="Next announcement"
+                            title="Next announcement"
+                        >
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+
+                    </div>
+
+                    <div
+                        class="announcement-progress"
+                        id="announcementProgress"
+                    ></div>
+
+                    {% endif %}
+
+                </div>
 
             {% else %}
 
-                <p>No announcements yet.</p>
+                <div class="announcement-empty">
+                    <i class="fas fa-bullhorn"></i>
+                    <div>No announcements yet.</div>
+                </div>
 
             {% endif %}
 
-        </div>
+        </section>
 
         <!-- ADMIN ONLY: Working Employees -->
         {% if role == 'admin' %}
@@ -3188,6 +3641,231 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 </script>
+<script>
+/* =========================================================
+   SALT ANNOUNCEMENTS CAROUSEL
+   - One card for all announcements
+   - Auto rotates every 6 seconds
+   - Pauses on hover/focus
+   - Previous/next controls
+   - Dots navigation
+   - Keyboard arrows
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const carousel =
+        document.getElementById("announcementCarousel");
+
+    if (!carousel) {
+        return;
+    }
+
+    const slides =
+        Array.from(
+            carousel.querySelectorAll(".announcement-slide")
+        );
+
+    const dots =
+        Array.from(
+            carousel.querySelectorAll(".announcement-dot")
+        );
+
+    const previousButton =
+        document.getElementById("announcementPrev");
+
+    const nextButton =
+        document.getElementById("announcementNext");
+
+    const progress =
+        document.getElementById("announcementProgress");
+
+    if (slides.length <= 1) {
+        return;
+    }
+
+    let current = 0;
+    let timer = null;
+    const interval = 6000;
+
+    function restartProgress() {
+
+        if (!progress) {
+            return;
+        }
+
+        progress.classList.remove("running");
+
+        // Force reflow so the CSS animation can restart.
+        void progress.offsetWidth;
+
+        progress.classList.add("running");
+    }
+
+    function showAnnouncement(index) {
+
+        current =
+            (index + slides.length) % slides.length;
+
+        slides.forEach(function (slide, i) {
+
+            const active = i === current;
+
+            slide.classList.toggle(
+                "active",
+                active
+            );
+
+            slide.setAttribute(
+                "aria-hidden",
+                active ? "false" : "true"
+            );
+        });
+
+        dots.forEach(function (dot, i) {
+
+            const active = i === current;
+
+            dot.classList.toggle(
+                "active",
+                active
+            );
+
+            dot.setAttribute(
+                "aria-current",
+                active ? "true" : "false"
+            );
+        });
+
+        restartProgress();
+    }
+
+    function nextAnnouncement() {
+        showAnnouncement(current + 1);
+    }
+
+    function previousAnnouncement() {
+        showAnnouncement(current - 1);
+    }
+
+    function startAutoSlide() {
+
+        stopAutoSlide();
+
+        timer = setInterval(
+            nextAnnouncement,
+            interval
+        );
+
+        restartProgress();
+    }
+
+    function stopAutoSlide() {
+
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+
+        if (progress) {
+            progress.classList.remove("running");
+        }
+    }
+
+    function restartAutoSlide() {
+        startAutoSlide();
+    }
+
+    if (nextButton) {
+
+        nextButton.addEventListener(
+            "click",
+            function () {
+
+                nextAnnouncement();
+                restartAutoSlide();
+
+            }
+        );
+    }
+
+    if (previousButton) {
+
+        previousButton.addEventListener(
+            "click",
+            function () {
+
+                previousAnnouncement();
+                restartAutoSlide();
+
+            }
+        );
+    }
+
+    dots.forEach(function (dot, index) {
+
+        dot.addEventListener(
+            "click",
+            function () {
+
+                showAnnouncement(index);
+                restartAutoSlide();
+
+            }
+        );
+    });
+
+    carousel.addEventListener(
+        "mouseenter",
+        stopAutoSlide
+    );
+
+    carousel.addEventListener(
+        "mouseleave",
+        startAutoSlide
+    );
+
+    carousel.addEventListener(
+        "focusin",
+        stopAutoSlide
+    );
+
+    carousel.addEventListener(
+        "focusout",
+        function (event) {
+
+            if (!carousel.contains(event.relatedTarget)) {
+                startAutoSlide();
+            }
+        }
+    );
+
+    carousel.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (event.key === "ArrowRight") {
+
+                event.preventDefault();
+                nextAnnouncement();
+                restartAutoSlide();
+
+            } else if (event.key === "ArrowLeft") {
+
+                event.preventDefault();
+                previousAnnouncement();
+                restartAutoSlide();
+
+            }
+        }
+    );
+
+    showAnnouncement(0);
+    startAutoSlide();
+
+});
+</script>
+
 <script>
 /* =========================================================
    SALT INSTITUTIONAL SLIDESHOW
