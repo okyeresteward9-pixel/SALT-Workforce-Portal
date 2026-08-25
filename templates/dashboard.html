@@ -911,6 +911,79 @@
             white-space: nowrap;
         }
 
+        .announcement-carousel-controls {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .announcement-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            border: 1px solid #d6e3ef;
+            border-radius: 50%;
+            background: rgba(255,255,255,.97);
+            color: #1769c2;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 11px;
+            box-shadow: 0 5px 16px rgba(18,63,105,.12);
+            transition: all .2s ease;
+            pointer-events: auto;
+        }
+
+        .announcement-arrow:hover {
+            background: #1769c2;
+            color: #ffffff;
+            border-color: #1769c2;
+            transform: translateY(-50%) scale(1.04);
+        }
+
+        #announcementPrev { left: 12px; }
+        #announcementNext { right: 12px; }
+
+        .announcement-dots {
+            position: absolute;
+            left: 50%;
+            bottom: 11px;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            border: 1px solid #dbe8f4;
+            border-radius: 999px;
+            background: rgba(255,255,255,.96);
+            box-shadow: 0 4px 12px rgba(15,76,151,.07);
+            pointer-events: auto;
+        }
+
+        .announcement-dot {
+            width: 7px;
+            height: 7px;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: #c3d0dc;
+            cursor: pointer;
+            transition: all .25s ease;
+        }
+
+        .announcement-dot:hover {
+            background: #7fa7ca;
+        }
+
+        .announcement-dot.active {
+            width: 19px;
+            border-radius: 999px;
+            background: #1769c2;
+        }
+
         @media (max-width: 760px) {
             .announcement-content-grid {
                 grid-template-columns: 1fr;
@@ -962,11 +1035,7 @@
                 font-size: 11px;
             }
 
-            .announcement-carousel-controls {
-                right: 12px;
-                bottom: 10px;
-            }
-        }
+}
 
         @media (max-width: 520px) {
             .announcement-header {
@@ -2414,19 +2483,43 @@
                                    or ann_file.endswith('.gif')
                                    or ann_file.endswith('.webp') %}
 
-                                    <a
-                                        class="announcement-image-link"
-                                        href="{{ url_for('download_announcement_file', id=ann['id']) }}"
-                                        target="_blank"
-                                        rel="noopener"
-                                        title="Open announcement image"
-                                    >
-                                        <img
-                                            src="{{ url_for('download_announcement_file', id=ann['id']) }}"
-                                            alt="{{ ann['title'] }} attachment"
-                                            loading="lazy"
+                                    <div style="width:100%;max-width:430px;">
+                                        <a
+                                            class="announcement-image-link"
+                                            href="{{ url_for('download_announcement_file', id=ann['id']) }}"
+                                            target="_blank"
+                                            rel="noopener"
+                                            title="View announcement image"
                                         >
-                                    </a>
+                                            <img
+                                                src="{{ url_for('download_announcement_file', id=ann['id']) }}"
+                                                alt="{{ ann['title'] }} attachment"
+                                                loading="lazy"
+                                            >
+                                        </a>
+
+                                        <div class="announcement-file-actions">
+
+                                            <a
+                                                class="announcement-file-button"
+                                                href="{{ url_for('download_announcement_file', id=ann['id']) }}"
+                                                target="_blank"
+                                                rel="noopener"
+                                            >
+                                                <i class="fas fa-eye"></i>
+                                                View
+                                            </a>
+
+                                            <a
+                                                class="announcement-file-button"
+                                                href="{{ url_for('download_announcement_file', id=ann['id']) }}?download=1"
+                                            >
+                                                <i class="fas fa-download"></i>
+                                                Download
+                                            </a>
+
+                                        </div>
+                                    </div>
 
                                 {% elif ann_file.endswith('.pdf') %}
 

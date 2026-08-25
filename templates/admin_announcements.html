@@ -1566,9 +1566,9 @@ tbody tr:hover {
 
 
                 <form
+                    id="announcementCreateForm"
                     method="POST"
                     action="/admin/announcements"
-                    enctype="multipart/form-data"
                 >
 
 
@@ -1650,21 +1650,8 @@ tbody tr:hover {
                                     name="file"
                                     id="announcement-file"
                                     class="form-control"
-                                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
                                 >
-
-                                <small
-                                    style="
-                                        color:#64748b;
-                                        display:block;
-                                        margin-top:7px;
-                                        line-height:1.5;
-                                    "
-                                >
-                                    <i class="fas fa-circle-info"></i>
-                                    Maximum file size: <strong>10 MB</strong>.
-                                    Images and PDFs are recommended.
-                                </small>
 
                             </div>
 
@@ -1677,13 +1664,31 @@ tbody tr:hover {
                     <button
                         type="submit"
                         class="btn btn-primary"
+                        id="publishAnnouncementBtn"
                     >
 
-                        <i class="fas fa-paper-plane"></i>
+                        <i class="fas fa-paper-plane" id="publishAnnouncementIcon"></i>
 
-                        Publish Announcement
+                        <span id="publishAnnouncementText">
+                            Publish Announcement
+                        </span>
 
                     </button>
+
+                    <div
+                        id="publishAnnouncementStatus"
+                        style="
+                            display:none;
+                            margin-top:10px;
+                            color:#64748b;
+                            font-size:11px;
+                            align-items:center;
+                            gap:8px;
+                        "
+                    >
+                        <i class="fas fa-circle-notch fa-spin"></i>
+                        <span>Publishing announcement… please wait.</span>
+                    </div>
 
 
                 </form>
@@ -2277,14 +2282,11 @@ tbody tr:hover {
 
                     <small
                         style="
-                            color:#64748b;
+                            color:#94a3b8;
                             display:block;
                             margin-top:6px;
-                            line-height:1.5;
                         "
                     >
-                        <i class="fas fa-circle-info"></i>
-                        Maximum file size: <strong>10 MB</strong>.
                         Leave empty to keep the current attachment.
                     </small>
 
@@ -2518,85 +2520,429 @@ tbody tr:hover {
     
     
         /* =====================================================
-           10 MB ANNOUNCEMENT ATTACHMENT LIMIT
+           DIRECT CLOUDINARY ANNOUNCEMENT UPLOAD
+           Browser -> Cloudinary -> Flask metadata only
+
+           This prevents large announcement files from passing
+           through Render/Flask and gives the admin live progress.
            ===================================================== */
 
-        const MAX_ANNOUNCEMENT_FILE_SIZE =
+        const ANNOUNCEMENT_MAX_FILE_SIZE =
             10 * 1024 * 1024;
 
-        function validateAnnouncementFile(input, label) {
+        const ANNOUNCEMENT_ALLOWED_EXTENSIONS = [
+            "pdf",
+            "doc",
+            "docx",
+            "xls",
+            "xlsx",
+            "ppt",
+            "pptx",
+            "txt",
+            "csv",
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "webp"
+        ];
+
+
+        function getAnnouncementExtension(
+            filename
+        ) {
+
+            const parts =
+                String(filename || "")
+                    .toLowerCase()
+                    .split(".");
+
+            return parts.length > 1
+                ? parts.pop()
+                : "";
+
+        }
+
+
+        function validateAnnouncementFile(
+            file
+        ) {
+
+            if (!file) {
+                return {
+                    valid: true
+                };
+            }
 
             if (
-                !input ||
-                !input.files ||
-                !input.files.length
+                file.size >
+                ANNOUNCEMENT_MAX_FILE_SIZE
             ) {
-                return true;
+
+                return {
+                    valid: false,
+                    message:
+                        `Attachment is too large (${(file.size / (1024 * 1024)).toFixed(2)} MB). Maximum allowed size is 10 MB.`
+                };
+
             }
 
-            const file = input.files[0];
-
-            if (file.size > MAX_ANNOUNCEMENT_FILE_SIZE) {
-
-                const sizeMB =
-                    (file.size / (1024 * 1024)).toFixed(2);
-
-                showToast(
-                    `${label || "Attachment"} is too large (${sizeMB} MB). Maximum allowed size is 10 MB.`,
-                    false
+            const extension =
+                getAnnouncementExtension(
+                    file.name
                 );
 
-                input.value = "";
+            if (
+                !ANNOUNCEMENT_ALLOWED_EXTENSIONS
+                    .includes(extension)
+            ) {
 
-                return false;
+                return {
+                    valid: false,
+                    message:
+                        "This attachment type is not allowed."
+                };
+
             }
 
-            return true;
+            return {
+                valid: true
+            };
+
         }
 
 
-        const createFileInput =
-            document.getElementById(
-                "announcement-file"
-            );
+        function setPublishState(
+            state,
+            message
+        ) {
 
-        if (createFileInput) {
+            const button =
+                document.getElementById(
+                    "publishAnnouncementBtn"
+                );
 
-            createFileInput.addEventListener(
-                "change",
-                function () {
+            const icon =
+                document.getElementById(
+                    "publishAnnouncementIcon"
+                );
 
-                    validateAnnouncementFile(
-                        this,
-                        "Attachment"
-                    );
+            const text =
+                document.getElementById(
+                    "publishAnnouncementText"
+                );
+
+            const status =
+                document.getElementById(
+                    "publishAnnouncementStatus"
+                );
+
+
+            if (state === "busy") {
+
+                if (button) {
+
+                    button.disabled = true;
+                    button.style.opacity = "0.75";
+                    button.style.cursor =
+                        "not-allowed";
 
                 }
-            );
+
+                if (icon) {
+
+                    icon.className =
+                        "fas fa-circle-notch fa-spin";
+
+                }
+
+                if (text) {
+
+                    text.textContent =
+                        "Publishing...";
+
+                }
+
+                if (status) {
+
+                    status.style.display =
+                        "flex";
+
+                }
+
+                if (message && status) {
+
+                    status.querySelector(
+                        "span"
+                    ).textContent =
+                        message;
+
+                }
+
+            } else {
+
+                if (button) {
+
+                    button.disabled = false;
+                    button.style.opacity = "";
+                    button.style.cursor = "";
+
+                }
+
+                if (icon) {
+
+                    icon.className =
+                        "fas fa-paper-plane";
+
+                }
+
+                if (text) {
+
+                    text.textContent =
+                        "Publish Announcement";
+
+                }
+
+                if (status) {
+
+                    status.style.display =
+                        "none";
+
+                }
+
+            }
 
         }
 
 
-        const createForm =
-            document.querySelector(
-                'form[action="/admin/announcements"]'
-            );
+        function uploadAnnouncementToCloudinary(
+            file,
+            audience,
+            onProgress
+        ) {
 
-        if (createForm) {
+            return new Promise(
+                async function (
+                    resolve,
+                    reject
+                ) {
 
-            createForm.addEventListener(
-                "submit",
-                function (event) {
+                    try {
 
-                    if (
-                        createFileInput &&
-                        !validateAnnouncementFile(
-                            createFileInput,
-                            "Attachment"
-                        )
-                    ) {
+                        const signatureResponse =
+                            await fetch(
+                                "/admin/announcements/upload-signature",
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json"
+                                    },
+                                    body: JSON.stringify({
+                                        audience:
+                                            audience
+                                    })
+                                }
+                            );
 
-                        event.preventDefault();
+                        const signatureData =
+                            await signatureResponse.json();
+
+                        if (
+                            !signatureResponse.ok ||
+                            signatureData.status !==
+                                "success"
+                        ) {
+
+                            reject(
+                                new Error(
+                                    signatureData.message ||
+                                    "Unable to prepare secure upload."
+                                )
+                            );
+
+                            return;
+
+                        }
+
+
+                        const cloudinaryUrl =
+                            `https://api.cloudinary.com/v1_1/${encodeURIComponent(signatureData.cloud_name)}/auto/upload`;
+
+
+                        const formData =
+                            new FormData();
+
+                        formData.append(
+                            "file",
+                            file
+                        );
+
+                        formData.append(
+                            "api_key",
+                            signatureData.api_key
+                        );
+
+                        formData.append(
+                            "timestamp",
+                            signatureData.timestamp
+                        );
+
+                        formData.append(
+                            "signature",
+                            signatureData.signature
+                        );
+
+                        formData.append(
+                            "folder",
+                            signatureData.folder
+                        );
+
+                        formData.append(
+                            "upload_preset",
+                            signatureData.upload_preset
+                        );
+
+
+                        const xhr =
+                            new XMLHttpRequest();
+
+                        xhr.open(
+                            "POST",
+                            cloudinaryUrl,
+                            true
+                        );
+
+
+                        xhr.upload.addEventListener(
+                            "progress",
+                            function (event) {
+
+                                if (
+                                    event.lengthComputable &&
+                                    typeof onProgress ===
+                                        "function"
+                                ) {
+
+                                    const percent =
+                                        Math.round(
+                                            (
+                                                event.loaded /
+                                                event.total
+                                            ) * 100
+                                        );
+
+                                    onProgress(
+                                        percent
+                                    );
+
+                                }
+
+                            }
+                        );
+
+
+                        xhr.onload =
+                            function () {
+
+                                let data = null;
+
+                                try {
+
+                                    data =
+                                        JSON.parse(
+                                            xhr.responseText
+                                        );
+
+                                } catch (error) {
+
+                                    reject(
+                                        new Error(
+                                            "Cloudinary returned an invalid response."
+                                        )
+                                    );
+
+                                    return;
+
+                                }
+
+
+                                if (
+                                    xhr.status >= 200 &&
+                                    xhr.status < 300 &&
+                                    data.secure_url &&
+                                    data.public_id
+                                ) {
+
+                                    resolve({
+                                        name:
+                                            file.name,
+                                        secure_url:
+                                            data.secure_url,
+                                        public_id:
+                                            data.public_id,
+                                        resource_type:
+                                            data.resource_type ||
+                                            "image",
+                                        asset_id:
+                                            data.asset_id ||
+                                            null,
+                                        bytes:
+                                            data.bytes ||
+                                            file.size,
+                                        format:
+                                            data.format ||
+                                            getAnnouncementExtension(
+                                                file.name
+                                            )
+                                    });
+
+                                    return;
+
+                                }
+
+
+                                reject(
+                                    new Error(
+                                        data.error?.message ||
+                                        "Cloudinary upload failed."
+                                    )
+                                );
+
+                            };
+
+
+                        xhr.onerror =
+                            function () {
+
+                                reject(
+                                    new Error(
+                                        "Network error while uploading the attachment."
+                                    )
+                                );
+
+                            };
+
+
+                        xhr.onabort =
+                            function () {
+
+                                reject(
+                                    new Error(
+                                        "Attachment upload was cancelled."
+                                    )
+                                );
+
+                            };
+
+
+                        xhr.send(
+                            formData
+                        );
+
+                    } catch (error) {
+
+                        reject(error);
 
                     }
 
@@ -2606,27 +2952,283 @@ tbody tr:hover {
         }
 
 
-        const editFileInput =
+        async function saveAnnouncement(
+            payload
+        ) {
+
+            const response =
+                await fetch(
+                    "/admin/announcements",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+                        body:
+                            JSON.stringify(
+                                payload
+                            )
+                    }
+                );
+
+            let data;
+
+            try {
+
+                data =
+                    await response.json();
+
+            } catch (error) {
+
+                throw new Error(
+                    "Server returned an invalid response."
+                );
+
+            }
+
+            if (
+                !response.ok ||
+                data.status !== "success"
+            ) {
+
+                throw new Error(
+                    data.message ||
+                    "Unable to publish announcement."
+                );
+
+            }
+
+            return data;
+
+        }
+
+
+        const announcementCreateForm =
             document.getElementById(
-                "edit-file"
+                "announcementCreateForm"
             );
 
-        if (editFileInput) {
 
-            editFileInput.addEventListener(
+        const announcementFileInput =
+            document.getElementById(
+                "announcement-file"
+            );
+
+
+        if (announcementFileInput) {
+
+            announcementFileInput.addEventListener(
                 "change",
                 function () {
 
-                    validateAnnouncementFile(
-                        this,
-                        "Replacement attachment"
-                    );
+                    const file =
+                        this.files &&
+                        this.files.length
+                            ? this.files[0]
+                            : null;
+
+                    const result =
+                        validateAnnouncementFile(
+                            file
+                        );
+
+                    if (!result.valid) {
+
+                        showToast(
+                            result.message,
+                            false
+                        );
+
+                        this.value = "";
+
+                    }
 
                 }
             );
 
         }
 
+
+        if (announcementCreateForm) {
+
+            announcementCreateForm.addEventListener(
+                "submit",
+                async function (event) {
+
+                    event.preventDefault();
+
+
+                    const title =
+                        document.querySelector(
+                            '#announcementCreateForm [name="title"]'
+                        )?.value.trim();
+
+
+                    const message =
+                        document.querySelector(
+                            '#announcementCreateForm [name="message"]'
+                        )?.value.trim();
+
+
+                    const audience =
+                        document.querySelector(
+                            '#announcementCreateForm [name="audience"]'
+                        )?.value ||
+                        "everyone";
+
+
+                    const file =
+                        announcementFileInput &&
+                        announcementFileInput.files &&
+                        announcementFileInput.files.length
+                            ? announcementFileInput.files[0]
+                            : null;
+
+
+                    if (!title) {
+
+                        showToast(
+                            "Please enter an announcement title.",
+                            false
+                        );
+
+                        return;
+
+                    }
+
+
+                    if (!message) {
+
+                        showToast(
+                            "Please enter an announcement message.",
+                            false
+                        );
+
+                        return;
+
+                    }
+
+
+                    const validation =
+                        validateAnnouncementFile(
+                            file
+                        );
+
+
+                    if (!validation.valid) {
+
+                        showToast(
+                            validation.message,
+                            false
+                        );
+
+                        return;
+
+                    }
+
+
+                    setPublishState(
+                        "busy",
+                        file
+                            ? "Uploading attachment… 0%"
+                            : "Publishing announcement…"
+                    );
+
+
+                    try {
+
+                        let uploadedAsset =
+                            null;
+
+
+                        if (file) {
+
+                            uploadedAsset =
+                                await uploadAnnouncementToCloudinary(
+                                    file,
+                                    audience,
+                                    function (
+                                        percent
+                                    ) {
+
+                                        setPublishState(
+                                            "busy",
+                                            `Uploading attachment… ${percent}%`
+                                        );
+
+                                    }
+                                );
+
+                        }
+
+
+                        setPublishState(
+                            "busy",
+                            "Saving announcement…"
+                        );
+
+
+                        const data =
+                            await saveAnnouncement({
+                                title:
+                                    title,
+                                message:
+                                    message,
+                                audience:
+                                    audience,
+                                file:
+                                    uploadedAsset
+                            });
+
+
+                        showToast(
+                            data.message ||
+                            "Announcement published successfully."
+                        );
+
+
+                        setPublishState(
+                            "busy",
+                            "Published successfully. Refreshing…"
+                        );
+
+
+                        setTimeout(
+                            function () {
+
+                                window.location.reload();
+
+                            },
+                            450
+                        );
+
+
+                    } catch (error) {
+
+                        console.error(
+                            "ANNOUNCEMENT PUBLISH ERROR:",
+                            error
+                        );
+
+
+                        setPublishState(
+                            "idle"
+                        );
+
+
+                        showToast(
+                            error.message ||
+                            "Unable to publish announcement.",
+                            false
+                        );
+
+                    }
+
+                }
+            );
+
+        }
 
         /* =====================================================
            EDIT
@@ -2878,241 +3480,273 @@ tbody tr:hover {
     
         /* =====================================================
            EDIT FORM SUBMIT
+           Direct browser -> Cloudinary replacement upload
            ===================================================== */
-    
+
         const editForm =
             document.getElementById(
                 "editForm"
             );
-    
-    
+
+
         if (editForm) {
-    
+
             editForm.addEventListener(
                 "submit",
                 async function (event) {
-    
+
                     event.preventDefault();
-    
-    
-                    console.log(
-                        "EDIT FORM SUBMITTED:",
-                        editingAnnouncementId
-                    );
-    
-    
+
+
                     if (!editingAnnouncementId) {
-    
+
                         showToast(
                             "Invalid announcement.",
                             false
                         );
-    
+
                         return;
+
                     }
-    
-    
+
+
                     const title =
                         document.getElementById(
                             "edit-title"
                         )?.value.trim();
-    
-    
+
+
                     const message =
                         document.getElementById(
                             "edit-message"
                         )?.value.trim();
-    
-    
+
+
                     const audience =
                         document.getElementById(
                             "edit-audience"
                         )?.value ||
                         "everyone";
-    
-    
-                    if (!title) {
-    
-                        showToast(
-                            "Please enter a title.",
-                            false
-                        );
-    
-                        return;
-                    }
-    
-    
-                    if (!message) {
-    
-                        showToast(
-                            "Please enter a message.",
-                            false
-                        );
-    
-                        return;
-                    }
-    
-    
-                    const formData =
-                        new FormData();
-    
-    
-                    formData.append(
-                        "title",
-                        title
-                    );
-    
-    
-                    formData.append(
-                        "message",
-                        message
-                    );
-    
-    
-                    formData.append(
-                        "audience",
-                        audience
-                    );
-    
-    
-                    formData.append(
-                        "remove_file",
-                        removeExistingFile
-                            ? "1"
-                            : "0"
-                    );
-    
-    
+
+
                     const fileInput =
                         document.getElementById(
                             "edit-file"
                         );
-    
-    
-                    if (
+
+
+                    const file =
                         fileInput &&
                         fileInput.files &&
                         fileInput.files.length
-                    ) {
-    
-                        formData.append(
-                            "file",
-                            fileInput.files[0]
+                            ? fileInput.files[0]
+                            : null;
+
+
+                    if (!title) {
+
+                        showToast(
+                            "Please enter a title.",
+                            false
                         );
-    
+
+                        return;
+
                     }
-    
-    
+
+
+                    if (!message) {
+
+                        showToast(
+                            "Please enter a message.",
+                            false
+                        );
+
+                        return;
+
+                    }
+
+
+                    const validation =
+                        validateAnnouncementFile(
+                            file
+                        );
+
+
+                    if (!validation.valid) {
+
+                        showToast(
+                            validation.message,
+                            false
+                        );
+
+                        return;
+
+                    }
+
+
                     try {
-    
+
+                        let uploadedAsset =
+                            null;
+
+
+                        if (file) {
+
+                            showToast(
+                                "Uploading replacement attachment…"
+                            );
+
+
+                            uploadedAsset =
+                                await uploadAnnouncementToCloudinary(
+                                    file,
+                                    audience,
+                                    function (
+                                        percent
+                                    ) {
+
+                                        const status =
+                                            document.querySelector(
+                                                "#editModal .modal-footer"
+                                            );
+
+                                        if (status) {
+
+                                            const submit =
+                                                status.querySelector(
+                                                    'button[type="submit"]'
+                                                );
+
+                                            if (submit) {
+
+                                                submit.innerHTML =
+                                                    `<i class="fas fa-circle-notch fa-spin"></i> Uploading ${percent}%`;
+
+                                                submit.disabled =
+                                                    true;
+
+                                            }
+
+                                        }
+
+                                    }
+                                );
+
+                        }
+
+
                         const response =
                             await fetch(
                                 `/admin/update_announcement/${editingAnnouncementId}`,
                                 {
                                     method: "POST",
-                                    body: formData
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json"
+                                    },
+                                    body:
+                                        JSON.stringify({
+                                            title:
+                                                title,
+                                            message:
+                                                message,
+                                            audience:
+                                                audience,
+                                            remove_file:
+                                                removeExistingFile,
+                                            file:
+                                                uploadedAsset
+                                        })
                                 }
                             );
-    
-    
-                        const responseText =
-                            await response.text();
-    
-    
-                        console.log(
-                            "EDIT RESPONSE:",
-                            response.status,
-                            responseText
-                        );
-    
-    
+
+
                         let data;
-    
-    
+
                         try {
-    
+
                             data =
-                                JSON.parse(
-                                    responseText
-                                );
-    
+                                await response.json();
+
                         } catch (error) {
-    
-                            console.error(
-                                "EDIT SERVER RESPONSE:",
-                                responseText
+
+                            throw new Error(
+                                "Server returned an invalid response."
                             );
-    
-                            showToast(
-                                "Server returned an invalid response. Check Flask.",
-                                false
-                            );
-    
-                            return;
+
                         }
-    
-    
+
+
                         if (
                             !response.ok ||
                             data.status !== "success"
                         ) {
-    
-                            showToast(
+
+                            throw new Error(
                                 data.message ||
-                                "Unable to update announcement.",
-                                false
+                                "Unable to update announcement."
                             );
-    
-                            return;
+
                         }
-    
-    
+
+
                         window.closeEditModal();
-    
-    
+
+
                         showToast(
                             data.message ||
                             "Announcement updated successfully."
                         );
-    
-    
+
+
                         setTimeout(
                             function () {
-    
+
                                 window.location.reload();
-    
+
                             },
-                            700
+                            500
                         );
-    
-    
+
+
                     } catch (error) {
-    
+
                         console.error(
                             "EDIT ERROR:",
                             error
                         );
-    
-    
+
+
                         showToast(
-                            "Unable to connect to the server.",
+                            error.message ||
+                            "Unable to update announcement.",
                             false
                         );
-    
+
+
+                        const submit =
+                            document.querySelector(
+                                '#editForm button[type="submit"]'
+                            );
+
+                        if (submit) {
+
+                            submit.disabled =
+                                false;
+
+                            submit.innerHTML =
+                                "Save Changes";
+
+                        }
+
                     }
-    
+
                 }
             );
-    
-        } else {
-    
-            console.error(
-                "editForm was not found."
-            );
-    
+
         }
-    
-    
+
         /* =====================================================
            DELETE
            ===================================================== */

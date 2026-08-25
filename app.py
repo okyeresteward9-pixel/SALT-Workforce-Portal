@@ -23,6 +23,7 @@ from routes.chat import (
 )
 from request_workflow import register_request_workflow
 from cloudinary import uploader
+from cloudinary import api as cloudinary_api
 import cloudinary
 import cloudinary_config
 import json
@@ -30,9 +31,6 @@ from push_notifications import get_vapid_public_key
 
 app = Flask(__name__)
 
-# Maximum size for any incoming multipart request.
-# Announcement attachments are additionally checked at 10 MB below.
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
 app.register_blueprint(chat_bp)
 
@@ -246,6 +244,22 @@ def init_db():
     c.execute("""
         ALTER TABLE announcements
         ADD COLUMN IF NOT EXISTS file_name TEXT
+    """)
+
+    # Cloudinary asset identifiers for direct browser uploads.
+    c.execute("""
+        ALTER TABLE announcements
+        ADD COLUMN IF NOT EXISTS cloudinary_public_id TEXT
+    """)
+
+    c.execute("""
+        ALTER TABLE announcements
+        ADD COLUMN IF NOT EXISTS cloudinary_resource_type TEXT
+    """)
+
+    c.execute("""
+        ALTER TABLE announcements
+        ADD COLUMN IF NOT EXISTS cloudinary_asset_id TEXT
     """)
 
     # Add announcement audience
@@ -4073,7 +4087,235 @@ def delete_employee(id):
 
         conn.close()
 
-@app.route('/admin/announcements', methods=['GET', 'POST'])
+
+# =====================================================
+# ANNOUNCEMENT DIRECT CLOUDINARY UPLOAD
+# =====================================================
+
+ANNOUNCEMENT_MAX_FILE_SIZE = 10 * 1024 * 1024
+
+ANNOUNCEMENT_ALLOWED_EXTENSIONS = {
+    'pdf', 'doc', 'docx', 'xls', 'xlsx',
+    'ppt', 'pptx', 'txt', 'csv',
+    'jpg', 'jpeg', 'png', 'gif', 'webp'
+}
+
+
+def _announcement_admin_required():
+    return (
+        'user_id' in session
+        and session.get('role') == 'admin'
+    )
+
+
+def _cloudinary_config_values():
+    config = cloudinary.config()
+
+    return (
+        config.cloud_name,
+        config.api_key,
+        config.api_secret
+    )
+
+
+def _delete_cloudinary_asset(public_id, resource_type):
+    """
+    Best-effort deletion of an announcement asset.
+
+    New direct-upload announcements store the public_id and resource_type,
+    so cleanup does not need to guess from a delivery URL.
+    """
+    if not public_id:
+        return
+
+    try:
+        uploader.destroy(
+            public_id,
+            resource_type=resource_type or 'image',
+            type='upload',
+            invalidate=True
+        )
+    except Exception as exc:
+        print(
+            "CLOUDINARY ANNOUNCEMENT CLEANUP ERROR:",
+            repr(exc)
+        )
+
+
+def _verify_cloudinary_asset(
+    public_id,
+    resource_type,
+    secure_url,
+    original_name
+):
+    """
+    Verify the uploaded Cloudinary asset server-side.
+
+    The browser never sends the file through Flask, so the finalization
+    endpoint verifies the actual Cloudinary asset metadata before the
+    announcement is saved.
+    """
+
+    if not public_id or not secure_url:
+        raise ValueError(
+            "Cloudinary did not return a valid uploaded asset."
+        )
+
+    cloud_name, _, _ = _cloudinary_config_values()
+
+    expected_prefix = (
+        f"https://res.cloudinary.com/{cloud_name}/"
+    )
+
+    if not secure_url.startswith(expected_prefix):
+        raise ValueError(
+            "Invalid Cloudinary asset URL."
+        )
+
+    extension = (
+        secure_filename(original_name or "")
+        .rsplit('.', 1)[1].lower()
+        if '.' in secure_filename(original_name or "")
+        else ''
+    )
+
+    if extension not in ANNOUNCEMENT_ALLOWED_EXTENSIONS:
+        raise ValueError(
+            "Invalid attachment type."
+        )
+
+    asset = cloudinary_api.resource(
+        public_id,
+        resource_type=resource_type or 'image',
+        type='upload'
+    )
+
+    actual_bytes = int(
+        asset.get('bytes') or 0
+    )
+
+    if actual_bytes > ANNOUNCEMENT_MAX_FILE_SIZE:
+
+        _delete_cloudinary_asset(
+            public_id,
+            resource_type
+        )
+
+        raise ValueError(
+            "Attachment is too large. Maximum allowed size is 10 MB."
+        )
+
+    actual_format = (
+        str(asset.get('format') or '').lower()
+    )
+
+    # Cloudinary may represent some document formats differently,
+    # so the original extension remains the primary allow-list check.
+    if not actual_format:
+        raise ValueError(
+            "Cloudinary could not verify the attachment format."
+        )
+
+    return {
+        "bytes": actual_bytes,
+        "format": actual_format,
+        "public_id": public_id,
+        "resource_type": resource_type or 'image',
+        "secure_url": secure_url,
+        "asset_id": asset.get('asset_id')
+    }
+
+
+@app.route(
+    '/admin/announcements/upload-signature',
+    methods=['POST']
+)
+def announcement_upload_signature():
+
+    if not _announcement_admin_required():
+        return jsonify({
+            "status": "error",
+            "message": "Access denied."
+        }), 403
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    audience = str(
+        data.get('audience') or 'everyone'
+    ).strip().lower()
+
+    if audience not in (
+        'everyone',
+        'staff',
+        'admin'
+    ):
+        audience = 'everyone'
+
+    cloud_name, api_key, api_secret = (
+        _cloudinary_config_values()
+    )
+
+    if not cloud_name or not api_key or not api_secret:
+        return jsonify({
+            "status": "error",
+            "message": "Cloudinary is not configured on the server."
+        }), 500
+
+    # Use a SIGNED upload preset so Cloudinary itself can enforce
+    # the 10 MB limit and allowed formats.
+    upload_preset = os.environ.get(
+        "CLOUDINARY_ANNOUNCEMENT_UPLOAD_PRESET"
+    )
+
+    if not upload_preset:
+        return jsonify({
+            "status": "error",
+            "message": (
+                "CLOUDINARY_ANNOUNCEMENT_UPLOAD_PRESET "
+                "is not configured."
+            )
+        }), 500
+
+    timestamp = int(
+        time.time()
+    )
+
+    folder = (
+        f"salt_portal/announcements/{audience}"
+    )
+
+    # Cloudinary requires the same signed fields to be sent unchanged
+    # with the browser upload.
+    params_to_sign = {
+        "folder": folder,
+        "timestamp": timestamp,
+        "upload_preset": upload_preset
+    }
+
+    signature = cloudinary.utils.api_sign_request(
+        params_to_sign,
+        api_secret
+    )
+
+    return jsonify({
+        "status": "success",
+        "cloud_name": cloud_name,
+        "api_key": api_key,
+        "timestamp": timestamp,
+        "signature": signature,
+        "folder": folder,
+        "upload_preset": upload_preset,
+        "resource_type": "auto",
+        "max_file_size": ANNOUNCEMENT_MAX_FILE_SIZE
+    })
+
+
+@app.route(
+    '/admin/announcements',
+    methods=['GET', 'POST']
+)
 def admin_announcements():
 
     # -------------------------
@@ -4093,168 +4335,207 @@ def admin_announcements():
     # =====================================================
     if request.method == 'POST':
 
-        title = request.form.get('title', '').strip()
-        message = request.form.get('message', '').strip()
-        audience = request.form.get('audience', 'everyone').strip().lower()
+        # The new browser flow sends JSON only.
+        # No multipart file is ever sent to Flask.
+        payload = request.get_json(
+            silent=True
+        )
 
-        # -------------------------
-        # VALIDATE INPUT
-        # -------------------------
-        if not title:
-            flash("Please enter an announcement title.", "error")
+        if payload is None:
             conn.close()
-            return redirect('/admin/announcements')
+
+            return jsonify({
+                "status": "error",
+                "message": (
+                    "Please use the current announcement form. "
+                    "File uploads now go directly to Cloudinary."
+                )
+            }), 400
+
+        title = str(
+            payload.get('title') or ''
+        ).strip()
+
+        message = str(
+            payload.get('message') or ''
+        ).strip()
+
+        audience = str(
+            payload.get('audience') or 'everyone'
+        ).strip().lower()
+
+        if not title:
+            conn.close()
+
+            return jsonify({
+                "status": "error",
+                "message": "Please enter an announcement title."
+            }), 400
 
         if not message:
-            flash("Please enter an announcement message.", "error")
             conn.close()
-            return redirect('/admin/announcements')
 
-        # Only allow valid audience values
-        if audience not in ('everyone', 'staff', 'admin'):
+            return jsonify({
+                "status": "error",
+                "message": "Please enter an announcement message."
+            }), 400
+
+        if audience not in (
+            'everyone',
+            'staff',
+            'admin'
+        ):
             audience = 'everyone'
 
-        # -------------------------
-        # FILE UPLOAD — CLOUDINARY
-        # -------------------------
-        uploaded_file = request.files.get('file')
+        uploaded_asset = (
+            payload.get('file')
+            if isinstance(payload.get('file'), dict)
+            else None
+        )
 
         file_name = None
         file_path = None
+        public_id = None
+        resource_type = None
+        asset_id = None
 
-        if uploaded_file and uploaded_file.filename:
+        # -------------------------
+        # VERIFY CLOUDINARY ASSET
+        # -------------------------
+        if uploaded_asset:
 
-            original_filename = secure_filename(
-                uploaded_file.filename
+            file_name = secure_filename(
+                str(
+                    uploaded_asset.get('name') or ''
+                )
             )
 
-            if not original_filename:
-                flash("Invalid file name.", "error")
-                conn.close()
-                return redirect('/admin/announcements')
-
-            # Hard 10 MB server-side limit.
-            uploaded_file.stream.seek(0, os.SEEK_END)
-            file_size = uploaded_file.stream.tell()
-            uploaded_file.stream.seek(0)
-
-            if file_size > 10 * 1024 * 1024:
-                flash(
-                    "Attachment is too large. Maximum allowed size is 10 MB.",
-                    "error"
-                )
-                conn.close()
-                return redirect('/admin/announcements')
-
-            extension = (
-                original_filename.rsplit('.', 1)[1].lower()
-                if '.' in original_filename else ''
+            file_path = str(
+                uploaded_asset.get('secure_url') or ''
             )
 
-            allowed_extensions = {
-                'pdf', 'doc', 'docx', 'xls', 'xlsx',
-                'ppt', 'pptx', 'txt', 'csv',
-                'jpg', 'jpeg', 'png', 'gif', 'webp'
-            }
+            public_id = str(
+                uploaded_asset.get('public_id') or ''
+            )
 
-            if extension not in allowed_extensions:
-                flash(
-                    "Invalid attachment type. Allowed files include PDF, "
-                    "Word, Excel, PowerPoint, images, TXT and CSV.",
-                    "error"
-                )
-                conn.close()
-                return redirect('/admin/announcements')
+            resource_type = str(
+                uploaded_asset.get('resource_type')
+                or 'image'
+            )
 
             try:
-                # Upload directly to Cloudinary.
-                # resource_type=auto supports images, PDFs and office files.
-                cloudinary_result = uploader.upload(
-                    uploaded_file,
-                    folder=f"salt_portal/announcements/{audience}",
-                    resource_type="auto",
-                    use_filename=True,
-                    unique_filename=True,
-                    overwrite=False
+
+                verified = _verify_cloudinary_asset(
+                    public_id,
+                    resource_type,
+                    file_path,
+                    file_name
                 )
 
-                file_name = original_filename
-                file_path = cloudinary_result.get("secure_url")
-
-                if not file_path:
-                    raise RuntimeError(
-                        "Cloudinary did not return a secure URL."
-                    )
-
-            except Exception as e:
-                print(
-                    "CLOUDINARY ANNOUNCEMENT UPLOAD ERROR:",
-                    repr(e)
+                asset_id = verified.get(
+                    "asset_id"
                 )
-                flash(
-                    "Unable to upload the announcement attachment. "
-                    "Please try again.",
-                    "error"
+
+            except Exception as exc:
+
+                _delete_cloudinary_asset(
+                    public_id,
+                    resource_type
                 )
+
                 conn.close()
-                return redirect('/admin/announcements')
+
+                print(
+                    "ANNOUNCEMENT ASSET VERIFICATION ERROR:",
+                    repr(exc)
+                )
+
+                return jsonify({
+                    "status": "error",
+                    "message": str(exc)
+                }), 400
 
         # -------------------------
         # CREATE DATABASE RECORD
         # -------------------------
         now = datetime.now()
 
-        c.execute("""
-            INSERT INTO announcements
-            (
+        try:
+
+            c.execute("""
+                INSERT INTO announcements
+                (
+                    title,
+                    message,
+                    created_by,
+                    created_at,
+                    updated_at,
+                    audience,
+                    file_name,
+                    file_path,
+                    cloudinary_public_id,
+                    cloudinary_resource_type,
+                    cloudinary_asset_id
+                )
+                VALUES
+                (
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                )
+            """, (
                 title,
                 message,
-                created_by,
-                created_at,
-                updated_at,
+                session['user_id'],
+                now,
+                now,
                 audience,
                 file_name,
-                file_path
-            )
-            VALUES
-            (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s
-            )
-        """,
-        (
-            title,
-            message,
-            session['user_id'],
-            now,
-            now,
-            audience,
-            file_name,
-            file_path
-        ))
+                file_path,
+                public_id,
+                resource_type,
+                asset_id
+            ))
 
-        conn.commit()
+            conn.commit()
+
+        except Exception as exc:
+
+            conn.rollback()
+
+            if public_id:
+                _delete_cloudinary_asset(
+                    public_id,
+                    resource_type
+                )
+
+            conn.close()
+
+            print(
+                "CREATE ANNOUNCEMENT DATABASE ERROR:",
+                repr(exc)
+            )
+
+            return jsonify({
+                "status": "error",
+                "message": (
+                    "Announcement could not be saved."
+                )
+            }), 500
+
         conn.close()
 
-        # 🔔 Notify the selected audience in real time.
-        notify_announcement(
+        # Notifications happen in the background so the admin
+        # receives the success response immediately.
+        socketio.start_background_task(
+            notify_announcement,
             audience,
             f"New Announcement: {title}",
-            exclude_user_id=session['user_id']
+            session['user_id']
         )
 
-        flash(
-            "Announcement published successfully.",
-            "success"
-        )
-
-        return redirect('/admin/announcements')
+        return jsonify({
+            "status": "success",
+            "message": "Announcement published successfully."
+        })
 
     # =====================================================
     # SEARCH
@@ -4452,15 +4733,27 @@ def download_announcement_file(id):
     if not announcement['file_path']:
         return "No attachment", 404
 
-    # Cloudinary secure URL stored in file_path.
-    # Redirecting preserves the original Cloudinary delivery URL.
-    return redirect(announcement['file_path'])
+    cloudinary_url = announcement['file_path']
+
+    # View mode: preserve the original secure delivery URL.
+    # Download mode: ask Cloudinary to force attachment delivery.
+    if request.args.get("download") == "1":
+        if "/upload/" in cloudinary_url:
+            cloudinary_url = cloudinary_url.replace(
+                "/upload/",
+                "/upload/fl_attachment/"
+            )
+
+    return redirect(cloudinary_url)
 
 # =====================================================
 # UPDATE ANNOUNCEMENT
 # =====================================================
 
-@app.route('/admin/update_announcement/<int:id>', methods=['POST'])
+@app.route(
+    '/admin/update_announcement/<int:id>',
+    methods=['POST']
+)
 def update_announcement(id):
 
     if 'user_id' not in session:
@@ -4475,41 +4768,65 @@ def update_announcement(id):
             "message": "Access denied."
         }), 403
 
-    conn = None
+    payload = request.get_json(
+        silent=True
+    )
+
+    if payload is None:
+        return jsonify({
+            "status": "error",
+            "message": (
+                "Please use the current announcement editor."
+            )
+        }), 400
+
+    title = str(
+        payload.get('title') or ''
+    ).strip()
+
+    message = str(
+        payload.get('message') or ''
+    ).strip()
+
+    audience = str(
+        payload.get('audience') or 'everyone'
+    ).strip().lower()
+
+    remove_file = bool(
+        payload.get('remove_file')
+    )
+
+    uploaded_asset = (
+        payload.get('file')
+        if isinstance(payload.get('file'), dict)
+        else None
+    )
+
+    if not title:
+        return jsonify({
+            "status": "error",
+            "message": "Announcement title is required."
+        }), 400
+
+    if not message:
+        return jsonify({
+            "status": "error",
+            "message": "Announcement message is required."
+        }), 400
+
+    if audience not in (
+        'everyone',
+        'staff',
+        'admin'
+    ):
+        audience = 'everyone'
+
+    conn = get_db()
+    c = conn.cursor(
+        cursor_factory=RealDictCursor
+    )
 
     try:
-        title = request.form.get('title', '').strip()
-        message = request.form.get('message', '').strip()
-        audience = request.form.get(
-            'audience',
-            'everyone'
-        ).strip().lower()
-
-        remove_file = (
-            request.form.get('remove_file', '0') == '1'
-        )
-
-        uploaded_file = request.files.get('file')
-
-        if not title:
-            return jsonify({
-                "status": "error",
-                "message": "Announcement title is required."
-            }), 400
-
-        if not message:
-            return jsonify({
-                "status": "error",
-                "message": "Announcement message is required."
-            }), 400
-
-        if audience not in ('everyone', 'staff', 'admin'):
-            audience = 'everyone'
-
-        conn = get_db()
-        c = conn.cursor(
-            cursor_factory=RealDictCursor
-        )
 
         c.execute("""
             SELECT
@@ -4518,7 +4835,10 @@ def update_announcement(id):
                 message,
                 audience,
                 file_name,
-                file_path
+                file_path,
+                cloudinary_public_id,
+                cloudinary_resource_type,
+                cloudinary_asset_id
             FROM announcements
             WHERE id=%s
         """, (id,))
@@ -4531,78 +4851,80 @@ def update_announcement(id):
                 "message": "Announcement not found."
             }), 404
 
-        old_file_path = announcement['file_path']
-        new_file_path = old_file_path
+        old_public_id = (
+            announcement['cloudinary_public_id']
+        )
+
+        old_resource_type = (
+            announcement['cloudinary_resource_type']
+            or 'image'
+        )
+
         new_file_name = announcement['file_name']
+        new_file_path = announcement['file_path']
+        new_public_id = old_public_id
+        new_resource_type = old_resource_type
+        new_asset_id = announcement['cloudinary_asset_id']
 
-        # Remove old attachment reference.
-        # The old Cloudinary asset is left intact unless we have
-        # a reliable public_id. This avoids accidentally deleting
-        # unrelated Cloudinary assets.
-        if remove_file:
-            new_file_path = None
-            new_file_name = None
+        uploaded_public_id = None
+        uploaded_resource_type = None
 
         # -------------------------
-        # NEW ATTACHMENT
+        # REPLACEMENT ATTACHMENT
         # -------------------------
-        if uploaded_file and uploaded_file.filename:
+        if uploaded_asset:
 
-            original_name = secure_filename(
-                uploaded_file.filename
+            new_file_name = secure_filename(
+                str(
+                    uploaded_asset.get('name') or ''
+                )
             )
 
-            if not original_name:
-                return jsonify({
-                    "status": "error",
-                    "message": "Invalid file name."
-                }), 400
-
-            # Hard 10 MB server-side limit.
-            uploaded_file.stream.seek(0, os.SEEK_END)
-            file_size = uploaded_file.stream.tell()
-            uploaded_file.stream.seek(0)
-
-            if file_size > 10 * 1024 * 1024:
-                return jsonify({
-                    "status": "error",
-                    "message": "Attachment is too large. Maximum allowed size is 10 MB."
-                }), 413
-
-            extension = (
-                original_name.rsplit('.', 1)[1].lower()
-                if '.' in original_name else ''
+            new_file_path = str(
+                uploaded_asset.get('secure_url') or ''
             )
 
-            allowed_extensions = {
-                'pdf', 'doc', 'docx', 'xls', 'xlsx',
-                'ppt', 'pptx', 'txt', 'csv',
-                'jpg', 'jpeg', 'png', 'gif', 'webp'
-            }
-
-            if extension not in allowed_extensions:
-                return jsonify({
-                    "status": "error",
-                    "message": "Invalid attachment type."
-                }), 400
-
-            cloudinary_result = uploader.upload(
-                uploaded_file,
-                folder=f"salt_portal/announcements/{audience}",
-                resource_type="auto",
-                use_filename=True,
-                unique_filename=True,
-                overwrite=False
+            uploaded_public_id = str(
+                uploaded_asset.get('public_id') or ''
             )
 
-            new_file_path = cloudinary_result.get("secure_url")
+            uploaded_resource_type = str(
+                uploaded_asset.get('resource_type')
+                or 'image'
+            )
 
-            if not new_file_path:
-                raise RuntimeError(
-                    "Cloudinary did not return a secure URL."
+            try:
+
+                verified = _verify_cloudinary_asset(
+                    uploaded_public_id,
+                    uploaded_resource_type,
+                    new_file_path,
+                    new_file_name
                 )
 
-            new_file_name = original_name
+                new_public_id = verified['public_id']
+                new_resource_type = verified['resource_type']
+                new_asset_id = verified.get('asset_id')
+
+            except Exception as exc:
+
+                _delete_cloudinary_asset(
+                    uploaded_public_id,
+                    uploaded_resource_type
+                )
+
+                return jsonify({
+                    "status": "error",
+                    "message": str(exc)
+                }), 400
+
+        elif remove_file:
+
+            new_file_name = None
+            new_file_path = None
+            new_public_id = None
+            new_resource_type = None
+            new_asset_id = None
 
         # -------------------------
         # UPDATE DATABASE
@@ -4615,7 +4937,10 @@ def update_announcement(id):
                 audience=%s,
                 updated_at=%s,
                 file_name=%s,
-                file_path=%s
+                file_path=%s,
+                cloudinary_public_id=%s,
+                cloudinary_resource_type=%s,
+                cloudinary_asset_id=%s
             WHERE id=%s
         """, (
             title,
@@ -4624,15 +4949,40 @@ def update_announcement(id):
             datetime.now(),
             new_file_name,
             new_file_path,
+            new_public_id,
+            new_resource_type,
+            new_asset_id,
             id
         ))
 
         conn.commit()
 
-        notify_announcement(
+        # Delete the previous Cloudinary asset only after the
+        # database has successfully switched to the new one.
+        if (
+            uploaded_asset
+            and old_public_id
+            and old_public_id != new_public_id
+        ):
+            _delete_cloudinary_asset(
+                old_public_id,
+                old_resource_type
+            )
+
+        if (
+            remove_file
+            and old_public_id
+        ):
+            _delete_cloudinary_asset(
+                old_public_id,
+                old_resource_type
+            )
+
+        socketio.start_background_task(
+            notify_announcement,
             audience,
             f"Announcement Updated: {title}",
-            exclude_user_id=session['user_id']
+            session['user_id']
         )
 
         return jsonify({
@@ -4640,14 +4990,20 @@ def update_announcement(id):
             "message": "Announcement updated successfully."
         })
 
-    except Exception as e:
+    except Exception as exc:
 
-        if conn:
-            conn.rollback()
+        conn.rollback()
+
+        # If a newly uploaded asset was not committed, clean it up.
+        if uploaded_public_id:
+            _delete_cloudinary_asset(
+                uploaded_public_id,
+                uploaded_resource_type
+            )
 
         print(
             "UPDATE ANNOUNCEMENT ERROR:",
-            repr(e)
+            repr(exc)
         )
 
         return jsonify({
@@ -4657,14 +5013,16 @@ def update_announcement(id):
 
     finally:
 
-        if conn:
-            conn.close()
+        conn.close()
 
 # =====================================================
 # DELETE ANNOUNCEMENT
 # =====================================================
 
-@app.route('/admin/delete_announcement/<int:id>', methods=['POST'])
+@app.route(
+    '/admin/delete_announcement/<int:id>',
+    methods=['POST']
+)
 def delete_announcement(id):
 
     if 'user_id' not in session:
@@ -4685,11 +5043,13 @@ def delete_announcement(id):
     )
 
     try:
+
         c.execute("""
             SELECT
                 id,
                 title,
-                file_path
+                cloudinary_public_id,
+                cloudinary_resource_type
             FROM announcements
             WHERE id=%s
         """, (id,))
@@ -4702,7 +5062,6 @@ def delete_announcement(id):
                 "message": "Announcement not found."
             }), 404
 
-        # Delete DB record first.
         c.execute("""
             DELETE FROM announcements
             WHERE id=%s
@@ -4710,62 +5069,24 @@ def delete_announcement(id):
 
         conn.commit()
 
-        # Best-effort Cloudinary cleanup.
-        # Existing records may contain local paths, so only attempt
-        # Cloudinary deletion when the stored path is a Cloudinary URL.
-        file_path = announcement.get('file_path')
-
-        if file_path and 'res.cloudinary.com/' in file_path:
-            try:
-                from urllib.parse import urlparse
-                parsed = urlparse(file_path)
-                parts = parsed.path.split('/')
-
-                # Typical Cloudinary delivery URL:
-                # /<resource_type>/upload/v123/folder/file.ext
-                upload_index = parts.index('upload')
-                delivery_parts = parts[upload_index + 1:]
-
-                if delivery_parts and delivery_parts[0].startswith('v'):
-                    delivery_parts = delivery_parts[1:]
-
-                public_id_with_ext = '/'.join(delivery_parts)
-
-                if public_id_with_ext:
-                    public_id = os.path.splitext(
-                        public_id_with_ext
-                    )[0]
-
-                    resource_type = (
-                        "image"
-                        if "/image/" in file_path
-                        else "raw"
-                    )
-
-                    uploader.destroy(
-                        public_id,
-                        resource_type=resource_type,
-                        invalidate=True
-                    )
-
-            except Exception as cloudinary_error:
-                print(
-                    "CLOUDINARY ANNOUNCEMENT DELETE SKIPPED:",
-                    repr(cloudinary_error)
-                )
+        if announcement['cloudinary_public_id']:
+            _delete_cloudinary_asset(
+                announcement['cloudinary_public_id'],
+                announcement['cloudinary_resource_type']
+            )
 
         return jsonify({
             "status": "success",
             "message": "Announcement deleted successfully."
         })
 
-    except Exception as e:
+    except Exception as exc:
 
         conn.rollback()
 
         print(
             "DELETE ANNOUNCEMENT ERROR:",
-            repr(e)
+            repr(exc)
         )
 
         return jsonify({
@@ -5957,23 +6278,6 @@ def on_join(data):
 def logout():
     session.clear()
     return redirect('/')
-@app.errorhandler(413)
-def request_entity_too_large(error):
-    if request.path.startswith('/admin/announcements'):
-        if request.method == 'POST':
-            return jsonify({
-                "status": "error",
-                "message": "Attachment is too large. Maximum allowed size is 10 MB."
-            }), 413
-
-        flash(
-            "Attachment is too large. Maximum allowed size is 10 MB.",
-            "error"
-        )
-        return redirect('/admin/announcements')
-
-    return "Request too large. Maximum allowed upload size is 10 MB.", 413
-
 # -------------------------
 # Initialize app
 # -------------------------
