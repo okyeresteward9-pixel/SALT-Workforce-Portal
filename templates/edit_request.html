@@ -118,10 +118,28 @@
   <div class="rq-card">
     <div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">04</div><div><h2>Attachments</h2><div class="rq-card-sub">Existing files are retained. Add corrected supporting documents below.</div></div></div></div>
     {% if attachments %}
-      <div style="display:grid;gap:8px;margin-bottom:14px">
+      <div style="display:grid;gap:10px;margin-bottom:16px">
       {% for a in attachments %}
-        <div class="rq-attachment"><span>📎 {{ a.original_name }}</span><span class="rq-muted" style="font-size:11px">Existing file</span></div>
+        <div class="rq-attachment" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span style="min-width:0;overflow-wrap:anywhere">📎 {{ a.original_name }}</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <a class="rq-btn" href="{{ url_for('requests_bp.attachment', request_id=req.id, attachment_id=a.id) }}" target="_blank" rel="noopener">
+              View
+            </a>
+            <button
+              class="rq-btn rq-danger attachment-remove-btn"
+              type="button"
+              data-attachment-id="{{ a.id }}"
+              onclick="markAttachmentForRemoval(this)">
+              Remove
+            </button>
+          </div>
+        </div>
       {% endfor %}
+      </div>
+      <div id="removedAttachments"></div>
+      <div class="rq-alert" style="margin-bottom:14px">
+        Removing a file marks it for deletion when you submit the changes. You can also upload a replacement below.
       </div>
     {% endif %}
     <div class="rq-file"><strong>Add attachments</strong><div class="rq-muted" style="font-size:11px;margin-top:4px">PDF, Word, Excel, CSV and images are supported.</div><input type="file" name="attachments" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp"></div>
@@ -129,20 +147,120 @@
 
   <div class="rq-card" style="border-color:#bfe5cf;background:#fbfffc">
     <div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">✓</div><div><h2>Ready to resubmit</h2><div class="rq-card-sub">Submitting will reset the approval route and notify the first approver.</div></div></div></div>
+    <div id="formStatus" class="rq-muted" style="display:none;margin-bottom:10px;font-size:12px;font-weight:800"></div>
     <div class="rq-actions">
       <a class="rq-btn" href="{{ url_for('requests_bp.detail', request_id=req.id) }}">Cancel</a>
-      <button class="rq-btn rq-primary" type="submit">Resubmit Request ✓</button>
+      <button id="resubmitBtn" class="rq-btn rq-primary" type="submit">Resubmit Request ✓</button>
     </div>
   </div>
 </form>
 {% endblock %}
 {% block scripts %}
 <script>
-function addItem(){const row=document.createElement('div');row.className='rq-item-row';row.innerHTML='<input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price (GH₵)"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button>';document.getElementById('items').appendChild(row);bindTotals()}
-function removeItem(btn){const rows=document.querySelectorAll('#items .rq-item-row');if(rows.length>1)btn.parentElement.remove();else btn.parentElement.querySelectorAll('input').forEach(x=>x.value='');updateTotal()}
-function updateTotal(){let total=0;document.querySelectorAll('#items .rq-item-row').forEach(r=>{total+=(parseFloat(r.querySelector('[name="item_quantity[]"]').value)||0)*(parseFloat(r.querySelector('[name="item_unit_price[]"]').value)||0)});document.getElementById('estimate').textContent='GH₵ '+total.toFixed(2)}
-function bindTotals(){document.querySelectorAll('[name="item_quantity[]"],[name="item_unit_price[]"]').forEach(x=>x.addEventListener('input',updateTotal))}
-function toggleFinance(){const yes=document.querySelector('[name="finance_related"]:checked').value==='yes';document.getElementById('financeFields').classList.toggle('rq-hidden',!yes)}
-bindTotals();updateTotal();toggleFinance();
+function addItem(){
+  const row=document.createElement('div');
+  row.className='rq-item-row';
+  row.innerHTML='<input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price (GH₵)"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button>';
+  document.getElementById('items').appendChild(row);
+  bindTotals();
+  updateTotal();
+}
+
+function removeItem(btn){
+  const rows=document.querySelectorAll('#items .rq-item-row');
+  if(rows.length>1){
+    btn.parentElement.remove();
+  }else{
+    btn.parentElement.querySelectorAll('input').forEach(x=>x.value='');
+  }
+  updateTotal();
+}
+
+function updateTotal(){
+  let total=0;
+  document.querySelectorAll('#items .rq-item-row').forEach(r=>{
+    total +=
+      (parseFloat(r.querySelector('[name="item_quantity[]"]').value)||0) *
+      (parseFloat(r.querySelector('[name="item_unit_price[]"]').value)||0);
+  });
+  document.getElementById('estimate').textContent='GH₵ '+total.toFixed(2);
+}
+
+function bindTotals(){
+  document.querySelectorAll('[name="item_quantity[]"],[name="item_unit_price[]"]').forEach(x=>{
+    if(!x.dataset.totalBound){
+      x.addEventListener('input',updateTotal);
+      x.dataset.totalBound='1';
+    }
+  });
+}
+
+function toggleFinance(){
+  const selected=document.querySelector('[name="finance_related"]:checked');
+  const yes=selected && selected.value==='yes';
+  document.getElementById('financeFields').classList.toggle('rq-hidden',!yes);
+}
+
+function markAttachmentForRemoval(btn){
+  const id=btn.dataset.attachmentId;
+  if(!id) return;
+
+  const card=btn.closest('.rq-attachment');
+  if(!card) return;
+
+  if(!confirm('Remove this attachment? It will be deleted when you submit the changes.')){
+    return;
+  }
+
+  const input=document.createElement('input');
+  input.type='hidden';
+  input.name='remove_attachment_ids[]';
+  input.value=id;
+  document.getElementById('removedAttachments').appendChild(input);
+
+  card.style.opacity='0.45';
+  card.style.textDecoration='line-through';
+  btn.disabled=true;
+  btn.textContent='Marked for removal';
+}
+
+(function(){
+  const form=document.querySelector('.rq-form');
+  const submitBtn=document.getElementById('resubmitBtn');
+  const status=document.getElementById('formStatus');
+
+  if(form && submitBtn){
+    form.addEventListener('submit',function(e){
+      if(form.dataset.submitting==='1'){
+        e.preventDefault();
+        return;
+      }
+
+      // Let native HTML validation run before locking the form.
+      if(!form.checkValidity()){
+        return;
+      }
+
+      form.dataset.submitting='1';
+      submitBtn.disabled=true;
+      submitBtn.innerHTML='⏳ Resubmitting...';
+      submitBtn.style.pointerEvents='none';
+
+      if(status){
+        status.style.display='block';
+        status.textContent='Please wait — your request and attachments are being saved.';
+      }
+
+      // Disable other submit buttons to prevent duplicate POSTs.
+      form.querySelectorAll('button[type="submit"]').forEach(btn=>{
+        if(btn!==submitBtn) btn.disabled=true;
+      });
+    });
+  }
+
+  bindTotals();
+  updateTotal();
+  toggleFinance();
+})();
 </script>
 {% endblock %}

@@ -89,26 +89,71 @@ html+='</tbody><tfoot><tr><th colspan="4" style="text-align:right">Total</th><th
 box.innerHTML=html;
 }
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]});}
+let requestSubmitting = false;
+
 function prepareRequestSubmit(event){
     const submitter = event.submitter;
-    if(submitter && submitter.name === 'save_draft'){
-        // Drafts still need the basic request details to be useful/editable.
+    const isDraft = submitter && submitter.name === 'save_draft';
+    const isFinalSubmit = submitter && submitter.name === 'submit_request';
+
+    if(!isDraft && !isFinalSubmit){
+        return true;
+    }
+
+    // Prevent accidental double-clicks / duplicate POSTs.
+    if(requestSubmitting){
+        event.preventDefault();
+        return false;
+    }
+
+    // Drafts still need the basic request details to be useful/editable.
+    if(isDraft){
         const title=document.getElementById('title');
         const body=document.getElementById('memo_body');
+
         if(!title.value.trim()){
             event.preventDefault();
             title.focus();
             alert('Please enter a request title before saving the draft.');
             return false;
         }
+
         if(!body.value.trim()){
             event.preventDefault();
             body.focus();
             alert('Please enter the memo/request body before saving the draft.');
             return false;
         }
-        return true;
     }
+
+    requestSubmitting = true;
+
+    const saveBtn = document.getElementById('saveDraftBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const backBtn = document.getElementById('backBtn');
+
+    if(isDraft){
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '⏳ Saving draft...';
+        saveBtn.style.opacity = '0.75';
+
+        // Keep Submit hidden on step 5, but lock it just in case.
+        if(submitBtn) submitBtn.disabled = true;
+    }
+
+    if(isFinalSubmit){
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '⏳ Submitting...';
+        submitBtn.style.opacity = '0.75';
+
+        if(saveBtn) saveBtn.disabled = true;
+    }
+
+    // Lock navigation while the POST is being processed.
+    if(nextBtn) nextBtn.disabled = true;
+    if(backBtn) backBtn.disabled = true;
+
     return true;
 }
 document.getElementById('attachments').addEventListener('change',e=>{let box=document.getElementById('fileList');box.innerHTML='';[...e.target.files].forEach(f=>{let d=document.createElement('div');d.className='rq-attachment';d.innerHTML='<span>📎 '+f.name+'</span><span class="rq-muted">'+Math.max(1,Math.round(f.size/1024))+' KB</span>';box.appendChild(d)})});bindTotals();showStep(1);
