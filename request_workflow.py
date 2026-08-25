@@ -314,10 +314,11 @@ def save_attachments(conn, request_id, files, upload_root=None):
     Upload request attachments to Cloudinary and store the Cloudinary
     metadata in PostgreSQL.
 
-    Cloudinary is the source of truth for new request files. If a database
-    insert fails after an upload, the uploaded Cloudinary asset is removed
-    so we do not leave orphaned files behind.
+    Cloudinary is the source of truth for new request files.
+    If a database insert fails after an upload, the uploaded Cloudinary
+    asset is removed so we do not leave orphaned files behind.
     """
+
     if not _cloudinary_ready():
         raise RuntimeError(
             "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, "
@@ -333,11 +334,13 @@ def save_attachments(conn, request_id, files, upload_root=None):
                 continue
 
             original = secure_filename(file.filename)
+
             if not original:
                 continue
 
             # Capture the size before Cloudinary consumes the stream.
             file_size = getattr(file, "content_length", None)
+
             if not file_size:
                 try:
                     current_pos = file.stream.tell()
@@ -392,7 +395,11 @@ def save_attachments(conn, request_id, files, upload_root=None):
             """, (
                 request_id,
                 original,
-                None,
+
+                # Keep the existing NOT NULL column populated.
+                # Cloudinary public_id is now the stored identifier.
+                public_id,
+
                 session["user_id"],
                 now(),
                 secure_url,
@@ -403,8 +410,8 @@ def save_attachments(conn, request_id, files, upload_root=None):
             ))
 
     except Exception:
-        # PostgreSQL rollback does not remove Cloudinary assets, so clean up
-        # anything uploaded during this call before re-raising the error.
+        # PostgreSQL rollback does not remove Cloudinary assets,
+        # so clean up anything uploaded during this call.
         for asset in uploaded_assets:
             try:
                 cloudinary.uploader.destroy(
@@ -417,6 +424,7 @@ def save_attachments(conn, request_id, files, upload_root=None):
                     "CLOUDINARY UPLOAD CLEANUP ERROR:",
                     repr(cleanup_error)
                 )
+
         raise
 
 def approvers_for_position(conn, positions):
