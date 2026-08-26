@@ -607,6 +607,75 @@
         }
 
         /* -------------------------
+           ANNOUNCEMENT PARTICLE BACKGROUND
+           ------------------------- */
+
+        .announcements {
+            position: relative;
+            overflow: hidden !important;
+            isolation: isolate;
+            background: #071b3a !important;
+        }
+
+        .announcement-particle-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 50% 45%, rgba(38,126,220,.22), transparent 48%),
+                linear-gradient(135deg, #061a38 0%, #0a2c58 55%, #061a38 100%);
+        }
+
+        .announcement-particle-bg .light {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            top: 100%;
+            border-radius: 50%;
+            opacity: 0;
+            background: #ffffff;
+            box-shadow:
+                0 0 10px 2px rgba(233,241,241,.85),
+                0 0 22px 5px rgba(77,170,255,.18);
+            animation: announcementFloatUp linear infinite;
+        }
+
+        .announcement-particle-bg .x1 { left: 8%;  animation-duration: 4s; }
+        .announcement-particle-bg .x2 { left: 15%; animation-duration: 7s; animation-delay: -2s; transform: scale(1.6); }
+        .announcement-particle-bg .x3 { left: 25%; animation-duration: 2.5s; animation-delay: -1s; transform: scale(.5); }
+        .announcement-particle-bg .x4 { left: 34%; animation-duration: 4.5s; animation-delay: -3s; transform: scale(1.2); }
+        .announcement-particle-bg .x5 { left: 43%; animation-duration: 8s; animation-delay: -5s; transform: scale(2.2); }
+        .announcement-particle-bg .x6 { left: 53%; animation-duration: 3s; animation-delay: -1.5s; transform: scale(.8); }
+        .announcement-particle-bg .x7 { left: 64%; animation-duration: 5.3s; animation-delay: -4s; transform: scale(3.2); }
+        .announcement-particle-bg .x8 { left: 76%; animation-duration: 4.7s; animation-delay: -2.5s; transform: scale(1.7); }
+        .announcement-particle-bg .x9 { left: 89%; animation-duration: 4.1s; animation-delay: -3.2s; transform: scale(.9); }
+
+        @keyframes announcementFloatUp {
+            0%   { top: 105%; opacity: 0; }
+            20%  { opacity: .8; }
+            50%  { top: 45%; opacity: .65; }
+            75%  { opacity: .8; }
+            100% { top: -10%; opacity: 0; }
+        }
+
+        .announcements > *:not(.announcement-particle-bg) {
+            position: relative;
+            z-index: 1;
+        }
+
+        .announcements .announcement-carousel {
+            background: rgba(255,255,255,.94) !important;
+            backdrop-filter: blur(3px);
+        }
+
+        .announcements .announcement-header,
+        .announcements .announcement-carousel-controls {
+            background: rgba(255,255,255,.97);
+        }
+
+        /* -------------------------
            ANNOUNCEMENTS CAROUSEL
            ------------------------- */
 
@@ -2452,6 +2521,17 @@
              One card; multiple announcements auto-slide.
              ===================================================== -->
         <section class="announcements" aria-label="Latest announcements">
+                <div class="announcement-particle-bg" aria-hidden="true">
+                    <span class="light x1"></span>
+                    <span class="light x2"></span>
+                    <span class="light x3"></span>
+                    <span class="light x4"></span>
+                    <span class="light x5"></span>
+                    <span class="light x6"></span>
+                    <span class="light x7"></span>
+                    <span class="light x8"></span>
+                    <span class="light x9"></span>
+                </div>
 
             <div class="announcement-header">
                 <div class="announcement-header-left">
