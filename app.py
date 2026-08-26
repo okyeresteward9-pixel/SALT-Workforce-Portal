@@ -4507,18 +4507,16 @@ def admin_announcements():
                     resource_type
                 )
 
-            conn.close()
-
             print(
                 "CREATE ANNOUNCEMENT DATABASE ERROR:",
                 repr(exc)
             )
 
+            conn.close()
+
             return jsonify({
                 "status": "error",
-                "message": (
-                    "Announcement could not be saved."
-                )
+                "message": f"Database error: {str(exc)}"
             }), 500
 
         conn.close()
