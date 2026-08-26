@@ -1,93 +1,5 @@
 {% extends "request_base.html" %}
-{% block title %}SALT — {{ req.request_no }}
-<style>
-.approval-action-btn.is-loading {
-    opacity: .72;
-    cursor: wait;
-    pointer-events: none;
-    transform: none !important;
-}
-
-.approval-action-btn:disabled {
-    cursor: wait;
-}
-
-#approvalActionStatus {
-    display: none;
-    margin-top: 12px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: #f5f8fc;
-    color: #344054;
-    font-size: 12px;
-    font-weight: 800;
-}
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('approvalDecisionForm');
-    if (!form) return;
-
-    const buttons = form.querySelectorAll('.approval-action-btn');
-    let processing = false;
-
-    // Add status message without changing the existing layout.
-    const status = document.createElement('div');
-    status.id = 'approvalActionStatus';
-    form.appendChild(status);
-
-    form.addEventListener('submit', function (event) {
-        const clicked = event.submitter;
-
-        if (!clicked || !clicked.classList.contains('approval-action-btn')) {
-            return;
-        }
-
-        if (processing) {
-            event.preventDefault();
-            return false;
-        }
-
-        // Allow normal browser validation to happen first.
-        if (!form.checkValidity()) {
-            return;
-        }
-
-        processing = true;
-
-        // The clicked action gets the appropriate loading message.
-        clicked.classList.add('is-loading');
-        clicked.disabled = true;
-        clicked.textContent =
-            clicked.dataset.loadingText || '⏳ Processing...';
-
-        // Prevent the other approval actions from being clicked while
-        // this POST is being processed.
-        buttons.forEach(function (button) {
-            if (button !== clicked) {
-                button.disabled = true;
-                button.style.opacity = '0.55';
-            }
-        });
-
-        status.style.display = 'block';
-
-        if (clicked.dataset.loadingText.includes('Approving')) {
-            status.textContent =
-                'Approval is being recorded. Please wait...';
-        } else if (clicked.dataset.loadingText.includes('Rejecting')) {
-            status.textContent =
-                'Rejection is being recorded. Please wait...';
-        } else {
-            status.textContent =
-                'Return action is being recorded. Please wait...';
-        }
-    });
-});
-</script>
-
-{% endblock %}
+{% block title %}SALT — {{ req.request_no }}{% endblock %}
 
 {% block content %}
 
@@ -519,5 +431,96 @@ document.addEventListener('DOMContentLoaded', function () {
 </div>
 
 {% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+
+<style>
+.approval-action-btn.is-loading {
+    opacity: .72;
+    cursor: wait;
+    pointer-events: none;
+    transform: none !important;
+}
+
+.approval-action-btn:disabled {
+    cursor: wait;
+}
+
+#approvalActionStatus {
+    display: none;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #f5f8fc;
+    color: #344054;
+    font-size: 12px;
+    font-weight: 800;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('approvalDecisionForm');
+    if (!form) return;
+
+    const buttons = form.querySelectorAll('.approval-action-btn');
+    let processing = false;
+
+    // Add status message without changing the existing layout.
+    const status = document.createElement('div');
+    status.id = 'approvalActionStatus';
+    form.appendChild(status);
+
+    form.addEventListener('submit', function (event) {
+        const clicked = event.submitter;
+
+        if (!clicked || !clicked.classList.contains('approval-action-btn')) {
+            return;
+        }
+
+        if (processing) {
+            event.preventDefault();
+            return false;
+        }
+
+        // Allow normal browser validation to happen first.
+        if (!form.checkValidity()) {
+            return;
+        }
+
+        processing = true;
+
+        // The clicked action gets the appropriate loading message.
+        clicked.classList.add('is-loading');
+        clicked.disabled = true;
+        clicked.textContent =
+            clicked.dataset.loadingText || '⏳ Processing...';
+
+        // Prevent the other approval actions from being clicked while
+        // this POST is being processed.
+        buttons.forEach(function (button) {
+            if (button !== clicked) {
+                button.disabled = true;
+                button.style.opacity = '0.55';
+            }
+        });
+
+        status.style.display = 'block';
+
+        if (clicked.dataset.loadingText.includes('Approving')) {
+            status.textContent =
+                'Approval is being recorded. Please wait...';
+        } else if (clicked.dataset.loadingText.includes('Rejecting')) {
+            status.textContent =
+                'Rejection is being recorded. Please wait...';
+        } else {
+            status.textContent =
+                'Return action is being recorded. Please wait...';
+        }
+    });
+});
+</script>
 
 {% endblock %}
