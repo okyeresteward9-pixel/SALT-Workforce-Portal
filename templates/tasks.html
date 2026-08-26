@@ -2637,6 +2637,124 @@
     display: none;
 }
 
+
+    /* =========================================================
+       TASK FILTERS
+       ========================================================= */
+
+    .task-filter-section {
+        margin: 20px 0;
+        padding: 18px;
+        background: #ffffff;
+        border: 1px solid var(--salt-border);
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(15, 43, 91, .05);
+    }
+
+    .task-filter-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+    }
+
+    .task-filter-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--salt-text);
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .task-filter-title i {
+        color: var(--salt-blue);
+    }
+
+    .task-filter-subtitle {
+        margin-top: 4px;
+        color: var(--salt-muted);
+        font-size: 11px;
+    }
+
+    .task-filter-count {
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: var(--salt-blue-soft);
+        color: var(--salt-blue);
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .task-filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .task-filter {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 9px 13px;
+        border: 1px solid var(--salt-border);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--salt-muted);
+        font-size: 10px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: .18s ease;
+    }
+
+    .task-filter:hover {
+        border-color: var(--salt-blue);
+        color: var(--salt-blue);
+        transform: translateY(-1px);
+    }
+
+    .task-filter.active {
+        background: var(--salt-blue);
+        border-color: var(--salt-blue);
+        color: #fff;
+        box-shadow: 0 5px 14px rgba(21, 88, 176, .18);
+    }
+
+    .task-filter-empty {
+        display: none;
+        padding: 42px 20px;
+        text-align: center;
+        color: var(--salt-muted);
+    }
+
+    .task-filter-empty i {
+        display: block;
+        margin-bottom: 10px;
+        font-size: 28px;
+        color: #94a3b8;
+    }
+
+    .task-filter-empty strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--salt-text);
+        font-size: 13px;
+    }
+
+    @media (max-width: 700px) {
+        .task-filter-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .task-filter {
+            flex: 1 1 auto;
+        }
+    }
+
 </style>
 
 
@@ -3017,6 +3135,81 @@
             </section>
 
 
+
+            <!-- =================================================
+                 TASK FILTERS
+                 ================================================= -->
+
+            <section class="task-filter-section">
+
+                <div class="task-filter-header">
+
+                    <div>
+
+                        <div class="task-filter-title">
+                            <i class="fas fa-filter"></i>
+                            Filter Tasks
+                        </div>
+
+                        <div class="task-filter-subtitle">
+                            View tasks by status or time period
+                        </div>
+
+                    </div>
+
+                    <div class="task-filter-count">
+                        <span id="visibleTaskCount">{{ tasks|length }}</span>
+                        tasks
+                    </div>
+
+                </div>
+
+                <div class="task-filter-buttons">
+
+                    <button type="button" class="task-filter active" data-filter="all">
+                        <i class="fas fa-layer-group"></i>
+                        All
+                    </button>
+
+                    <button type="button" class="task-filter" data-filter="pending">
+                        <i class="fas fa-clock"></i>
+                        Pending
+                    </button>
+
+                    <button type="button" class="task-filter" data-filter="in-progress">
+                        <i class="fas fa-spinner"></i>
+                        In Progress
+                    </button>
+
+                    <button type="button" class="task-filter" data-filter="completed">
+                        <i class="fas fa-check-circle"></i>
+                        Completed
+                    </button>
+
+                    <button type="button" class="task-filter" data-filter="this-week">
+                        <i class="fas fa-calendar-week"></i>
+                        This Week
+                    </button>
+
+                    <button type="button" class="task-filter" data-filter="last-week">
+                        <i class="fas fa-calendar-minus"></i>
+                        Last Week
+                    </button>
+
+                    <button type="button" class="task-filter" data-filter="this-month">
+                        <i class="fas fa-calendar-days"></i>
+                        This Month
+                    </button>
+
+                    <button type="button" class="task-filter" data-filter="last-month">
+                        <i class="fas fa-calendar"></i>
+                        Last Month
+                    </button>
+
+                </div>
+
+            </section>
+
             <!-- =================================================
                  TASK TABLE
                  ================================================= -->
@@ -3067,6 +3260,10 @@
 
                     <tr
                         data-task-row="{{ task.id }}"
+                        data-status="{{ task.status|default('', true)|lower }}"
+                        data-deadline="{{ task.deadline or '' }}"
+                        data-completed-at="{{ task.completed_at or '' }}"
+                        data-carried-forward="{{ 'true' if task.carried_forward else 'false' }}"
                     >
 
 
@@ -3881,6 +4078,16 @@
                     </tr>
 
                     {% endfor %}
+
+                    <tr id="taskFilterEmpty" style="display:none;">
+                        <td colspan="6">
+                            <div class="task-filter-empty">
+                                <i class="fas fa-filter-circle-xmark"></i>
+                                <strong>No tasks found</strong>
+                                <span>No tasks match the selected filter.</span>
+                            </div>
+                        </td>
+                    </tr>
 
                     </tbody>
 
@@ -5175,6 +5382,249 @@ document.addEventListener(
         }
     );
 
+
+
+    /* =========================================================
+       TASK FILTERS
+       ========================================================= */
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const filterButtons =
+            document.querySelectorAll(".task-filter");
+
+        const taskRows =
+            document.querySelectorAll("tbody tr[data-task-row]");
+
+        const countElement =
+            document.getElementById("visibleTaskCount");
+
+        const emptyState =
+            document.getElementById("taskFilterEmpty");
+
+        function parseTaskDate(value) {
+
+            if (!value) {
+                return null;
+            }
+
+            const match = String(value).match(
+                /^(\d{4})-(\d{2})-(\d{2})/
+            );
+
+            if (!match) {
+                return null;
+            }
+
+            return new Date(
+                Number(match[1]),
+                Number(match[2]) - 1,
+                Number(match[3])
+            );
+        }
+
+        function startOfWeek(date) {
+
+            const result = new Date(date);
+            const day = result.getDay();
+            const difference = day === 0 ? -6 : 1 - day;
+
+            result.setDate(result.getDate() + difference);
+            result.setHours(0, 0, 0, 0);
+
+            return result;
+        }
+
+        function endOfWeek(date) {
+
+            const result = startOfWeek(date);
+
+            result.setDate(result.getDate() + 6);
+            result.setHours(23, 59, 59, 999);
+
+            return result;
+        }
+
+        function startOfMonth(date) {
+
+            return new Date(
+                date.getFullYear(),
+                date.getMonth(),
+                1
+            );
+        }
+
+        function endOfMonth(date) {
+
+            return new Date(
+                date.getFullYear(),
+                date.getMonth() + 1,
+                0,
+                23,
+                59,
+                59,
+                999
+            );
+        }
+
+        function isBetween(value, start, end) {
+
+            return Boolean(
+                value &&
+                value >= start &&
+                value <= end
+            );
+        }
+
+        function matchesFilter(row, filter) {
+
+            const status =
+                (row.dataset.status || "").trim().toLowerCase();
+
+            const deadline =
+                parseTaskDate(row.dataset.deadline);
+
+            const completedAt =
+                parseTaskDate(row.dataset.completedAt);
+
+            const isCompleted =
+                status === "completed";
+
+            if (filter === "all") {
+                return true;
+            }
+
+            if (filter === "pending") {
+                return status === "pending";
+            }
+
+            if (filter === "in-progress") {
+                return status === "in progress" ||
+                       status === "in-progress";
+            }
+
+            if (filter === "completed") {
+                return isCompleted;
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            /*
+             * Completed tasks use completed_at.
+             * Active tasks use their current deadline.
+             * This means a carried-forward task appears in
+             * This Week when its new deadline is this week.
+             */
+            const relevantDate =
+                isCompleted ? completedAt : deadline;
+
+            if (filter === "this-week") {
+
+                return isBetween(
+                    relevantDate,
+                    startOfWeek(today),
+                    endOfWeek(today)
+                );
+            }
+
+            if (filter === "last-week") {
+
+                const thisWeekStart = startOfWeek(today);
+
+                const start = new Date(thisWeekStart);
+                start.setDate(start.getDate() - 7);
+
+                const end = new Date(thisWeekStart);
+                end.setMilliseconds(-1);
+
+                return isBetween(
+                    relevantDate,
+                    start,
+                    end
+                );
+            }
+
+            if (filter === "this-month") {
+
+                return isBetween(
+                    relevantDate,
+                    startOfMonth(today),
+                    endOfMonth(today)
+                );
+            }
+
+            if (filter === "last-month") {
+
+                const start = new Date(
+                    today.getFullYear(),
+                    today.getMonth() - 1,
+                    1
+                );
+
+                const end = new Date(
+                    today.getFullYear(),
+                    today.getMonth(),
+                    0,
+                    23,
+                    59,
+                    59,
+                    999
+                );
+
+                return isBetween(
+                    relevantDate,
+                    start,
+                    end
+                );
+            }
+
+            return true;
+        }
+
+        function applyTaskFilter(filter) {
+
+            let visible = 0;
+
+            taskRows.forEach(function (row) {
+
+                const show =
+                    matchesFilter(row, filter);
+
+                row.style.display = show ? "" : "none";
+
+                if (show) {
+                    visible++;
+                }
+            });
+
+            if (countElement) {
+                countElement.textContent = visible;
+            }
+
+            filterButtons.forEach(function (button) {
+
+                button.classList.toggle(
+                    "active",
+                    button.dataset.filter === filter
+                );
+            });
+
+            if (emptyState) {
+                emptyState.style.display =
+                    visible === 0 ? "table-row" : "none";
+            }
+        }
+
+        filterButtons.forEach(function (button) {
+
+            button.addEventListener("click", function () {
+                applyTaskFilter(button.dataset.filter);
+            });
+        });
+
+        applyTaskFilter("all");
+    });
 </script>
 
 </body>

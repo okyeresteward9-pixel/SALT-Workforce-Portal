@@ -5101,125 +5101,102 @@ def tasks():
     if 'user_id' not in session:
         return redirect('/')
 
-
     conn = get_db()
 
     c = conn.cursor(
         cursor_factory=RealDictCursor
     )
 
-
     today = datetime.now().date()
-
 
     # =====================================================
     # AUTO CARRY FORWARD OVERDUE TASKS
     # =====================================================
 
     c.execute("""
-
         SELECT
-
             id,
             deadline,
             status
-
         FROM tasks
-
         WHERE assigned_to = %s
-
         AND status <> 'Completed'
-
         AND COALESCE(
             employee_deleted,
             FALSE
         ) = FALSE
-
-    """,
-    (
+        AND deadline IS NOT NULL
+    """, (
         session['user_id'],
     ))
 
-
     pending_tasks = c.fetchall()
-
 
     for task in pending_tasks:
 
         deadline = task["deadline"]
 
+        # -------------------------------------------------
+        # Convert deadline to a Python date
+        # -------------------------------------------------
 
-        if deadline:
+        if isinstance(deadline, datetime):
 
-            if isinstance(
-                deadline,
-                datetime
+            deadline = deadline.date()
+
+        elif isinstance(deadline, date):
+
+            pass
+
+        elif isinstance(deadline, str):
+
+            try:
+
+                deadline = datetime.strptime(
+                    deadline[:10],
+                    "%Y-%m-%d"
+                ).date()
+
+            except (
+                ValueError,
+                TypeError
             ):
-
-                deadline = deadline.date()
-
-
-            elif isinstance(
-                deadline,
-                date
-            ):
-
-                pass
-
-
-            elif isinstance(
-                deadline,
-                str
-            ):
-
-                try:
-
-                    deadline = datetime.strptime(
-                        deadline[:10],
-                        "%Y-%m-%d"
-                    ).date()
-
-                except (
-                    ValueError,
-                    TypeError
-                ):
-
-                    deadline = None
-
-
-            else:
 
                 deadline = None
 
+        else:
 
-            if (
-                deadline
-                and deadline < today
-            ):
+            deadline = None
 
-                new_deadline = (
-                    deadline +
-                    timedelta(days=7)
+
+        # -------------------------------------------------
+        # Move overdue task forward
+        # -------------------------------------------------
+
+        if deadline and deadline < today:
+
+            new_deadline = deadline
+
+            # Keep moving the deadline forward by one week
+            # until it reaches the current/future week.
+
+            while new_deadline < today:
+
+                new_deadline += timedelta(
+                    days=7
                 )
 
 
-                c.execute("""
-
-                    UPDATE tasks
-
-                    SET
-
-                        deadline = %s,
-
-                        carried_forward = TRUE
-
-                    WHERE id = %s
-
-                """,
-                (
-                    new_deadline,
-                    task["id"]
-                ))
+            c.execute("""
+                UPDATE tasks
+                SET
+                    deadline = %s,
+                    carried_forward = TRUE
+                WHERE id = %s
+            """, (
+                new_deadline,
+                task["id"]
+            ))
 
 
     conn.commit()
@@ -5230,7 +5207,6 @@ def tasks():
     # =====================================================
 
     c.execute("""
-
         SELECT
 
             id,
@@ -5260,11 +5236,9 @@ def tasks():
 
         ORDER BY id DESC
 
-    """,
-    (
+    """, (
         session['user_id'],
     ))
-
 
     tasks_list = c.fetchall()
 
@@ -5276,30 +5250,19 @@ def tasks():
     for task in tasks_list:
 
         c.execute("""
-
             SELECT *
-
             FROM task_comments
-
             WHERE task_id = %s
-
             AND visibility = 'public'
-
             ORDER BY created_at ASC
-
-        """,
-        (
+        """, (
             task["id"],
         ))
 
-
         comments = c.fetchall()
 
-
-        task["comments"] = (
-            build_comment_tree(
-                comments
-            )
+        task["comments"] = build_comment_tree(
+            comments
         )
 
 
@@ -5307,15 +5270,10 @@ def tasks():
 
 
     return render_template(
-
         "tasks.html",
-
         tasks=tasks_list,
-
         name=session["name"],
-
         role=session["role"]
-
     )
 
 @app.route('/reply_task/<int:id>', methods=['POST'])
