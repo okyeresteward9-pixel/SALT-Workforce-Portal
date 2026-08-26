@@ -680,7 +680,6 @@
 
         .announcement-carousel {
             position: relative;
-            min-height: 190px;
             overflow: hidden;
             background:
                 radial-gradient(circle at 100% 0%, rgba(23,105,194,.08), transparent 34%),
@@ -688,23 +687,28 @@
         }
 
         .announcement-slide {
-            position: absolute;
-            inset: 0;
-            padding: 22px 70px 42px 24px;
+            display: none;
+            padding: 22px 24px 20px;
             opacity: 0;
-            visibility: hidden;
-            transform: translateX(22px);
-            transition:
-                opacity .42s ease,
-                transform .42s ease,
-                visibility .42s ease;
+            transform: translateX(18px);
         }
 
         .announcement-slide.active {
-            position: relative;
+            display: block;
             opacity: 1;
-            visibility: visible;
             transform: translateX(0);
+            animation: announcementSlideIn .42s ease;
+        }
+
+        @keyframes announcementSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(18px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .announcement-slide::before {
@@ -759,8 +763,8 @@
             margin: 0;
             color: #50657d;
             font-size: 12px;
-            line-height: 1.65;
-            max-width: 900px;
+            line-height: 1.7;
+            max-width: 100%;
             white-space: pre-line;
             word-break: break-word;
         }
@@ -911,55 +915,75 @@
             white-space: nowrap;
         }
 
+        /* Dedicated navigation bar — never sits on top of the message */
         .announcement-carousel-controls {
-            position: absolute;
-            inset: 0;
-            z-index: 20;
-            pointer-events: none;
+            position: relative;
+            inset: auto;
+            z-index: 2;
+            min-height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 9px 14px;
+            border-top: 1px solid #e7eef6;
+            background: rgba(255,255,255,.97);
+            box-shadow: 0 -4px 14px rgba(15,76,151,.04);
         }
 
         .announcement-arrow {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 36px;
-            height: 36px;
+            position: static;
+            transform: none;
+            width: auto;
+            min-width: 82px;
+            height: 34px;
+            padding: 0 11px;
             border: 1px solid #d6e3ef;
-            border-radius: 50%;
-            background: rgba(255,255,255,.97);
+            border-radius: 10px;
+            background: #f7fbff;
             color: #1769c2;
             cursor: pointer;
-            display: grid;
-            place-items: center;
-            font-size: 11px;
-            box-shadow: 0 5px 16px rgba(18,63,105,.12);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            font-size: 10px;
+            font-weight: 850;
+            box-shadow: none;
             transition: all .2s ease;
-            pointer-events: auto;
         }
 
         .announcement-arrow:hover {
             background: #1769c2;
             color: #ffffff;
             border-color: #1769c2;
-            transform: translateY(-50%) scale(1.04);
+            transform: translateY(-1px);
         }
 
-        #announcementPrev { left: 12px; }
-        #announcementNext { right: 12px; }
+        .announcement-arrow:focus-visible,
+        .announcement-dot:focus-visible {
+            outline: 3px solid rgba(23,105,194,.22);
+            outline-offset: 2px;
+        }
+
+        #announcementPrev,
+        #announcementNext {
+            left: auto;
+            right: auto;
+        }
 
         .announcement-dots {
-            position: absolute;
-            left: 50%;
-            bottom: 11px;
-            transform: translateX(-50%);
+            position: static;
+            transform: none;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
             padding: 5px 8px;
             border: 1px solid #dbe8f4;
             border-radius: 999px;
-            background: rgba(255,255,255,.96);
-            box-shadow: 0 4px 12px rgba(15,76,151,.07);
+            background: #f8fbfe;
+            box-shadow: none;
             pointer-events: auto;
         }
 
@@ -984,6 +1008,18 @@
             background: #1769c2;
         }
 
+        .announcement-progress {
+            height: 3px;
+            width: 0;
+            background: linear-gradient(90deg, #1769c2, #4ca3e8);
+            opacity: .9;
+        }
+
+        .announcement-progress.running {
+            width: 100%;
+            transition: width 6s linear;
+        }
+
         @media (max-width: 760px) {
             .announcement-content-grid {
                 grid-template-columns: 1fr;
@@ -1002,6 +1038,62 @@
             .announcement-image-link img {
                 height: 145px;
             }
+
+            .announcement-slide {
+                padding: 19px 20px 20px;
+            }
+
+            .announcement-slide h4 {
+                font-size: 17px;
+            }
+
+            .announcement-slide-message {
+                font-size: 11px;
+            }
+
+            .announcement-carousel-controls {
+                gap: 7px;
+                padding: 8px 10px;
+            }
+
+            .announcement-arrow {
+                min-width: 74px;
+                height: 32px;
+                font-size: 9px;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .announcement-header {
+                padding: 14px 15px 12px;
+            }
+
+            .announcement-slide {
+                padding: 17px 16px 18px;
+            }
+
+            .announcement-header-icon {
+                width: 32px;
+                height: 32px;
+                flex-basis: 32px;
+            }
+
+            .announcement-slide h4 {
+                font-size: 16px;
+            }
+
+            .announcement-carousel-controls {
+                justify-content: space-between;
+            }
+
+            .announcement-arrow {
+                min-width: 72px;
+                padding: 0 8px;
+            }
+
+            .announcement-dots {
+                flex: 0 0 auto;
+            }
         }
 
         .announcement-empty {
@@ -1016,49 +1108,6 @@
             margin-bottom: 8px;
             font-size: 22px;
             color: #aab9c9;
-        }
-
-        @media (max-width: 760px) {
-            .announcement-carousel {
-                min-height: 220px;
-            }
-
-            .announcement-slide {
-                padding: 19px 20px 55px;
-            }
-
-            .announcement-slide h4 {
-                font-size: 17px;
-            }
-
-            .announcement-slide-message {
-                font-size: 11px;
-            }
-
-}
-
-        @media (max-width: 520px) {
-            .announcement-header {
-                padding: 14px 15px 12px;
-            }
-
-            .announcement-carousel {
-                min-height: 245px;
-            }
-
-            .announcement-slide {
-                padding: 17px 16px 55px;
-            }
-
-            .announcement-header-icon {
-                width: 32px;
-                height: 32px;
-                flex-basis: 32px;
-            }
-
-            .announcement-slide h4 {
-                font-size: 16px;
-            }
         }
 
         /* -------------------------
@@ -2619,6 +2668,7 @@
                             title="Previous announcement"
                         >
                             <i class="fas fa-chevron-left"></i>
+                            <span>Previous</span>
                         </button>
 
                         <div
@@ -2644,6 +2694,7 @@
                             aria-label="Next announcement"
                             title="Next announcement"
                         >
+                            <span>Next</span>
                             <i class="fas fa-chevron-right"></i>
                         </button>
 
