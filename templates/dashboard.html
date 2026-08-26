@@ -607,82 +607,6 @@
         }
 
         /* -------------------------
-           ANNOUNCEMENT PARTICLE BACKGROUND
-           ------------------------- */
-
-        .announcements {
-            position: relative;
-            overflow: hidden !important;
-            isolation: isolate;
-            background: #071b3a !important;
-        }
-
-        .announcement-particle-bg {
-            position: absolute;
-            inset: 0;
-            z-index: 0;
-            overflow: hidden;
-            pointer-events: none;
-            background:
-                radial-gradient(circle at 50% 45%, rgba(38,126,220,.22), transparent 48%),
-                linear-gradient(135deg, #061a38 0%, #0a2c58 55%, #061a38 100%);
-        }
-
-        .announcement-particle-bg .light {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            top: 100%;
-            border-radius: 50%;
-            opacity: 0;
-            background: #ffffff;
-            box-shadow:
-                0 0 10px 2px rgba(233,241,241,.85),
-                0 0 22px 5px rgba(77,170,255,.18);
-            animation: announcementFloatUp linear infinite;
-        }
-
-        .announcement-particle-bg .x1 { left: 8%;  animation-duration: 4s; }
-        .announcement-particle-bg .x2 { left: 15%; animation-duration: 7s; animation-delay: -2s; transform: scale(1.6); }
-        .announcement-particle-bg .x3 { left: 25%; animation-duration: 2.5s; animation-delay: -1s; transform: scale(.5); }
-        .announcement-particle-bg .x4 { left: 34%; animation-duration: 4.5s; animation-delay: -3s; transform: scale(1.2); }
-        .announcement-particle-bg .x5 { left: 43%; animation-duration: 8s; animation-delay: -5s; transform: scale(2.2); }
-        .announcement-particle-bg .x6 { left: 53%; animation-duration: 3s; animation-delay: -1.5s; transform: scale(.8); }
-        .announcement-particle-bg .x7 { left: 64%; animation-duration: 5.3s; animation-delay: -4s; transform: scale(3.2); }
-        .announcement-particle-bg .x8 { left: 76%; animation-duration: 4.7s; animation-delay: -2.5s; transform: scale(1.7); }
-        .announcement-particle-bg .x9 { left: 89%; animation-duration: 4.1s; animation-delay: -3.2s; transform: scale(.9); }
-
-        @keyframes announcementFloatUp {
-            0%   { top: 105%; opacity: 0; }
-            20%  { opacity: .8; }
-            50%  { top: 45%; opacity: .65; }
-            75%  { opacity: .8; }
-            100% { top: -10%; opacity: 0; }
-        }
-
-        .announcements > *:not(.announcement-particle-bg) {
-            position: relative;
-            z-index: 1;
-        }
-
-        .announcements .announcement-carousel {
-            background: transparent !important;
-            backdrop-filter: none;
-        }
-
-        .announcements .announcement-header {
-            background: rgba(5,25,54,.72);
-            border-bottom-color: rgba(151,195,236,.18);
-            backdrop-filter: blur(5px);
-        }
-
-        .announcements .announcement-carousel-controls {
-            background: rgba(5,25,54,.82);
-            border-top-color: rgba(151,195,236,.18);
-            backdrop-filter: blur(6px);
-        }
-
-        /* -------------------------
            ANNOUNCEMENTS CAROUSEL
            ------------------------- */
 
@@ -691,12 +615,11 @@
             width: 100%;
             margin: 0 0 22px !important;
             padding: 0 !important;
-            border: 1px solid rgba(117,174,232,.28);
+            border: 1px solid var(--salt-border);
             border-radius: 18px !important;
-            background: #071b3a !important;
-            box-shadow: 0 14px 38px rgba(5,28,62,.22) !important;
+            background: #ffffff;
+            box-shadow: var(--salt-shadow) !important;
             overflow: hidden;
-            color: #ffffff;
         }
 
         .announcement-header {
@@ -730,14 +653,14 @@
             margin: 0 !important;
             padding: 0 !important;
             border: 0 !important;
-            color: #ffffff !important;
+            color: #17365f !important;
             font-size: 15px;
             font-weight: 850;
         }
 
         .announcement-header p {
             margin: 2px 0 0;
-            color: rgba(213,231,249,.68);
+            color: #8796a8;
             font-size: 10px;
         }
 
@@ -765,14 +688,7 @@
 
         .announcement-slide {
             display: none;
-            margin: 18px 20px;
             padding: 22px 24px 20px;
-            border: 1px solid rgba(151,195,236,.20);
-            border-radius: 16px;
-            background: rgba(8,35,72,.66);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.05),
-                        0 8px 24px rgba(0,0,0,.12);
-            backdrop-filter: blur(4px);
             opacity: 0;
             transform: translateX(18px);
         }
@@ -837,7 +753,7 @@
 
         .announcement-slide h4 {
             margin: 0 0 8px;
-            color: #ffffff;
+            color: #17365f;
             font-size: 19px;
             line-height: 1.25;
             font-weight: 900;
@@ -845,7 +761,7 @@
 
         .announcement-slide-message {
             margin: 0;
-            color: rgba(239,247,255,.88);
+            color: #50657d;
             font-size: 12px;
             line-height: 1.7;
             max-width: 100%;
@@ -858,7 +774,7 @@
             align-items: center;
             gap: 6px;
             margin-top: 12px;
-            color: rgba(211,229,246,.70);
+            color: #8796a8;
             font-size: 10px;
             font-weight: 700;
         }
@@ -1105,11 +1021,6 @@
         }
 
         @media (max-width: 760px) {
-            .announcement-slide {
-                margin: 14px;
-            }
-
-
             .announcement-content-grid {
                 grid-template-columns: 1fr;
                 gap: 14px;
@@ -1187,7 +1098,7 @@
 
         .announcement-empty {
             padding: 30px 24px;
-            color: rgba(219,235,250,.72);
+            color: #8796a8;
             text-align: center;
             font-size: 12px;
         }
@@ -2541,17 +2452,6 @@
              One card; multiple announcements auto-slide.
              ===================================================== -->
         <section class="announcements" aria-label="Latest announcements">
-                <div class="announcement-particle-bg" aria-hidden="true">
-                    <span class="light x1"></span>
-                    <span class="light x2"></span>
-                    <span class="light x3"></span>
-                    <span class="light x4"></span>
-                    <span class="light x5"></span>
-                    <span class="light x6"></span>
-                    <span class="light x7"></span>
-                    <span class="light x8"></span>
-                    <span class="light x9"></span>
-                </div>
 
             <div class="announcement-header">
                 <div class="announcement-header-left">
