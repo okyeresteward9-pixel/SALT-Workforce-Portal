@@ -624,6 +624,38 @@
 
                 <div id="preview-container" class="hidden px-4 pb-3">
 
+                    <div id="preview-media" class="hidden space-y-2">
+                        <img id="preview-image"
+                             class="hidden max-w-[180px] max-h-[180px] object-contain rounded-2xl shadow border"
+                             alt="Image preview">
+
+                        <video id="preview-video"
+                               class="hidden max-w-[280px] max-h-[190px] rounded-2xl shadow border"
+                               controls
+                               preload="metadata"></video>
+
+                        <audio id="preview-audio"
+                               class="hidden max-w-[320px]"
+                               controls
+                               preload="metadata"></audio>
+                    </div>
+
+                    <div class="relative inline-block">
+
+                        <div id="preview-file"
+                             class="hidden bg-gray-100 border rounded-xl px-4 py-3 text-sm text-gray-700">
+                        </div>
+
+                        <button type="button"
+                                id="remove-preview"
+                                class="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 rounded-full shadow">
+
+                            ✕
+
+                        </button>
+
+                    </div>
+
                     <div class="relative inline-block">
                 
                         <img id="preview-image"
@@ -684,7 +716,8 @@
                             type="file"
                             id="file-input"
                             name="file"
-                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.docx,.xlsx,.txt"
+                            aria-label="Attach a file"
+                            accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.mp4,.webm,.mov,.m4v,.avi,.mkv,.mp3,.wav,.ogg,.m4a,.aac,.flac,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.json,.xml,.zip,.rar,.7z"
                             class="hidden"
                         >
 
