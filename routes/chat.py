@@ -122,36 +122,30 @@ def get_room_name(user1, user2):
 
 def save_uploaded_file(file):
     """
-    Upload a chat attachment to Cloudinary while preserving its
-    original filename/extension.
+    Upload a chat attachment to Cloudinary.
 
-    Cloudinary is used for persistent storage because local Render
-    filesystem storage is ephemeral.
+    - Images, video, audio and PDF are returned with their normal Cloudinary
+      delivery URL so the browser can preview/play them.
+    - Office/text/archive files are uploaded as raw assets with the original
+      extension included in the Cloudinary public ID. A download URL is
+      generated for those files so the original filename/extension is kept.
     """
     if not file or not file.filename:
         return None, None
 
-    original_filename = file.filename
-    filename = secure_filename(original_filename)
-
+    filename = secure_filename(file.filename)
     if not filename:
         return None, None
 
-    # Keep the original extension so the browser can identify the file.
     extension = os.path.splitext(filename)[1].lower()
 
-    # Explicitly support common chat attachment formats.
     allowed_extensions = {
-        # Images
         ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg",
-        # Video
         ".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv",
-        # Audio
         ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac",
-        # Documents
-        ".pdf", ".doc", ".docx", ".xls", ".xlsx",
-        ".ppt", ".pptx", ".txt", ".csv", ".json", ".xml",
-        # Archives
+        ".pdf",
+        ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+        ".txt", ".csv", ".json", ".xml",
         ".zip", ".rar", ".7z",
     }
 
@@ -161,21 +155,31 @@ def save_uploaded_file(file):
             "audio, document, or supported archive."
         )
 
-    # Cloudinary public IDs must not contain the filename extension.
+    raw_extensions = {
+        ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+        ".txt", ".csv", ".json", ".xml", ".zip", ".rar", ".7z"
+    }
+
+    is_raw = extension in raw_extensions
     base_name = os.path.splitext(filename)[0]
+    # Keep the public ID safe while preventing collisions.
+    unique_base = f"{secure_filename(base_name) or 'file'}_{int(time.time() * 1000)}"
 
-    # Add a timestamp so two users can upload files with the same name
-    # without overwriting each other.
-    public_id = f"{base_name}_{int(time.time() * 1000)}"
+    if is_raw:
+        # IMPORTANT: raw Cloudinary assets need the extension in the public ID.
+        public_id = f"{unique_base}{extension}"
+        resource_type = "raw"
+    else:
+        # Do not put the extension into image/video public IDs.
+        public_id = unique_base
+        resource_type = "auto"
 
-    # Importing the configured module ensures cloudinary.config(...)
-    # has already run before uploader.upload is called.
+    # cloudinary_config reads CLOUDINARY_* from the environment and configures
+    # the SDK before uploader.upload()/upload_large() is called.
     import cloudinary_config  # noqa: F401
     from cloudinary import uploader
+    from cloudinary.utils import cloudinary_url
 
-    # Use auto so Cloudinary determines image/video/raw content.
-    # upload_large is used for larger attachments and returns the same
-    # result structure while uploading in chunks to Cloudinary.
     file_size = None
     try:
         current_position = file.tell()
@@ -188,7 +192,7 @@ def save_uploaded_file(file):
     upload_options = {
         "folder": "salt_portal/chat",
         "public_id": public_id,
-        "resource_type": "auto",
+        "resource_type": resource_type,
         "use_filename": False,
         "unique_filename": False,
     }
@@ -209,7 +213,30 @@ def save_uploaded_file(file):
     if not secure_url:
         raise RuntimeError("Cloudinary did not return a secure file URL.")
 
-    return filename, secure_url
+    # Media files MUST keep the normal delivery URL. In particular, do not
+    # add fl_attachment to PDF/image/video/audio URLs because that turns a
+    # previewable resource into a forced download.
+    if not is_raw:
+        return filename, secure_url
+
+    # Raw files need a download URL with the original filename. Generate it
+    # through Cloudinary's URL builder rather than manually inserting a
+    # transformation into the returned URL (which can break special
+    # characters in filenames).
+    try:
+        download_url, _ = cloudinary_url(
+            public_id,
+            resource_type="raw",
+            type="upload",
+            secure=True,
+            flags=f"attachment:{filename}",
+        )
+    except Exception:
+        # Fallback: the raw secure URL still contains the original extension.
+        download_url = secure_url
+
+    return filename, download_url
+
 
 # ==========================================
 # SERIALIZE MESSAGE
