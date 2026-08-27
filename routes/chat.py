@@ -948,4 +948,3 @@ def delete_message(message_id):
         "success": True,
         "message": serialize_message(deleted_message)
     })    
-
