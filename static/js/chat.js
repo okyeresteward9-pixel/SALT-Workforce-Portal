@@ -831,10 +831,7 @@ class ChatApp {
 
         return `
             <a
-                href="${safeUrl}"
-                target="_blank"
-                rel="noopener noreferrer"
-                download="${fileName}"
+                href="/messages/download/${encodeURIComponent(chat.id)}"
                 class="flex items-center gap-3 mt-3 ${backgroundClass} rounded-2xl p-3 transition"
                 title="Download ${fileName}"
             >
