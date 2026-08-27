@@ -670,6 +670,23 @@ class ChatApp {
             this.escapeHTML(filePath);
 
         /*
+         * Documents/archives must use the backend download endpoint.
+         * Cloudinary is cross-origin, so the HTML `download` attribute
+         * cannot reliably preserve the original filename/extension.
+         *
+         * Newer backend responses may provide `download_url`.
+         * Older messages fall back to the Flask download route.
+         */
+        const downloadUrl =
+            chat.download_url ||
+            (chat.id
+                ? `/chat/download/${encodeURIComponent(chat.id)}`
+                : filePath);
+
+        const safeDownloadUrl =
+            this.escapeHTML(String(downloadUrl));
+
+        /*
          * Images open in a new tab while remaining viewable inline.
          */
         if (isImage) {
@@ -721,7 +738,23 @@ class ChatApp {
                         </div>
                     </div>
 
-                    <i class="fas fa-external-link-alt text-gray-400 ml-auto"></i>
+                    <div class="ml-auto flex items-center gap-3">
+                        <span
+                            class="text-gray-400 hover:text-blue-600"
+                            title="Open PDF"
+                        >
+                            <i class="fas fa-external-link-alt"></i>
+                        </span>
+
+                        <a
+                            href="${safeDownloadUrl}"
+                            class="text-gray-400 hover:text-blue-600"
+                            title="Download ${fileName}"
+                            aria-label="Download ${fileName}"
+                        >
+                            <i class="fas fa-download"></i>
+                        </a>
+                    </div>
                 </a>
             `;
 
@@ -831,12 +864,10 @@ class ChatApp {
 
         return `
             <a
-                href="${safeUrl}"
-                target="_blank"
-                rel="noopener noreferrer"
-                download="${fileName}"
+                href="${safeDownloadUrl}"
                 class="flex items-center gap-3 mt-3 ${backgroundClass} rounded-2xl p-3 transition"
                 title="Download ${fileName}"
+                aria-label="Download ${fileName}"
             >
                 <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
                     <i class="fas ${icon} ${iconClass}"></i>

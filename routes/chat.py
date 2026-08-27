@@ -27,6 +27,8 @@ from datetime import datetime
 import time
 import os
 import json
+import mimetypes
+import requests
 
 from cloudinary import uploader
 import cloudinary_config
@@ -124,11 +126,15 @@ def save_uploaded_file(file):
     """
     Upload a chat attachment to Cloudinary.
 
-    - Images, video, audio and PDF are returned with their normal Cloudinary
-      delivery URL so the browser can preview/play them.
-    - Office/text/archive files are uploaded as raw assets with the original
-      extension included in the Cloudinary public ID. A download URL is
-      generated for those files so the original filename/extension is kept.
+    IMPORTANT:
+    - Images use Cloudinary's image delivery URL.
+    - Video/audio use Cloudinary's video delivery URL.
+    - PDFs use Cloudinary's normal delivery URL so they can be previewed.
+    - Office/text/archive files are raw assets and keep their extension in
+      the Cloudinary public_id.
+    - Raw files are NOT given an fl_attachment URL here. Their download is
+      handled by /chat/download/<message_id>, which streams the exact asset
+      through Flask and sets the original filename/extension reliably.
     """
     if not file or not file.filename:
         return None, None
@@ -160,25 +166,42 @@ def save_uploaded_file(file):
         ".txt", ".csv", ".json", ".xml", ".zip", ".rar", ".7z"
     }
 
+    video_extensions = {
+        ".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv",
+        ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"
+    }
+
+    image_extensions = {
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"
+    }
+
     is_raw = extension in raw_extensions
+
+    # Cloudinary public IDs:
+    # raw assets MUST include their extension.
+    # image/video public IDs MUST NOT include their extension.
     base_name = os.path.splitext(filename)[0]
-    # Keep the public ID safe while preventing collisions.
-    unique_base = f"{secure_filename(base_name) or 'file'}_{int(time.time() * 1000)}"
+    safe_base = secure_filename(base_name) or "file"
+    unique_base = f"{safe_base}_{int(time.time() * 1000)}"
 
     if is_raw:
-        # IMPORTANT: raw Cloudinary assets need the extension in the public ID.
         public_id = f"{unique_base}{extension}"
         resource_type = "raw"
+    elif extension in video_extensions:
+        public_id = unique_base
+        resource_type = "video"
+    elif extension in image_extensions:
+        public_id = unique_base
+        resource_type = "image"
     else:
-        # Do not put the extension into image/video public IDs.
+        # PDF: let Cloudinary auto-detect it. This keeps the normal delivery
+        # URL and allows the browser to preview PDFs instead of forcing a
+        # download.
         public_id = unique_base
         resource_type = "auto"
 
-    # cloudinary_config reads CLOUDINARY_* from the environment and configures
-    # the SDK before uploader.upload()/upload_large() is called.
     import cloudinary_config  # noqa: F401
     from cloudinary import uploader
-    from cloudinary.utils import cloudinary_url
 
     file_size = None
     try:
@@ -213,29 +236,12 @@ def save_uploaded_file(file):
     if not secure_url:
         raise RuntimeError("Cloudinary did not return a secure file URL.")
 
-    # Media files MUST keep the normal delivery URL. In particular, do not
-    # add fl_attachment to PDF/image/video/audio URLs because that turns a
-    # previewable resource into a forced download.
-    if not is_raw:
-        return filename, secure_url
-
-    # Raw files need a download URL with the original filename. Generate it
-    # through Cloudinary's URL builder rather than manually inserting a
-    # transformation into the returned URL (which can break special
-    # characters in filenames).
-    try:
-        download_url, _ = cloudinary_url(
-            public_id,
-            resource_type="raw",
-            type="upload",
-            secure=True,
-            flags=f"attachment:{filename}",
-        )
-    except Exception:
-        # Fallback: the raw secure URL still contains the original extension.
-        download_url = secure_url
-
-    return filename, download_url
+    # Always return the normal Cloudinary URL here. The exact original
+    # filename is preserved separately in messages.file_name.
+    #
+    # For raw files, /chat/download/<message_id> will fetch this URL and send
+    # it back with Content-Disposition: attachment; filename="<original>".
+    return filename, secure_url
 
 
 # ==========================================
@@ -259,6 +265,22 @@ def serialize_message(message):
 
     else:
         message["created_at"] = str(created_at)
+
+    # Frontend uses this for documents/archives. Media keeps using file_path
+    # directly so images, video, audio and PDFs remain previewable/playable.
+    file_name = message.get("file_name")
+    if message.get("id") and file_name:
+        raw_extensions = {
+            ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+            ".txt", ".csv", ".json", ".xml", ".zip", ".rar", ".7z"
+        }
+        ext = os.path.splitext(file_name)[1].lower()
+        if ext in raw_extensions:
+            message["download_url"] = f"/chat/download/{message['id']}"
+        else:
+            message["download_url"] = message.get("file_path")
+    else:
+        message["download_url"] = None
 
     return message
 
@@ -684,6 +706,87 @@ def messages(user_id=None):
         chats=chats,
         receiver=receiver
     )
+
+
+# ==========================================
+# DOWNLOAD ORIGINAL CHAT ATTACHMENT
+# ==========================================
+
+@chat_bp.route("/chat/download/<int:message_id>")
+def download_chat_attachment(message_id):
+    """
+    Download a document/archive using the exact original filename.
+
+    We proxy raw Cloudinary files through Flask because the browser's
+    cross-origin download attribute cannot reliably control the filename
+    of a Cloudinary URL. The server response explicitly sets the filename
+    and MIME type, so .docx/.xlsx/.pptx/.zip/etc. remain unchanged.
+    """
+    if not current_user_required():
+        return redirect("/")
+
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+    c.execute("""
+        SELECT
+            id,
+            sender_id,
+            receiver_id,
+            file_name,
+            file_path
+        FROM messages
+        WHERE id=%s
+          AND (sender_id=%s OR receiver_id=%s)
+        LIMIT 1
+    """, (
+        message_id,
+        session["user_id"],
+        session["user_id"]
+    ))
+
+    message = c.fetchone()
+    conn.close()
+
+    if not message or not message.get("file_name") or not message.get("file_path"):
+        return "Attachment not found.", 404
+
+    filename = secure_filename(message["file_name"]) or "download"
+    file_url = message["file_path"]
+
+    try:
+        upstream = requests.get(
+            file_url,
+            stream=True,
+            timeout=60,
+            allow_redirects=True
+        )
+        upstream.raise_for_status()
+    except requests.RequestException as exc:
+        print("CHAT DOWNLOAD ERROR:", repr(exc))
+        return "Unable to retrieve attachment.", 502
+
+    # Download into memory. Chat documents/archives are normally modest in
+    # size, and this guarantees Flask can set the original filename.
+    try:
+        content = upstream.content
+    finally:
+        upstream.close()
+
+    mimetype = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    response = current_app.response_class(
+        content,
+        status=200,
+        mimetype=mimetype
+    )
+    response.headers["Content-Disposition"] = (
+        f"attachment; filename=\"{filename}\""
+    )
+    response.headers["Content-Length"] = str(len(content))
+    response.headers["Cache-Control"] = "private, no-store"
+
+    return response
 
 
 # ==========================================
