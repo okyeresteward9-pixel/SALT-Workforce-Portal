@@ -1,6 +1,13 @@
 {% extends "request_base.html" %}
 {% block title %}SALT — New Request{% endblock %}
 {% block content %}
+
+{% if request_message %}
+<div class="rq-alert rq-message-{{ request_message_type|default('error') }}"
+     id="requestWorkflowMessage">
+    <strong>{{ request_message }}</strong>
+</div>
+{% endif %}
 <div class="rq-hero"><div><div class="rq-eyebrow">Request centre</div><h1>Create a request</h1><p>Prepare your memo, add a requisition when needed, choose the approval route and submit.</p></div></div>
 <div class="rq-stepper">{% for n,label in [(1,'Details'),(2,'Requisition'),(3,'Approval route'),(4,'Attachments'),(5,'Review & submit')] %}<div class="rq-stepper-item{% if n==1 %} active{% endif %}" data-step="{{ n }}"><span class="rq-stepper-number">{{ n }}</span>{{ label }}</div>{% endfor %}</div>
 <form method="POST" enctype="multipart/form-data" id="requestForm" class="rq-form" onsubmit="return prepareRequestSubmit(event);">
@@ -157,4 +164,61 @@ function prepareRequestSubmit(event){
     return true;
 }
 document.getElementById('attachments').addEventListener('change',e=>{let box=document.getElementById('fileList');box.innerHTML='';[...e.target.files].forEach(f=>{let d=document.createElement('div');d.className='rq-attachment';d.innerHTML='<span>📎 '+f.name+'</span><span class="rq-muted">'+Math.max(1,Math.round(f.size/1024))+' KB</span>';box.appendChild(d)})});bindTotals();showStep(1);
-</script>{% endblock %}
+</script>
+<style>
+.rq-message-success {
+    border-left: 4px solid #16a34a;
+}
+
+.rq-message-error {
+    border-left: 4px solid #dc2626;
+}
+
+.rq-message-info {
+    border-left: 4px solid #2563eb;
+}
+</style>
+
+
+<script>
+/* ==========================================
+   REQUEST WORKFLOW MESSAGE
+   ========================================== */
+
+const requestMessage =
+    document.getElementById(
+        'requestWorkflowMessage'
+    );
+
+if (requestMessage) {
+
+    /* Remove request_message parameters from the URL */
+    const cleanUrl =
+        window.location.pathname +
+        window.location.hash;
+
+    window.history.replaceState(
+        {},
+        document.title,
+        cleanUrl
+    );
+
+    /* Hide the message after 5 seconds */
+    setTimeout(() => {
+
+        requestMessage.style.transition =
+            'opacity 0.4s ease, transform 0.4s ease';
+
+        requestMessage.style.opacity = '0';
+        requestMessage.style.transform =
+            'translateY(-5px)';
+
+        setTimeout(() => {
+            requestMessage.remove();
+        }, 400);
+
+    }, 5000);
+}
+</script>
+
+{% endblock %}

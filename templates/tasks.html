@@ -2195,6 +2195,14 @@
     }
 
 
+    .toast.info i {
+
+        color:
+            #2563eb;
+
+    }
+
+
     @keyframes toastIn {
 
         from {
@@ -4336,6 +4344,21 @@ let editingTaskId = null;
 
 
 /* =========================================================
+   TASK-PAGE-ONLY SERVER MESSAGE
+   ========================================================= */
+
+/*
+ * The Flask task routes now pass task messages through the
+ * /tasks URL instead of Flask flash(). This keeps task messages
+ * on the task page and prevents them from appearing later on
+ * Profile Settings or other pages.
+ */
+
+const taskMessage = {{ task_message|default('', true)|tojson }};
+const taskMessageType = {{ task_message_type|default('success', true)|tojson }};
+
+
+/* =========================================================
    SIDEBAR
    ========================================================= */
 
@@ -4941,6 +4964,7 @@ function showToast(
     toast.classList.remove(
         "success",
         "error",
+        "info",
         "show"
     );
 
@@ -4953,16 +4977,25 @@ function showToast(
             "success"
         );
 
-
         icon.className =
             "fas fa-circle-check";
+
+    } else if (
+        type === "info"
+    ) {
+
+        toast.classList.add(
+            "info"
+        );
+
+        icon.className =
+            "fas fa-circle-info";
 
     } else {
 
         toast.classList.add(
             "error"
         );
-
 
         icon.className =
             "fas fa-circle-exclamation";
@@ -5624,6 +5657,40 @@ document.addEventListener(
         });
 
         applyTaskFilter("all");
+    });
+
+
+    /* =========================================================
+       SHOW SERVER TASK MESSAGE
+       ========================================================= */
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        if (!taskMessage) {
+            return;
+        }
+
+        if (typeof showToast === "function") {
+            showToast(
+                taskMessageType,
+                taskMessage
+            );
+        }
+
+        /*
+         * Remove the message parameters from the address bar
+         * after displaying the toast. This prevents the same
+         * message from being shown again on refresh.
+         */
+        const cleanUrl =
+            window.location.pathname;
+
+        window.history.replaceState(
+            {},
+            document.title,
+            cleanUrl
+        );
+
     });
 </script>
 

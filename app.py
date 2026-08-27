@@ -1,7 +1,7 @@
 from gevent import monkey
 monkey.patch_all()
 
-from flask import Flask, render_template, request, redirect, session, jsonify, flash
+from flask import Flask, render_template, request, redirect, session, jsonify, flash, url_for
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
@@ -5110,6 +5110,26 @@ def tasks():
     today = datetime.now().date()
 
     # =====================================================
+    # TASK-PAGE-ONLY MESSAGES
+    # =====================================================
+    #
+    # Task success/error messages are passed through the
+    # /tasks URL instead of Flask flash(). This prevents
+    # task messages from appearing later on unrelated
+    # pages such as Profile Settings.
+    # =====================================================
+
+    task_message = request.args.get("task_message")
+    task_message_type = request.args.get(
+        "task_message_type",
+        "success"
+    )
+
+    if request.args.get("task_created") == "1":
+        task_message = "Task created successfully."
+        task_message_type = "success"
+
+    # =====================================================
     # AUTO CARRY FORWARD OVERDUE TASKS
     # =====================================================
 
@@ -5273,7 +5293,9 @@ def tasks():
         "tasks.html",
         tasks=tasks_list,
         name=session["name"],
-        role=session["role"]
+        role=session["role"],
+        task_message=task_message,
+        task_message_type=task_message_type
     )
 
 @app.route('/reply_task/<int:id>', methods=['POST'])
@@ -5684,12 +5706,13 @@ def complete_task(id):
 
             conn.close()
 
-            flash(
-                "Task not found.",
-                "error"
+            return redirect(
+                url_for(
+                    "tasks",
+                    task_message="Task not found.",
+                    task_message_type="error"
+                )
             )
-
-            return redirect('/tasks')
 
 
         # ==========================================
@@ -5721,12 +5744,13 @@ def complete_task(id):
 
             conn.close()
 
-            flash(
-                "You are not authorized to complete this task.",
-                "error"
+            return redirect(
+                url_for(
+                    "tasks",
+                    task_message="You are not authorized to complete this task.",
+                    task_message_type="error"
+                )
             )
-
-            return redirect('/tasks')
 
 
         # ==========================================
@@ -5737,12 +5761,13 @@ def complete_task(id):
 
             conn.close()
 
-            flash(
-                "This task is already completed.",
-                "info"
+            return redirect(
+                url_for(
+                    "tasks",
+                    task_message="This task is already completed.",
+                    task_message_type="info"
+                )
             )
-
-            return redirect('/tasks')
 
 
         # ==========================================
@@ -5803,12 +5828,13 @@ def complete_task(id):
         conn.close()
 
 
-        flash(
-            "Task completed successfully.",
-            "success"
+        return redirect(
+            url_for(
+                "tasks",
+                task_message="Task completed successfully.",
+                task_message_type="success"
+            )
         )
-
-        return redirect('/tasks')
 
 
     except Exception as e:
@@ -5822,12 +5848,13 @@ def complete_task(id):
             e
         )
 
-        flash(
-            "Unable to complete task.",
-            "error"
+        return redirect(
+            url_for(
+                "tasks",
+                task_message="Unable to complete task.",
+                task_message_type="error"
+            )
         )
-
-        return redirect('/tasks')
 
 @app.route('/tasks/create', methods=['POST'])
 def create_task():
@@ -5893,12 +5920,12 @@ def create_task():
     conn.commit()
     conn.close()
 
-    flash(
-        "Task created successfully.",
-        "success"
+    return redirect(
+        url_for(
+            "tasks",
+            task_created=1
+        )
     )
-
-    return redirect("/tasks")
 
 @app.route('/start_task/<int:id>')
 def start_task(id):
@@ -5945,7 +5972,6 @@ def start_task(id):
         )
 
     return redirect('/tasks')
-
 
 @app.route('/delete_task/<int:id>')
 def delete_task(id):

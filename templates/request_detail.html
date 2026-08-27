@@ -3,6 +3,13 @@
 
 {% block content %}
 
+{% if request_message %}
+<div class="rq-alert rq-message-{{ request_message_type|default('success') }}"
+     id="requestWorkflowMessage">
+    <strong>{{ request_message }}</strong>
+</div>
+{% endif %}
+
 <div class="rq-hero">
     <div>
         <div class="rq-eyebrow">{{ req.request_no }}</div>
@@ -434,6 +441,21 @@
 
 {% endblock %}
 
+
+<style>
+.rq-message-success {
+    border-left: 4px solid #16a34a;
+}
+
+.rq-message-error {
+    border-left: 4px solid #dc2626;
+}
+
+.rq-message-info {
+    border-left: 4px solid #2563eb;
+}
+</style>
+
 {% block scripts %}
 
 <style>
@@ -523,4 +545,40 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+
+<script>
+const requestMessage =
+    document.getElementById(
+        'requestWorkflowMessage'
+    );
+
+if (requestMessage) {
+
+    const cleanUrl =
+        window.location.pathname +
+        window.location.hash;
+
+    window.history.replaceState(
+        {},
+        document.title,
+        cleanUrl
+    );
+
+    setTimeout(() => {
+
+        requestMessage.style.transition =
+            'opacity 0.4s ease, transform 0.4s ease';
+
+        requestMessage.style.opacity = '0';
+
+        requestMessage.style.transform =
+            'translateY(-5px)';
+
+        setTimeout(() => {
+            requestMessage.remove();
+        }, 400);
+
+    }, 5000);
+}
+</script>
 {% endblock %}
