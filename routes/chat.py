@@ -121,23 +121,95 @@ def get_room_name(user1, user2):
 
 
 def save_uploaded_file(file):
+    """
+    Upload a chat attachment to Cloudinary while preserving its
+    original filename/extension.
 
-    if not file or file.filename == "":
+    Cloudinary is used for persistent storage because local Render
+    filesystem storage is ephemeral.
+    """
+    if not file or not file.filename:
         return None, None
 
-    filename = secure_filename(file.filename)
+    original_filename = file.filename
+    filename = secure_filename(original_filename)
 
-    result = uploader.upload(
-        file,
-        folder="salt_portal/chat",
-        public_id=os.path.splitext(filename)[0],
-        resource_type="auto"
-    )
+    if not filename:
+        return None, None
 
-    return (
-        filename,
-        result["secure_url"]
-    )
+    # Keep the original extension so the browser can identify the file.
+    extension = os.path.splitext(filename)[1].lower()
+
+    # Explicitly support common chat attachment formats.
+    allowed_extensions = {
+        # Images
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg",
+        # Video
+        ".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv",
+        # Audio
+        ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac",
+        # Documents
+        ".pdf", ".doc", ".docx", ".xls", ".xlsx",
+        ".ppt", ".pptx", ".txt", ".csv", ".json", ".xml",
+        # Archives
+        ".zip", ".rar", ".7z",
+    }
+
+    if extension not in allowed_extensions:
+        raise ValueError(
+            "Unsupported file type. Please upload an image, video, "
+            "audio, document, or supported archive."
+        )
+
+    # Cloudinary public IDs must not contain the filename extension.
+    base_name = os.path.splitext(filename)[0]
+
+    # Add a timestamp so two users can upload files with the same name
+    # without overwriting each other.
+    public_id = f"{base_name}_{int(time.time() * 1000)}"
+
+    # Importing the configured module ensures cloudinary.config(...)
+    # has already run before uploader.upload is called.
+    import cloudinary_config  # noqa: F401
+    from cloudinary import uploader
+
+    # Use auto so Cloudinary determines image/video/raw content.
+    # upload_large is used for larger attachments and returns the same
+    # result structure while uploading in chunks to Cloudinary.
+    file_size = None
+    try:
+        current_position = file.tell()
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(current_position)
+    except Exception:
+        pass
+
+    upload_options = {
+        "folder": "salt_portal/chat",
+        "public_id": public_id,
+        "resource_type": "auto",
+        "use_filename": False,
+        "unique_filename": False,
+    }
+
+    if file_size and file_size > 20 * 1024 * 1024:
+        result = uploader.upload_large(
+            file,
+            chunk_size=6 * 1024 * 1024,
+            **upload_options
+        )
+    else:
+        result = uploader.upload(
+            file,
+            **upload_options
+        )
+
+    secure_url = result.get("secure_url")
+    if not secure_url:
+        raise RuntimeError("Cloudinary did not return a secure file URL.")
+
+    return filename, secure_url
 
 # ==========================================
 # SERIALIZE MESSAGE
@@ -247,7 +319,21 @@ def messages(user_id=None):
 
         file = request.files.get("file")
 
-        file_name, file_path = save_uploaded_file(file)
+        try:
+            file_name, file_path = save_uploaded_file(file)
+        except ValueError as upload_error:
+            conn.close()
+            return jsonify({
+                "success": False,
+                "error": str(upload_error)
+            }), 400
+        except Exception as upload_error:
+            conn.close()
+            print("CHAT FILE UPLOAD ERROR:", repr(upload_error))
+            return jsonify({
+                "success": False,
+                "error": "The attachment could not be uploaded. Please try again."
+            }), 500
 
         # don't save completely empty messages
         if not message and not file_name:

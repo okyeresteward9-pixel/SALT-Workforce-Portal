@@ -643,11 +643,11 @@ class ChatApp {
         ];
 
         const videoExtensions = [
-            "mp4", "webm", "mov", "m4v", "avi"
+            "mp4", "webm", "mov", "m4v", "avi", "mkv", "3gp"
         ];
 
         const audioExtensions = [
-            "mp3", "wav", "ogg", "m4a", "aac"
+            "mp3", "wav", "ogg", "m4a", "aac", "flac", "opus", "wma"
         ];
 
         const isImage =
@@ -1212,184 +1212,151 @@ class ChatApp {
 
     async send() {
 
-        if (
-            this.isSending ||
-            !this.form
-        ) {
-
+        if (this.isSending || !this.form) {
             return;
-
         }
 
+        const message = (this.messageInput?.value || "").trim();
+        const file = this.fileInput?.files?.[0] || null;
 
-        const message =
-            (
-                this.messageInput?.value ||
-                ""
-            ).trim();
-
-
-        const hasFile =
-            Boolean(
-                this.fileInput?.files?.length
-            );
-
-
-        if (
-            !message &&
-            !hasFile
-        ) {
-
+        if (!message && !file) {
             return;
-
         }
 
+        // Keep the browser from starting an upload that the backend cannot
+        // reasonably accept. The backend should enforce the same limit.
+        const MAX_FILE_SIZE = 100 * 1024 * 1024;
+
+        if (file && file.size > MAX_FILE_SIZE) {
+            this.showToast("File is too large. Maximum size is 100 MB.");
+            return;
+        }
 
         const sendButton =
-            this.form.querySelector(
-                "button[type='submit']"
-            );
-
+            this.form.querySelector("button[type='submit']");
 
         const originalButtonHTML =
-            sendButton
-                ? sendButton.innerHTML
-                : "";
-
+            sendButton ? sendButton.innerHTML : "";
 
         this.isSending = true;
 
-
         if (sendButton) {
-
             sendButton.disabled = true;
-
             sendButton.innerHTML =
-                `<i class="fas fa-spinner fa-spin"></i>`;
-
-            sendButton.classList.add(
-                "opacity-70"
-            );
-
+                `<i class="fas fa-spinner fa-spin"></i> <span>Sending...</span>`;
+            sendButton.classList.add("opacity-70");
         }
-
 
         try {
+            const formData = new FormData(this.form);
 
-            const formData =
-                new FormData(
-                    this.form
-                );
+            // XMLHttpRequest is used instead of fetch so large multipart
+            // uploads can show progress and can be given a generous timeout.
+            const data = await new Promise((resolve, reject) => {
 
+                const xhr = new XMLHttpRequest();
 
-            const response =
-                await fetch(
+                xhr.open(
+                    "POST",
                     `/messages/${encodeURIComponent(this.receiver)}`,
-                    {
-                        method: "POST",
-                        body: formData,
-                        headers: {
-                            "Accept": "application/json"
-                        }
+                    true
+                );
+
+                xhr.setRequestHeader("Accept", "application/json");
+                xhr.timeout = 10 * 60 * 1000; // 10 minutes
+
+                xhr.upload.addEventListener("progress", event => {
+                    if (!event.lengthComputable || !sendButton) {
+                        return;
                     }
-                );
 
+                    const percent = Math.min(
+                        100,
+                        Math.round((event.loaded / event.total) * 100)
+                    );
 
-            const contentType =
-                response.headers.get(
-                    "content-type"
-                ) || "";
+                    sendButton.innerHTML =
+                        `<i class="fas fa-spinner fa-spin"></i> <span>Uploading ${percent}%</span>`;
+                });
 
+                xhr.onload = () => {
+                    let parsed;
 
-            if (
-                !contentType.includes(
-                    "application/json"
-                )
-            ) {
+                    try {
+                        parsed = JSON.parse(xhr.responseText || "{}");
+                    }
+                    catch (parseError) {
+                        console.error("Invalid server JSON:", xhr.responseText);
+                        reject(new Error(
+                            "The server returned an invalid response. Please try again."
+                        ));
+                        return;
+                    }
 
-                const serverText =
-                    await response.text();
+                    if (xhr.status < 200 || xhr.status >= 300) {
+                        reject(new Error(
+                            parsed.message ||
+                            `Upload failed (HTTP ${xhr.status}).`
+                        ));
+                        return;
+                    }
 
+                    resolve(parsed);
+                };
 
-                console.error(
-                    "Unexpected server response:",
-                    serverText
-                );
+                xhr.onerror = () => {
+                    reject(new Error(
+                        "The upload connection was interrupted. Please check your connection and try again."
+                    ));
+                };
 
+                xhr.onabort = () => {
+                    reject(new Error("The upload was cancelled."));
+                };
 
+                xhr.ontimeout = () => {
+                    reject(new Error(
+                        "The upload took too long and timed out. Please try again or use a smaller file."
+                    ));
+                };
+
+                xhr.send(formData);
+            });
+
+            if (!data.success) {
                 throw new Error(
-                    "The server returned an unexpected response."
+                    data.message || "Message could not be sent."
                 );
-
             }
-
-
-            const data =
-                await response.json();
-
-
-            if (
-                !response.ok ||
-                !data.success
-            ) {
-
-                throw new Error(
-                    data.message ||
-                    "Message could not be sent."
-                );
-
-            }
-
 
             this.messageInput.value = "";
-
             this.form.reset();
-
             this.hidePreview();
 
-            this.scrollBottom(
-                true
-            );
+            // The server emits the new message through Socket.IO. Do not
+            // append it here or it can appear twice.
+            this.scrollBottom(true);
 
         }
-
         catch (error) {
-
-            console.error(
-                "Send message error:",
-                error
-            );
-
+            console.error("Send/upload message error:", error);
 
             this.showToast(
                 error.message ||
                 "Unable to send message."
             );
-
         }
-
         finally {
-
             this.isSending = false;
 
-
             if (sendButton) {
-
                 sendButton.disabled = false;
-
-                sendButton.innerHTML =
-                    originalButtonHTML;
-
-                sendButton.classList.remove(
-                    "opacity-70"
-                );
-
+                sendButton.innerHTML = originalButtonHTML;
+                sendButton.classList.remove("opacity-70");
             }
-
         }
 
     }
-
 
     // =====================================================
     // FILE PREVIEW
@@ -1397,92 +1364,97 @@ class ChatApp {
 
     showPreview(file) {
 
-        if (
-            !file ||
-            !this.previewContainer
-        ) {
-
+        if (!file || !this.previewContainer) {
             return;
-
         }
 
+        this.previewContainer.classList.remove("hidden");
 
-        this.previewContainer.classList.remove(
-            "hidden"
-        );
-
-
-        if (
-            file.type.startsWith(
-                "image/"
-            )
-        ) {
-
-            this.previewImage?.classList.remove(
-                "hidden"
-            );
-
-            this.previewFile?.classList.add(
-                "hidden"
-            );
-
-
-            const reader =
-                new FileReader();
-
-
-            reader.onload =
-                event => {
-
-                    if (this.previewImage) {
-
-                        this.previewImage.src =
-                            event.target.result;
-
-                    }
-
-                };
-
-
-            reader.readAsDataURL(
-                file
-            );
-
+        // Locate optional media preview elements from messages.html.
+        // If they are not present, create them inside the preview container.
+        let media = this.previewContainer.querySelector("#preview-media");
+        if (!media) {
+            media = document.createElement("div");
+            media.id = "preview-media";
+            media.className = "hidden space-y-2";
+            this.previewContainer.prepend(media);
         }
 
-        else {
+        let previewVideo = media.querySelector("#preview-video");
+        let previewAudio = media.querySelector("#preview-audio");
 
-            this.previewImage?.classList.add(
-                "hidden"
-            );
+        if (!previewVideo) {
+            previewVideo = document.createElement("video");
+            previewVideo.id = "preview-video";
+            previewVideo.controls = true;
+            previewVideo.preload = "metadata";
+            previewVideo.className = "hidden max-w-[280px] max-h-[190px] rounded-2xl shadow border";
+            media.appendChild(previewVideo);
+        }
 
-            this.previewFile?.classList.remove(
-                "hidden"
-            );
+        if (!previewAudio) {
+            previewAudio = document.createElement("audio");
+            previewAudio.id = "preview-audio";
+            previewAudio.controls = true;
+            previewAudio.preload = "metadata";
+            previewAudio.className = "hidden max-w-[320px]";
+            media.appendChild(previewAudio);
+        }
 
+        const isImage = file.type.startsWith("image/");
+        const isVideo = file.type.startsWith("video/");
+        const isAudio = file.type.startsWith("audio/");
 
-            if (this.previewFile) {
+        // Reset all preview modes first.
+        this.previewImage?.classList.add("hidden");
+        this.previewFile?.classList.add("hidden");
+        previewVideo.classList.add("hidden");
+        previewAudio.classList.add("hidden");
+        media.classList.add("hidden");
 
-                this.previewFile.innerHTML = `
+        if (isImage && this.previewImage) {
+            this.previewImage.classList.remove("hidden");
 
-                    📎 <strong>
-                        ${this.escapeHTML(file.name)}
-                    </strong>
+            const reader = new FileReader();
+            reader.onload = event => {
+                this.previewImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            return;
+        }
 
-                    <br>
+        if (isVideo) {
+            media.classList.remove("hidden");
+            previewVideo.classList.remove("hidden");
+            previewVideo.src = URL.createObjectURL(file);
+            return;
+        }
 
-                    <span class="text-xs text-gray-500">
-                        ${(file.size / 1024).toFixed(1)} KB
-                    </span>
+        if (isAudio) {
+            media.classList.remove("hidden");
+            previewAudio.classList.remove("hidden");
+            previewAudio.src = URL.createObjectURL(file);
+            return;
+        }
 
-                `;
+        this.previewFile?.classList.remove("hidden");
 
-            }
+        if (this.previewFile) {
+            const sizeMB = file.size / (1024 * 1024);
+            const sizeText = sizeMB >= 1
+                ? `${sizeMB.toFixed(2)} MB`
+                : `${(file.size / 1024).toFixed(1)} KB`;
 
+            this.previewFile.innerHTML = `
+                📎 <strong>${this.escapeHTML(file.name)}</strong>
+                <br>
+                <span class="text-xs text-gray-500">
+                    ${sizeText} • ${this.escapeHTML(file.type || "File")}
+                </span>
+            `;
         }
 
     }
-
 
     hidePreview() {
 
@@ -1518,6 +1490,28 @@ class ChatApp {
             this.previewFile.innerHTML = "";
 
         }
+
+        const previewVideo =
+            this.previewContainer?.querySelector("#preview-video");
+
+        if (previewVideo) {
+            previewVideo.pause();
+            previewVideo.removeAttribute("src");
+            previewVideo.load();
+            previewVideo.classList.add("hidden");
+        }
+
+        const previewAudio =
+            this.previewContainer?.querySelector("#preview-audio");
+
+        if (previewAudio) {
+            previewAudio.pause();
+            previewAudio.removeAttribute("src");
+            previewAudio.load();
+            previewAudio.classList.add("hidden");
+        }
+
+        this.previewContainer?.querySelector("#preview-media")?.classList.add("hidden");
 
     }
 
