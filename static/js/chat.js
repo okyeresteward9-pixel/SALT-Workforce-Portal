@@ -1,3 +1,4 @@
+/* SALT Workforce Portal - Current Chat JS updated for Cloudinary attachments */
 class ChatApp {
 
     constructor() {
@@ -608,84 +609,251 @@ class ChatApp {
 
     renderFile(chat) {
 
-        if (!chat.file_path) {
+        if (!chat || !chat.file_path) {
             return "";
         }
 
-
-        const filePath =
-            this.escapeHTML(
-                chat.file_path
-            );
-
+        const filePath = String(chat.file_path);
+        const rawFileName =
+            chat.file_name ||
+            "Attachment";
 
         const fileName =
-            this.escapeHTML(
-                chat.file_name ||
-                "Attachment"
-            );
+            this.escapeHTML(rawFileName);
 
+        const lowerName =
+            rawFileName.toLowerCase();
 
-        const image =
-            /\.(jpg|jpeg|png|gif|webp)$/i
-                .test(
-                    chat.file_name || ""
-                );
+        /*
+         * Determine the attachment type from the original filename.
+         * This is deliberately done on the frontend as well as the
+         * backend so older messages still render correctly.
+         */
+        const extensionMatch =
+            lowerName.match(/\.([a-z0-9]+)$/);
 
+        const extension =
+            extensionMatch
+                ? extensionMatch[1]
+                : "";
 
-        if (image) {
+        const imageExtensions = [
+            "jpg", "jpeg", "png", "gif",
+            "webp", "bmp", "svg"
+        ];
+
+        const videoExtensions = [
+            "mp4", "webm", "mov", "m4v", "avi"
+        ];
+
+        const audioExtensions = [
+            "mp3", "wav", "ogg", "m4a", "aac"
+        ];
+
+        const isImage =
+            imageExtensions.includes(extension);
+
+        const isPDF =
+            extension === "pdf";
+
+        const isVideo =
+            videoExtensions.includes(extension);
+
+        const isAudio =
+            audioExtensions.includes(extension);
+
+        /*
+         * Keep the Cloudinary URL exactly as supplied by the backend.
+         * Do NOT prepend "/" because file_path is now a full HTTPS URL.
+         */
+        const safeUrl =
+            this.escapeHTML(filePath);
+
+        /*
+         * Images open in a new tab while remaining viewable inline.
+         */
+        if (isImage) {
 
             return `
-
                 <a
-                    href="${filePath}"
+                    href="${safeUrl}"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="block mt-3"
+                    title="Open ${fileName}"
                 >
-
                     <img
-                        src="${filePath}"
+                        src="${safeUrl}"
                         alt="${fileName}"
                         loading="lazy"
-                        class="max-w-[240px] max-h-[280px] object-cover rounded-2xl shadow-lg border border-white/20 hover:scale-[1.02] transition"
+                        class="max-w-[280px] max-h-[320px] object-contain rounded-2xl shadow-lg border border-white/20 hover:scale-[1.02] transition"
                     >
-
                 </a>
-
             `;
 
         }
 
+        /*
+         * PDFs are browser-viewable, so open them in a new tab.
+         * No download attribute is used.
+         */
+        if (isPDF) {
+
+            return `
+                <a
+                    href="${safeUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="flex items-center gap-3 mt-3 bg-red-50 hover:bg-red-100 border border-red-100 rounded-2xl p-3 transition"
+                    title="Open PDF"
+                >
+                    <div class="w-11 h-11 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xl flex-shrink-0">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+
+                    <div class="overflow-hidden min-w-0">
+                        <div class="font-semibold truncate">
+                            ${fileName}
+                        </div>
+
+                        <div class="text-xs text-gray-500">
+                            Open PDF
+                        </div>
+                    </div>
+
+                    <i class="fas fa-external-link-alt text-gray-400 ml-auto"></i>
+                </a>
+            `;
+
+        }
+
+        /*
+         * Videos and audio are rendered with native browser players.
+         * This avoids forcing supported media to download.
+         */
+        if (isVideo) {
+
+            return `
+                <div class="mt-3 max-w-[320px]">
+                    <video
+                        controls
+                        preload="metadata"
+                        class="w-full rounded-2xl shadow-lg"
+                    >
+                        <source src="${safeUrl}">
+                        Your browser cannot play this video.
+                    </video>
+
+                    <a
+                        href="${safeUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="mt-2 flex items-center gap-2 text-xs text-gray-500 hover:text-blue-600"
+                    >
+                        <i class="fas fa-external-link-alt"></i>
+                        ${fileName}
+                    </a>
+                </div>
+            `;
+
+        }
+
+        if (isAudio) {
+
+            return `
+                <div class="mt-3 rounded-2xl bg-gray-100 p-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-music text-blue-600"></i>
+                        <span class="font-semibold truncate">
+                            ${fileName}
+                        </span>
+                    </div>
+
+                    <audio
+                        controls
+                        preload="metadata"
+                        class="w-full"
+                    >
+                        <source src="${safeUrl}">
+                        Your browser cannot play this audio.
+                    </audio>
+                </div>
+            `;
+
+        }
+
+        /*
+         * Office documents, ZIP files and other formats are represented
+         * as downloadable files. The original filename/extension is
+         * displayed exactly as received from the backend.
+         *
+         * No extension is changed by JavaScript.
+         */
+        let icon = "fa-file";
+        let iconClass = "text-gray-600";
+        let backgroundClass = "bg-gray-100 hover:bg-gray-200";
+
+        if (
+            ["doc", "docx", "odt", "rtf"].includes(extension)
+        ) {
+            icon = "fa-file-word";
+            iconClass = "text-blue-600";
+            backgroundClass = "bg-blue-50 hover:bg-blue-100";
+        }
+        else if (
+            ["xls", "xlsx", "csv", "ods"].includes(extension)
+        ) {
+            icon = "fa-file-excel";
+            iconClass = "text-green-600";
+            backgroundClass = "bg-green-50 hover:bg-green-100";
+        }
+        else if (
+            ["ppt", "pptx", "odp"].includes(extension)
+        ) {
+            icon = "fa-file-powerpoint";
+            iconClass = "text-orange-600";
+            backgroundClass = "bg-orange-50 hover:bg-orange-100";
+        }
+        else if (
+            ["zip", "rar", "7z", "tar", "gz"].includes(extension)
+        ) {
+            icon = "fa-file-archive";
+            iconClass = "text-amber-600";
+            backgroundClass = "bg-amber-50 hover:bg-amber-100";
+        }
+        else if (
+            ["txt", "md", "json", "xml"].includes(extension)
+        ) {
+            icon = "fa-file-lines";
+            iconClass = "text-slate-600";
+            backgroundClass = "bg-slate-50 hover:bg-slate-100";
+        }
 
         return `
-
             <a
-                href="${filePath}"
+                href="${safeUrl}"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="flex items-center gap-3 mt-3 bg-gray-100 hover:bg-gray-200 rounded-2xl p-3 transition"
+                download="${fileName}"
+                class="flex items-center gap-3 mt-3 ${backgroundClass} rounded-2xl p-3 transition"
+                title="Download ${fileName}"
             >
-
-                <div class="text-2xl">
-                    📄
+                <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                    <i class="fas ${icon} ${iconClass}"></i>
                 </div>
 
-
-                <div class="overflow-hidden min-w-0">
-
+                <div class="overflow-hidden min-w-0 flex-1">
                     <div class="font-semibold truncate">
                         ${fileName}
                     </div>
 
                     <div class="text-xs text-gray-500">
-                        Click to open
+                        Download file
                     </div>
-
                 </div>
 
+                <i class="fas fa-download text-gray-400"></i>
             </a>
-
         `;
 
     }
