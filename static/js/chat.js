@@ -201,7 +201,16 @@ class ChatApp {
         );
 
 
-        this.socket.on(
+        this.socket// Update only the sidebar when a new message arrives.
+// The open conversation is NOT reloaded or replaced.
+            this.socket.on(
+                "conversation_updated",
+                data => {
+                    this.updateConversationListOnly(data);
+                }
+            );
+
+            .on(
             "new_message",
             chat => {
 
@@ -417,7 +426,7 @@ class ChatApp {
     // LOAD MESSAGES
     // =====================================================
 
-    async loadMessages() {
+    async loadMessages(signal = undefined) {
 
         if (!this.chatBox || !this.receiver) {
             return;
@@ -1613,8 +1622,160 @@ class ChatApp {
 
 
     // =====================================================
+    // INSTANT CONVERSATION SWITCHING
+    // =====================================================
+
+    async switchConversation(userId, userName = "Chat", userLink = null) {
+
+        const id = Number(userId);
+
+        if (!id || id === Number(this.currentUser)) {
+            return;
+        }
+
+        if (Number(this.receiver) === id) {
+            this.highlightCurrentUser();
+            return;
+        }
+
+        if (this.conversationAbortController) {
+            this.conversationAbortController.abort();
+        }
+
+        this.conversationAbortController =
+            new AbortController();
+
+        document
+            .querySelectorAll(".user-item")
+            .forEach(item => item.classList.remove("active"));
+
+        userLink?.classList.add("active");
+
+        this.receiver = id;
+        window.RECEIVER_ID = id;
+
+        window.history.pushState(
+            { receiver: id },
+            "",
+            `/messages/${id}`
+        );
+
+        this.updateChatHeader(userName);
+        this.setStatus("Loading...", "text-gray-400");
+        this.clearSidebarUnread(id);
+
+        if (this.chatBox) {
+            this.chatBox.innerHTML = "";
+        }
+
+        this.messages.clear();
+
+        if (this.socket) {
+            this.socket.emit("join_chat", { user_id: id });
+        }
+
+        try {
+            await this.loadMessages(
+                this.conversationAbortController.signal
+            );
+
+            this.updateChatHeader(userName);
+            this.highlightCurrentUser();
+
+        } catch (error) {
+
+            if (error.name !== "AbortError") {
+                console.error("Conversation switch error:", error);
+                this.showToast("Unable to load this conversation.");
+            }
+
+        }
+
+    }
+
+
+    // =====================================================
     // REAL-TIME CHAT LIST
     // =====================================================
+
+    updateConversationListOnly(data) {
+
+        if (!data) return;
+
+        const senderId = Number(data.sender_id);
+        const receiverId = Number(data.receiver_id);
+        const currentUserId = Number(this.currentUser);
+
+        const otherUserId =
+            senderId === currentUserId
+                ? receiverId
+                : senderId;
+
+        if (!otherUserId) return;
+
+        const item = this.getUserItem(otherUserId);
+
+        // If the conversation is not currently in the list, refresh only
+        // the user list if the existing class provides such a method.
+        if (!item) {
+            if (typeof this.refreshUsersList === "function") {
+                this.refreshUsersList();
+            }
+            return;
+        }
+
+        const messageText = data.file_name
+            ? `📎 ${data.file_name}`
+            : (data.message || "New message");
+
+        const preview =
+            item.querySelector("[data-last-message]") ||
+            item.querySelector(".last-message");
+
+        if (preview) {
+            preview.textContent = messageText;
+        }
+
+        const time =
+            item.querySelector("[data-message-time]") ||
+            item.querySelector("time");
+
+        if (time && data.created_at) {
+            const d = new Date(data.created_at);
+
+            if (!Number.isNaN(d.getTime())) {
+                time.textContent = d.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                });
+            }
+        }
+
+        // Unread badge only for a message from somebody else when their
+        // conversation is not currently open.
+        if (
+            senderId !== currentUserId &&
+            Number(this.receiver) !== senderId
+        ) {
+            let badge = item.querySelector("[data-unread-count]");
+
+            if (!badge) {
+                badge = document.createElement("span");
+                badge.dataset.unreadCount = "true";
+                badge.className =
+                    "ml-auto min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center";
+                item.appendChild(badge);
+            }
+
+            const count = Number(badge.textContent) || 0;
+            badge.textContent = String(count + 1);
+            badge.classList.remove("hidden");
+        }
+
+        // Move ONLY this sidebar row. Never touch the conversation DOM.
+        item.parentElement?.prepend(item);
+    }
+
 
     getUserItem(userId) {
 
@@ -2434,10 +2595,21 @@ class ChatApp {
 
 
         // REMOVE FILE
-
-        this.removePreview?.addEventListener(
+        // Delegated handler keeps the X button working even when
+        // preview markup is recreated dynamically.
+        document.addEventListener(
             "click",
-            () => {
+            event => {
+
+                const button =
+                    event.target.closest("#remove-preview");
+
+                if (!button) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
 
                 this.hidePreview();
 
@@ -2619,41 +2791,48 @@ class ChatApp {
         );
 
 
-        // CLOSE SIDEBAR AFTER USER SELECTION
-
+        // INSTANT USER / CONVERSATION SELECTION
+        // Prevent full-page navigation and load only the conversation.
         document
-            .getElementById(
-                "users-list"
-            )
+            .getElementById("users-list")
             ?.addEventListener(
                 "click",
                 event => {
 
                     const link =
-                        event.target.closest(
-                            ".user-item"
-                        );
+                        event.target.closest(".user-item");
 
-
-                    if (link) {
-
-                        const href =
-                            link.getAttribute("href") || "";
-
-                        const match =
-                            href.match(/\/messages\/(\d+)(?:\/)?$/);
-
-                        if (match) {
-
-                            this.clearUnreadForUser(
-                                match[1]
-                            );
-
-                        }
-
-                        this.closeSidebar();
-
+                    if (!link) {
+                        return;
                     }
+
+                    const href =
+                        link.getAttribute("href") || "";
+
+                    const match =
+                        href.match(/\/messages\/(\d+)(?:\/)?$/);
+
+                    if (!match) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const userId = Number(match[1]);
+
+                    const userName =
+                        link.dataset.userName ||
+                        link.querySelector("p.font-semibold")?.textContent.trim() ||
+                        "Chat";
+
+                    this.switchConversation(
+                        userId,
+                        userName,
+                        link
+                    );
+
+                    this.closeSidebar();
 
                 }
             );
@@ -2747,9 +2926,11 @@ class ChatApp {
 
     async editMessage(messageId) {
 
+        const normalizedMessageId = String(messageId);
+
         const chat =
             this.messages.get(
-                messageId
+                normalizedMessageId
             );
 
 
@@ -2935,9 +3116,11 @@ class ChatApp {
 
     async copyMessage(messageId) {
 
+        const normalizedMessageId = String(messageId);
+
         const chat =
             this.messages.get(
-                messageId
+                normalizedMessageId
             );
 
 
@@ -3045,3 +3228,43 @@ window.copyMessage =
         );
 
     };
+
+// =========================================================
+// BROWSER BACK / FORWARD — NO PAGE RELOAD
+// =========================================================
+
+window.addEventListener(
+    "popstate",
+    () => {
+
+        if (!window.chat) {
+            return;
+        }
+
+        const match =
+            window.location.pathname.match(
+                /^\/messages\/(\d+)/
+            );
+
+        if (!match) {
+            return;
+        }
+
+        const id = Number(match[1]);
+
+        const link =
+            window.chat.getUserItem(id);
+
+        const name =
+            link?.dataset.userName ||
+            link?.querySelector("p.font-semibold")?.textContent.trim() ||
+            "Chat";
+
+        window.chat.switchConversation(
+            id,
+            name,
+            link
+        );
+
+    }
+);
