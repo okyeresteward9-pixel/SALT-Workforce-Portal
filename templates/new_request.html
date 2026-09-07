@@ -1,24 +1,18 @@
 {% extends "request_base.html" %}
 {% block title %}SALT — New Request{% endblock %}
 {% block content %}
-
-{% if request_message %}
-<div class="rq-alert rq-message-{{ request_message_type|default('error') }}"
-     id="requestWorkflowMessage">
-    <strong>{{ request_message }}</strong>
-</div>
-{% endif %}
 <div class="rq-hero"><div><div class="rq-eyebrow">Request centre</div><h1>Create a request</h1><p>Prepare your memo, add a requisition when needed, choose the approval route and submit.</p></div></div>
 <div class="rq-stepper">{% for n,label in [(1,'Details'),(2,'Requisition'),(3,'Approval route'),(4,'Attachments'),(5,'Review & submit')] %}<div class="rq-stepper-item{% if n==1 %} active{% endif %}" data-step="{{ n }}"><span class="rq-stepper-number">{{ n }}</span>{{ label }}</div>{% endfor %}</div>
 <form method="POST" enctype="multipart/form-data" id="requestForm" class="rq-form" onsubmit="return prepareRequestSubmit(event);">
 <section class="rq-card rq-panel" data-panel="1"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">01</div><div><h2>Request details</h2><div class="rq-card-sub">Start with the official memo information.</div></div></div></div>
-<div class="rq-grid2"><label>Request type<select name="request_type"><option value="memo">Memo Request</option><option value="memo_requisition">Memo + Requisition</option></select></label><label>Request title / subject<input name="title" id="title" required placeholder="e.g. Purchase of office supplies"></label></div>
+<div class="rq-grid2"><label>Request type<select name="request_type"><option value="memo">Memo Request</option><option value="memo_requisition">Memo + Requisition</option></select></label><label>Currency<select name="currency" id="currency"><option value="GHS" selected>GHS — Ghana Cedi (GH₵)</option><option value="USD">USD — US Dollar ($)</option></select></label></div>
+<div class="rq-grid2"><label>Request title / subject<input name="title" id="title" required placeholder="e.g. Purchase of office supplies"></label></div>
 <div class="rq-grid2"><label>To<input name="memo_to" placeholder="President / Ag. Registrar"></label><label>From<input name="memo_from" value="{{ session.get('name','') }}"></label></div>
 <div class="rq-grid2"><label>CC<input name="memo_cc" placeholder="Optional"></label><label>Date<input type="date" name="memo_date" value="{{ today }}"></label></div>
 <label>Memo subject<input name="memo_subject" id="memo_subject" placeholder="Request subject"></label>
 <label>Memo / request body<textarea name="memo_body" id="memo_body" required placeholder="Explain what is needed, why it is needed and any relevant details."></textarea></label></section>
 <section class="rq-card rq-panel rq-hidden" data-panel="2"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">02</div><div><h2>Requisition</h2><div class="rq-card-sub">Add items when the request needs a purchase or financial breakdown.</div></div></div></div>
-<div class="rq-alert">You can leave this section empty for a memo-only request.</div><div id="items"><div class="rq-item-row"><input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price (GH₵)"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button></div></div><button type="button" class="rq-btn" onclick="addItem()">＋ Add item</button><div style="margin-top:18px;text-align:right;font-weight:900;color:var(--navy)">Estimated total: <span id="estimate">GH₵ 0.00</span></div></section>
+<div class="rq-alert">You can leave this section empty for a memo-only request.</div><div id="items"><div class="rq-item-row"><input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button></div></div><button type="button" class="rq-btn" onclick="addItem()">＋ Add item</button><div style="margin-top:18px;text-align:right;font-weight:900;color:var(--navy)">Estimated total: <span id="estimate">GH₵ 0.00</span></div></section>
 <section class="rq-card rq-panel rq-hidden" data-panel="3"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">03</div><div><h2>Approval route</h2><div class="rq-card-sub">Immediate Supervisor is optional and can be any employee.</div></div></div></div>
 <div class="rq-route"><div class="rq-route-step"><div class="rq-route-num">1</div><strong>Immediate Supervisor</strong><span>Optional. Any employee.</span></div><div class="rq-route-step"><div class="rq-route-num">2</div><strong>Registrar / Ag. Registrar</strong><span>Required authorized approver.</span></div><div class="rq-route-step"><div class="rq-route-num">3</div><strong>President</strong><span>Required authorized approver.</span></div><div class="rq-route-step"><div class="rq-route-num">4</div><strong>Internal Auditor</strong><span>Finance requests only. Optional stage.</span></div><div class="rq-route-step"><div class="rq-route-num">5</div><strong>Accountant</strong><span>Finance requests only. Optional stage.</span></div></div>
 <div style="margin-top:20px"><label>Immediate Supervisor <span class="rq-muted">(Optional)</span><select name="supervisor_id"><option value="">Skip / Not applicable</option>{% for e in supervisors %}<option value="{{ e.id }}">{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}{% if e.department %} · {{ e.department }}{% endif %}</option>{% endfor %}</select></label>
@@ -29,6 +23,7 @@
 <section class="rq-card rq-panel rq-hidden" data-panel="5"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">05</div><div><h2>Review & submit</h2><div class="rq-card-sub">Check the package before saving it as a draft or sending it into the approval workflow.</div></div></div></div><div class="rq-review">
 <div>
 <div class="rq-summary-row"><span>Title</span><strong id="reviewTitle">—</strong></div>
+<div class="rq-summary-row"><span>Currency</span><strong id="reviewCurrency">GHS — Ghana Cedi (GH₵)</strong></div>
 <div class="rq-summary-row"><span>Subject</span><strong id="reviewSubject">—</strong></div>
 <div class="rq-summary-row"><span>Finance-related</span><strong id="reviewFinance">No</strong></div>
 <div class="rq-summary-row"><span>Attachments</span><strong id="reviewFiles">0 files</strong></div>
@@ -46,9 +41,9 @@
 <button type="button" class="rq-btn" id="backBtn" onclick="changeStep(-1)">← Back</button>
 <div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end">
 <a class="rq-btn" href="{{ url_for('requests_bp.index') }}">Cancel</a>
-<button type="submit" class="rq-btn" id="saveDraftBtn" name="request_action" value="draft" formnovalidate>Save as Draft</button>
+<button type="submit" class="rq-btn" id="saveDraftBtn" name="save_draft" value="yes" formnovalidate>Save as Draft</button>
 <button type="button" class="rq-btn rq-primary" id="nextBtn" onclick="changeStep(1)">Continue →</button>
-<button type="submit" class="rq-btn rq-primary rq-hidden" id="submitBtn" name="request_action" value="submit">Submit Request ✓</button>
+<button type="submit" class="rq-btn rq-primary rq-hidden" id="submitBtn" name="submit_request" value="yes">Submit Request ✓</button>
 </div>
 </div>
 </form>
@@ -58,12 +53,15 @@ let currentStep=1;const panels=[...document.querySelectorAll('.rq-panel')];
 function showStep(n){currentStep=n;panels.forEach(p=>p.classList.toggle('rq-hidden',+p.dataset.panel!==n));document.querySelectorAll('.rq-stepper-item').forEach((x,i)=>{x.classList.toggle('active',i+1===n);x.classList.toggle('done',i+1<n)});document.getElementById('backBtn').style.visibility=n===1?'hidden':'visible';document.getElementById('nextBtn').classList.toggle('rq-hidden',n===5);document.getElementById('submitBtn').classList.toggle('rq-hidden',n!==5);document.getElementById('saveDraftBtn').classList.toggle('rq-hidden',n!==5);if(n===5)buildReview();window.scrollTo({top:0,behavior:'smooth'})}
 function validateStep(n){if(n===1){let t=document.getElementById('title'),b=document.getElementById('memo_body');if(!t.value.trim()){t.reportValidity();return false}if(!b.value.trim()){b.reportValidity();return false}}if(n===3){let r=document.querySelector('[name=registrar_id]'),p=document.querySelector('[name=president_id]');if(!r.value){r.reportValidity();return false}if(!p.value){p.reportValidity();return false}if(document.querySelector('[name=finance_related]:checked').value==='yes'){let a=document.querySelector('[name=auditor_id]'),ac=document.querySelector('[name=accountant_id]');}}return true}
 function changeStep(d){if(d>0&&!validateStep(currentStep))return;showStep(Math.min(5,Math.max(1,currentStep+d)))}
-function addItem(){let row=document.createElement('div');row.className='rq-item-row';row.innerHTML='<input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price (GH₵)"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button>';document.getElementById('items').appendChild(row);bindTotals()}
+function addItem(){let row=document.createElement('div');row.className='rq-item-row';row.innerHTML='<input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button>';document.getElementById('items').appendChild(row);bindTotals()}
 function removeItem(b){let rows=document.querySelectorAll('#items .rq-item-row');if(rows.length>1)b.parentElement.remove();else b.parentElement.querySelectorAll('input').forEach(x=>x.value='');updateTotal()}
-function bindTotals(){document.querySelectorAll('[name="item_quantity[]"],[name="item_unit_price[]"]').forEach(x=>x.addEventListener('input',updateTotal))}function updateTotal(){let t=0;document.querySelectorAll('#items .rq-item-row').forEach(r=>t+=(parseFloat(r.querySelector('[name="item_quantity[]"]').value)||0)*(parseFloat(r.querySelector('[name="item_unit_price[]"]').value)||0));document.getElementById('estimate').textContent='GH₵ '+t.toFixed(2)}
+function bindTotals(){document.querySelectorAll('[name="item_quantity[]"],[name="item_unit_price[]"]').forEach(x=>x.addEventListener('input',updateTotal))}function money(n){const c=document.getElementById('currency')?.value||'GHS';return (c==='USD'?'$ ':'GH₵ ')+Number(n||0).toFixed(2)}function updateTotal(){let t=0;document.querySelectorAll('#items .rq-item-row').forEach(r=>t+=(parseFloat(r.querySelector('[name="item_quantity[]"]').value)||0)*(parseFloat(r.querySelector('[name="item_unit_price[]"]').value)||0));document.getElementById('estimate').textContent=money(t)}
 function toggleFinance(){let yes=document.querySelector('[name=finance_related]:checked').value==='yes';document.getElementById('financeFields').classList.toggle('rq-hidden',!yes)}
 function buildReview(){
 document.getElementById('reviewTitle').textContent=document.getElementById('title').value||'—';
+const currency=document.getElementById('currency')?.value||'GHS';
+const currencyText=document.getElementById('currency')?.options[document.getElementById('currency').selectedIndex]?.text||currency;
+const rc=document.getElementById('reviewCurrency'); if(rc) rc.textContent=currencyText;
 document.getElementById('reviewSubject').textContent=document.getElementById('memo_subject').value||document.getElementById('title').value||'—';
 let f=document.querySelector('[name=finance_related]:checked').value==='yes';
 document.getElementById('reviewFinance').textContent=f?'Yes — Finance route':'No — normal route';
@@ -91,8 +89,8 @@ box.innerHTML='<div class="rq-empty" style="padding:18px 10px">No requisition it
 return;
 }
 let html='<div class="rq-table-wrap"><table class="rq-table" style="min-width:620px"><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody>';
-valid.forEach(x=>{html+='<tr><td>'+x.i+'</td><td>'+escapeHtml(x.d||'—')+'</td><td>'+x.q+'</td><td>GH₵ '+x.u.toFixed(2)+'</td><td>GH₵ '+x.amount.toFixed(2)+'</td></tr>';});
-html+='</tbody><tfoot><tr><th colspan="4" style="text-align:right">Total</th><th>GH₵ '+total.toFixed(2)+'</th></tr></tfoot></table></div>';
+valid.forEach(x=>{html+='<tr><td>'+x.i+'</td><td>'+escapeHtml(x.d||'—')+'</td><td>'+x.q+'</td><td>'+money(x.u)+'</td><td>'+money(x.amount)+'</td></tr>';});
+html+='</tbody><tfoot><tr><th colspan="4" style="text-align:right">Total</th><th>'+money(total)+'</th></tr></tfoot></table></div>';
 box.innerHTML=html;
 }
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]});}
@@ -164,61 +162,4 @@ function prepareRequestSubmit(event){
     return true;
 }
 document.getElementById('attachments').addEventListener('change',e=>{let box=document.getElementById('fileList');box.innerHTML='';[...e.target.files].forEach(f=>{let d=document.createElement('div');d.className='rq-attachment';d.innerHTML='<span>📎 '+f.name+'</span><span class="rq-muted">'+Math.max(1,Math.round(f.size/1024))+' KB</span>';box.appendChild(d)})});bindTotals();showStep(1);
-</script>
-<style>
-.rq-message-success {
-    border-left: 4px solid #16a34a;
-}
-
-.rq-message-error {
-    border-left: 4px solid #dc2626;
-}
-
-.rq-message-info {
-    border-left: 4px solid #2563eb;
-}
-</style>
-
-
-<script>
-/* ==========================================
-   REQUEST WORKFLOW MESSAGE
-   ========================================== */
-
-const requestMessage =
-    document.getElementById(
-        'requestWorkflowMessage'
-    );
-
-if (requestMessage) {
-
-    /* Remove request_message parameters from the URL */
-    const cleanUrl =
-        window.location.pathname +
-        window.location.hash;
-
-    window.history.replaceState(
-        {},
-        document.title,
-        cleanUrl
-    );
-
-    /* Hide the message after 5 seconds */
-    setTimeout(() => {
-
-        requestMessage.style.transition =
-            'opacity 0.4s ease, transform 0.4s ease';
-
-        requestMessage.style.opacity = '0';
-        requestMessage.style.transform =
-            'translateY(-5px)';
-
-        setTimeout(() => {
-            requestMessage.remove();
-        }, 400);
-
-    }, 5000);
-}
-</script>
-
-{% endblock %}
+</script>{% endblock %}

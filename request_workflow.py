@@ -38,6 +38,25 @@ POSITION_OPTIONS = [
     "Accountant",
 ]
 
+SUPPORTED_CURRENCIES = {
+    "GHS": {"name": "Ghana Cedi", "symbol": "GH₵"},
+    "USD": {"name": "US Dollar", "symbol": "$"},
+}
+
+def normalize_currency(value):
+    value = (value or "GHS").strip().upper()
+    return value if value in SUPPORTED_CURRENCIES else "GHS"
+
+def currency_symbol(value):
+    return SUPPORTED_CURRENCIES[normalize_currency(value)]["symbol"]
+
+def format_currency(amount, currency="GHS"):
+    try:
+        value = float(amount or 0)
+    except (TypeError, ValueError):
+        value = 0.0
+    return f"{currency_symbol(currency)} {value:,.2f}"
+
 def now():
     return datetime.now()
 
@@ -61,6 +80,7 @@ def init_request_tables():
             memo_subject TEXT,
             memo_body TEXT,
             is_finance_related BOOLEAN NOT NULL DEFAULT FALSE,
+            currency VARCHAR(3) NOT NULL DEFAULT 'GHS',
             total_amount NUMERIC(14,2) DEFAULT 0,
             status TEXT NOT NULL DEFAULT 'draft',
             current_step INTEGER DEFAULT 0,
@@ -125,6 +145,8 @@ def init_request_tables():
     c.execute("ALTER TABLE request_attachments ADD COLUMN IF NOT EXISTS file_size BIGINT")
     c.execute("ALTER TABLE request_attachments ADD COLUMN IF NOT EXISTS mime_type TEXT")
     c.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS signature_path TEXT")
+    c.execute("ALTER TABLE requests ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'GHS'")
+    c.execute("UPDATE requests SET currency='GHS' WHERE currency IS NULL OR currency NOT IN ('GHS','USD')")
     conn.commit()
     conn.close()
 
@@ -314,11 +336,10 @@ def save_attachments(conn, request_id, files, upload_root=None):
     Upload request attachments to Cloudinary and store the Cloudinary
     metadata in PostgreSQL.
 
-    Cloudinary is the source of truth for new request files.
-    If a database insert fails after an upload, the uploaded Cloudinary
-    asset is removed so we do not leave orphaned files behind.
+    Cloudinary is the source of truth for new request files. If a database
+    insert fails after an upload, the uploaded Cloudinary asset is removed
+    so we do not leave orphaned files behind.
     """
-
     if not _cloudinary_ready():
         raise RuntimeError(
             "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, "
@@ -334,13 +355,11 @@ def save_attachments(conn, request_id, files, upload_root=None):
                 continue
 
             original = secure_filename(file.filename)
-
             if not original:
                 continue
 
             # Capture the size before Cloudinary consumes the stream.
             file_size = getattr(file, "content_length", None)
-
             if not file_size:
                 try:
                     current_pos = file.stream.tell()
@@ -395,11 +414,7 @@ def save_attachments(conn, request_id, files, upload_root=None):
             """, (
                 request_id,
                 original,
-
-                # Keep the existing NOT NULL column populated.
-                # Cloudinary public_id is now the stored identifier.
-                public_id,
-
+                None,
                 session["user_id"],
                 now(),
                 secure_url,
@@ -410,8 +425,8 @@ def save_attachments(conn, request_id, files, upload_root=None):
             ))
 
     except Exception:
-        # PostgreSQL rollback does not remove Cloudinary assets,
-        # so clean up anything uploaded during this call.
+        # PostgreSQL rollback does not remove Cloudinary assets, so clean up
+        # anything uploaded during this call before re-raising the error.
         for asset in uploaded_assets:
             try:
                 cloudinary.uploader.destroy(
@@ -424,7 +439,6 @@ def save_attachments(conn, request_id, files, upload_root=None):
                     "CLOUDINARY UPLOAD CLEANUP ERROR:",
                     repr(cleanup_error)
                 )
-
         raise
 
 def approvers_for_position(conn, positions):
@@ -477,7 +491,6 @@ def index():
 
 @requests_bp.route("/new", methods=["GET", "POST"])
 def new_request():
-
     if "user_id" not in session:
         return redirect("/")
 
@@ -490,558 +503,167 @@ def new_request():
     accountants = approvers_for_position(conn, ["Accountant"])
 
     if request.method == "POST":
-
-        # ---------------------------------------------------------
-        # Determine what the user actually clicked
-        # ---------------------------------------------------------
-        action = request.form.get("request_action", "").strip().lower()
-
-        if action not in ("draft", "submit"):
-            flash(
-                "Please choose Save as Draft or Submit Request.",
-                "error"
-            )
-            conn.close()
-            return redirect(
-                url_for("requests_bp.new_request")
-            )
-
-        is_draft = action == "draft"
-
-        # ---------------------------------------------------------
-        # Basic request information
-        # ---------------------------------------------------------
         title = request.form.get("title", "").strip()
+        request_type = request.form.get("request_type", "memo")
+        memo_to = request.form.get("memo_to", "").strip()
+        memo_from = request.form.get("memo_from", session.get("name", "")).strip()
+        memo_cc = request.form.get("memo_cc", "").strip()
+        memo_date = request.form.get("memo_date", datetime.now().strftime("%Y-%m-%d"))
+        memo_subject = request.form.get("memo_subject", title).strip()
+        memo_body = request.form.get("memo_body", "").strip()
+        currency = normalize_currency(request.form.get("currency", "GHS"))
 
-        request_type = request.form.get(
-            "request_type",
-            "memo"
-        )
+        is_draft = request.form.get("save_draft") == "yes"
 
-        memo_to = request.form.get(
-            "memo_to",
-            ""
-        ).strip()
-
-        memo_from = request.form.get(
-            "memo_from",
-            session.get("name", "")
-        ).strip()
-
-        memo_cc = request.form.get(
-            "memo_cc",
-            ""
-        ).strip()
-
-        memo_date = request.form.get(
-            "memo_date",
-            datetime.now().strftime("%Y-%m-%d")
-        )
-
-        memo_subject = request.form.get(
-            "memo_subject",
-            title
-        ).strip()
-
-        memo_body = request.form.get(
-            "memo_body",
-            ""
-        ).strip()
-
-        # ---------------------------------------------------------
-        # Drafts still need basic information
-        # ---------------------------------------------------------
+        # A draft still needs enough information to be useful/editable.
         if not title or not memo_body:
-
-            flash(
-                "Please complete the request title and memo body.",
-                "error"
-            )
-
+            flash("Please complete the request title and memo body.", "error")
             conn.close()
+            return redirect(url_for("requests_bp.new_request"))
 
-            return redirect(
-                url_for("requests_bp.new_request")
-            )
+        finance = request.form.get("finance_related") == "yes"
 
-        # ---------------------------------------------------------
-        # Finance-related
-        # ---------------------------------------------------------
-        finance = (
-            request.form.get("finance_related") == "yes"
-        )
-
+        # Only require/validate approval route when actually submitting.
         selected = []
-
-        # ---------------------------------------------------------
-        # ONLY validate approval route when submitting
-        # ---------------------------------------------------------
         if not is_draft:
+            supervisor_id = request.form.get("supervisor_id")
+            registrar_id = request.form.get("registrar_id")
+            president_id = request.form.get("president_id")
+            auditor_id = request.form.get("auditor_id")
+            accountant_id = request.form.get("accountant_id")
 
-            supervisor_id = request.form.get(
-                "supervisor_id"
-            )
-
-            registrar_id = request.form.get(
-                "registrar_id"
-            )
-
-            president_id = request.form.get(
-                "president_id"
-            )
-
-            auditor_id = request.form.get(
-                "auditor_id"
-            )
-
-            accountant_id = request.form.get(
-                "accountant_id"
-            )
-
-            # -----------------------------------------------------
-            # Validate an employee against an authorized list
-            # -----------------------------------------------------
             def valid_id(rows, value):
-
                 if not value:
                     return False
-
                 try:
                     target = int(value)
                 except (TypeError, ValueError):
                     return False
+                return any(int(row["id"]) == target for row in rows)
 
-                return any(
-                    int(row["id"]) == target
-                    for row in rows
-                )
-
-            # -----------------------------------------------------
-            # Immediate Supervisor
-            # Optional — any employee
-            # -----------------------------------------------------
             if supervisor_id:
-
                 try:
-                    supervisor_id_int = int(
-                        supervisor_id
-                    )
-
+                    supervisor_id_int = int(supervisor_id)
                 except (TypeError, ValueError):
-
-                    flash(
-                        "Invalid immediate supervisor selected.",
-                        "error"
-                    )
-
+                    flash("Invalid immediate supervisor selected.", "error")
                     conn.close()
-
-                    return redirect(
-                        url_for(
-                            "requests_bp.new_request"
-                        )
-                    )
+                    return redirect(url_for("requests_bp.new_request"))
 
                 c = conn.cursor()
-
-                c.execute(
-                    """
-                    SELECT id
-                    FROM employees
-                    WHERE id=%s
-                    """,
-                    (supervisor_id_int,)
-                )
-
+                c.execute("SELECT id FROM employees WHERE id=%s", (supervisor_id_int,))
                 if not c.fetchone():
-
-                    flash(
-                        "Selected immediate supervisor does not exist.",
-                        "error"
-                    )
-
+                    flash("Selected immediate supervisor does not exist.", "error")
                     conn.close()
+                    return redirect(url_for("requests_bp.new_request"))
+                selected.append((supervisor_id_int, "supervisor"))
 
-                    return redirect(
-                        url_for(
-                            "requests_bp.new_request"
-                        )
-                    )
-
-                selected.append(
-                    (
-                        supervisor_id_int,
-                        "supervisor"
-                    )
-                )
-
-            # -----------------------------------------------------
-            # Registrar
-            # REQUIRED
-            # -----------------------------------------------------
-            if not valid_id(
-                registrars,
-                registrar_id
-            ):
-
-                flash(
-                    "Please select an authorized Registrar or Ag. Registrar.",
-                    "error"
-                )
-
+            if not valid_id(registrars, registrar_id):
+                flash("Please select an authorized Registrar or Ag. Registrar.", "error")
                 conn.close()
+                return redirect(url_for("requests_bp.new_request"))
 
-                return redirect(
-                    url_for(
-                        "requests_bp.new_request"
-                    )
-                )
-
-            # -----------------------------------------------------
-            # President
-            # REQUIRED
-            # -----------------------------------------------------
-            if not valid_id(
-                presidents,
-                president_id
-            ):
-
-                flash(
-                    "Please select an authorized President.",
-                    "error"
-                )
-
+            if not valid_id(presidents, president_id):
+                flash("Please select an authorized President.", "error")
                 conn.close()
+                return redirect(url_for("requests_bp.new_request"))
 
-                return redirect(
-                    url_for(
-                        "requests_bp.new_request"
-                    )
-                )
+            selected.extend([
+                (int(registrar_id), "registrar"),
+                (int(president_id), "president")
+            ])
 
-            selected.extend(
-                [
-                    (
-                        int(registrar_id),
-                        "registrar"
-                    ),
-                    (
-                        int(president_id),
-                        "president"
-                    )
-                ]
-            )
-
-            # -----------------------------------------------------
-            # Finance approvers
-            #
-            # Auditor = optional
-            # Accountant = optional
-            #
-            # Either, both, or neither is allowed.
-            # -----------------------------------------------------
             if finance:
-
-                # Internal Auditor
                 if auditor_id:
-
-                    if not valid_id(
-                        auditors,
-                        auditor_id
-                    ):
-
-                        flash(
-                            "Please select an authorized Internal Auditor.",
-                            "error"
-                        )
-
+                    if not valid_id(auditors, auditor_id):
+                        flash("Please select an authorized Internal Auditor.", "error")
                         conn.close()
-
-                        return redirect(
-                            url_for(
-                                "requests_bp.new_request"
-                            )
-                        )
-
-                    selected.append(
-                        (
-                            int(auditor_id),
-                            "auditor"
-                        )
-                    )
-
-                # Accountant
+                        return redirect(url_for("requests_bp.new_request"))
+                    selected.append((int(auditor_id), "auditor"))
                 if accountant_id:
-
-                    if not valid_id(
-                        accountants,
-                        accountant_id
-                    ):
-
-                        flash(
-                            "Please select an authorized Accountant.",
-                            "error"
-                        )
-
+                    if not valid_id(accountants, accountant_id):
+                        flash("Please select an authorized Accountant.", "error")
                         conn.close()
+                        return redirect(url_for("requests_bp.new_request"))
+                    selected.append((int(accountant_id), "accountant"))
 
-                        return redirect(
-                            url_for(
-                                "requests_bp.new_request"
-                            )
-                        )
-
-                    selected.append(
-                        (
-                            int(accountant_id),
-                            "accountant"
-                        )
-                    )
-
-            # -----------------------------------------------------
-            # Make sure the same person isn't used twice
-            # -----------------------------------------------------
-            approver_ids = [
-                x[0]
-                for x in selected
-            ]
-
-            if len(approver_ids) != len(
-                set(approver_ids)
-            ):
-
-                flash(
-                    "Each approval stage must use a different person.",
-                    "error"
-                )
-
+            approver_ids = [x[0] for x in selected]
+            if len(approver_ids) != len(set(approver_ids)):
+                flash("Each approval stage must use a different person.", "error")
                 conn.close()
+                return redirect(url_for("requests_bp.new_request"))
 
-                return redirect(
-                    url_for(
-                        "requests_bp.new_request"
-                    )
-                )
-
-        # ---------------------------------------------------------
-        # Create request
-        # ---------------------------------------------------------
         c = conn.cursor()
-
         req_no = next_request_no(c)
-
         created = now()
 
-        status = (
-            "draft"
-            if is_draft
-            else "submitted"
-        )
+        status = "draft" if is_draft else "submitted"
+        current_step = 0 if is_draft else 1
 
-        current_step = (
-            0
-            if is_draft
-            else 1
-        )
-
-        # ---------------------------------------------------------
-        # Insert request
-        # ---------------------------------------------------------
-        c.execute(
-            """
+        c.execute("""
             INSERT INTO requests
-            (
-                request_no,
-                requester_id,
-                request_type,
-                title,
-                memo_to,
-                memo_from,
-                memo_cc,
-                memo_date,
-                memo_subject,
-                memo_body,
-                is_finance_related,
-                status,
-                current_step,
-                created_at,
-                updated_at
-            )
-            VALUES
-            (
-                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-                %s,%s,%s,%s,%s
-            )
+            (request_no, requester_id, request_type, title, memo_to, memo_from,
+             memo_cc, memo_date, memo_subject, memo_body, is_finance_related,
+             currency, status, current_step, created_at, updated_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             RETURNING id
-            """,
-            (
-                req_no,
-                session["user_id"],
-                request_type,
-                title,
-                memo_to,
-                memo_from,
-                memo_cc,
-                memo_date,
-                memo_subject,
-                memo_body,
-                finance,
-                status,
-                current_step,
-                created,
-                created
-            )
-        )
-
+        """, (
+            req_no, session["user_id"], request_type, title, memo_to, memo_from,
+            memo_cc, memo_date, memo_subject, memo_body, finance,
+            currency, status, current_step, created, created
+        ))
         request_id = c.fetchone()["id"]
 
-        # ---------------------------------------------------------
-        # Create approval route ONLY when submitting
-        # ---------------------------------------------------------
+        # Save approval route only when submitting. A draft can be completed
+        # later through Edit & Submit.
         if not is_draft:
-
-            for order, (
-                approver_id,
-                position_key
-            ) in enumerate(
-                selected,
-                start=1
-            ):
-
-                c.execute(
-                    """
+            for order, (approver_id, position_key) in enumerate(selected, start=1):
+                c.execute("""
                     INSERT INTO request_steps
-                    (
-                        request_id,
-                        step_order,
-                        approver_id,
-                        position,
-                        status
-                    )
+                    (request_id, step_order, approver_id, position, status)
                     VALUES (%s,%s,%s,%s,%s)
-                    """,
-                    (
-                        request_id,
-                        order,
-                        approver_id,
-                        APPROVER_POSITIONS[
-                            position_key
-                        ],
-                        (
-                            "pending"
-                            if order == 1
-                            else "waiting"
-                        )
-                    )
-                )
+                """, (
+                    request_id, order, approver_id,
+                    APPROVER_POSITIONS[position_key],
+                    "pending" if order == 1 else "waiting"
+                ))
 
-        # ---------------------------------------------------------
-        # Requisition items
-        # ---------------------------------------------------------
-        descriptions = request.form.getlist(
-            "item_description[]"
-        )
-
-        quantities = request.form.getlist(
-            "item_quantity[]"
-        )
-
-        prices = request.form.getlist(
-            "item_unit_price[]"
-        )
-
+        descriptions = request.form.getlist("item_description[]")
+        quantities = request.form.getlist("item_quantity[]")
+        prices = request.form.getlist("item_unit_price[]")
         total = 0.0
 
-        for i, description in enumerate(
-            descriptions
-        ):
-
+        for i, description in enumerate(descriptions):
             description = description.strip()
-
             if not description:
                 continue
-
             try:
+                quantity = float(quantities[i] or 0)
+                unit_price = float(prices[i] or 0)
+            except (ValueError, IndexError):
+                quantity, unit_price = 0, 0
 
-                quantity = float(
-                    quantities[i] or 0
-                )
-
-                unit_price = float(
-                    prices[i] or 0
-                )
-
-            except (
-                ValueError,
-                IndexError
-            ):
-
-                quantity = 0
-                unit_price = 0
-
-            amount = (
-                quantity *
-                unit_price
-            )
-
+            amount = quantity * unit_price
             total += amount
 
-            c.execute(
-                """
+            c.execute("""
                 INSERT INTO request_requisition_items
-                (
-                    request_id,
-                    description,
-                    quantity,
-                    unit_price,
-                    amount
-                )
+                (request_id, description, quantity, unit_price, amount)
                 VALUES (%s,%s,%s,%s,%s)
-                """,
-                (
-                    request_id,
-                    description,
-                    quantity,
-                    unit_price,
-                    amount
-                )
-            )
+            """, (request_id, description, quantity, unit_price, amount))
 
-        # ---------------------------------------------------------
-        # Update total
-        # ---------------------------------------------------------
         c.execute(
-            """
-            UPDATE requests
-            SET total_amount=%s
-            WHERE id=%s
-            """,
-            (
-                total,
-                request_id
-            )
+            "UPDATE requests SET total_amount=%s WHERE id=%s",
+            (total, request_id)
         )
 
-        # ---------------------------------------------------------
-        # Save attachments
-        # ---------------------------------------------------------
         save_attachments(
             conn,
             request_id,
-            request.files.getlist(
-                "attachments"
-            ),
-            os.path.join(
-                "static",
-                "request_uploads"
-            )
+            request.files.getlist("attachments"),
+            os.path.join("static", "request_uploads")
         )
 
-        # =========================================================
-        # DRAFT
-        # =========================================================
         if is_draft:
-
             add_history(
                 conn,
                 request_id,
@@ -1049,95 +671,25 @@ def new_request():
                 "Draft Saved",
                 "Request saved as draft."
             )
-
             conn.commit()
-
             conn.close()
+            flash(f"Request {req_no} saved as a draft.", "success")
+            return redirect(url_for("requests_bp.detail", request_id=request_id))
 
-            flash(
-                f"Request {req_no} saved as a draft.",
-                "success"
-            )
-
-            return redirect(
-                url_for(
-                    "requests_bp.detail",
-                    request_id=request_id
-                )
-            )
-
-        # =========================================================
-        # SUBMISSION
-        # =========================================================
-
-        # Safety check
-        if not selected:
-
-            conn.rollback()
-
-            conn.close()
-
-            flash(
-                "No approval route was selected.",
-                "error"
-            )
-
-            return redirect(
-                url_for(
-                    "requests_bp.new_request"
-                )
-            )
-
-        # ---------------------------------------------------------
-        # Notify first approver
-        # ---------------------------------------------------------
         first = selected[0][0]
-
-        first_position = APPROVER_POSITIONS[
-            selected[0][1]
-        ]
-
+        first_position = APPROVER_POSITIONS[selected[0][1]]
         notify(
             conn,
             first,
-            (
-                f"New request {req_no} "
-                f"requires your approval "
-                f"({first_position})."
-            )
+            f"New request {req_no} requires your approval ({first_position})."
         )
+        add_history(conn, request_id, session["user_id"], "Submitted", "Request submitted for approval.")
 
-        # ---------------------------------------------------------
-        # Request history
-        # ---------------------------------------------------------
-        add_history(
-            conn,
-            request_id,
-            session["user_id"],
-            "Submitted",
-            "Request submitted for approval."
-        )
-
-        # ---------------------------------------------------------
-        # Commit submission
-        # ---------------------------------------------------------
         conn.commit()
-
         conn.close()
-
-        return redirect(
-            url_for(
-                "requests_bp.detail",
-                request_id=request_id
-            )
-        )
-
-    # =============================================================
-    # GET
-    # =============================================================
+        return redirect(url_for("requests_bp.detail", request_id=request_id))
 
     conn.close()
-
     return render_template(
         "new_request.html",
         supervisors=supervisors,
@@ -1145,9 +697,8 @@ def new_request():
         presidents=presidents,
         auditors=auditors,
         accountants=accountants,
-        today=datetime.now().strftime(
-            "%Y-%m-%d"
-        )
+        currencies=SUPPORTED_CURRENCIES,
+        today=datetime.now().strftime("%Y-%m-%d")
     )
 
 @requests_bp.route("/<int:request_id>")
@@ -1385,6 +936,7 @@ def edit_request(request_id):
         )
         memo_subject = request.form.get("memo_subject", title).strip()
         memo_body = request.form.get("memo_body", "").strip()
+        currency = normalize_currency(request.form.get("currency", req.get("currency", "GHS")))
 
         if not title or not memo_body:
             flash("Please complete the request title and memo body.", "error")
@@ -1501,6 +1053,7 @@ def edit_request(request_id):
                 memo_subject=%s,
                 memo_body=%s,
                 is_finance_related=%s,
+                currency=%s,
                 total_amount=%s,
                 status='submitted',
                 current_step=1,
@@ -1517,6 +1070,7 @@ def edit_request(request_id):
             memo_subject,
             memo_body,
             finance,
+            currency,
             total,
             now_value,
             request_id
@@ -1559,6 +1113,7 @@ def edit_request(request_id):
         presidents=presidents,
         auditors=auditors,
         accountants=accountants,
+        currencies=SUPPORTED_CURRENCIES,
         today=datetime.now().strftime("%Y-%m-%d")
     )
 
@@ -1928,88 +1483,39 @@ def submit_draft(request_id):
 
 @requests_bp.route("/<int:request_id>/attachment/<int:attachment_id>")
 def attachment(request_id, attachment_id):
-
     if "user_id" not in session:
         return redirect("/")
 
     conn = get_db()
-
     try:
-        # ---------------------------------------------------------
-        # Check request access
-        # ---------------------------------------------------------
         req = get_request(conn, request_id)
-
-        if not req:
-            return "Request not found", 404
-
-        if not can_view_request(conn, req):
+        if not req or not can_view_request(conn, req):
             return "Access Denied", 403
 
-        # ---------------------------------------------------------
-        # Find attachment
-        # ---------------------------------------------------------
         c = conn.cursor()
-
-        c.execute(
-            """
+        c.execute("""
             SELECT *
             FROM request_attachments
-            WHERE id=%s
-              AND request_id=%s
-            """,
-            (
-                attachment_id,
-                request_id
-            )
-        )
-
+            WHERE id=%s AND request_id=%s
+        """, (attachment_id, request_id))
         att = c.fetchone()
 
         if not att:
             return "Attachment not found", 404
 
-        # =========================================================
-        # CLOUDINARY
-        # =========================================================
-        cloudinary_url = att.get("cloudinary_url")
+        if att.get("cloudinary_url"):
+            return redirect(att["cloudinary_url"])
 
-        if cloudinary_url:
-
-            # Make sure the URL is actually usable.
-            if not str(cloudinary_url).startswith(
-                ("http://", "https://")
-            ):
-                return "Invalid Cloudinary attachment URL", 500
-
-            return redirect(
-                cloudinary_url,
-                code=302
-            )
-
-        # =========================================================
-        # LEGACY LOCAL FILE FALLBACK
-        # =========================================================
+        # Legacy local-file fallback for attachments uploaded before Cloudinary.
         stored_name = att.get("stored_name")
-
         if not stored_name:
             return "Attachment file not found", 404
 
         upload_folder = os.path.join(
-            os.getcwd(),
-            "static",
-            "request_uploads",
-            str(request_id)
+            os.getcwd(), "static", "request_uploads", str(request_id)
         )
-
-        filename = os.path.basename(
-            stored_name
-        )
-
-        full_path = os.path.join(
-            upload_folder,
-            filename
-        )
+        filename = os.path.basename(stored_name)
+        full_path = os.path.join(upload_folder, filename)
 
         if not os.path.isfile(full_path):
             return "Attachment file not found", 404
@@ -2018,25 +1524,8 @@ def attachment(request_id, attachment_id):
             upload_folder,
             filename,
             as_attachment=False,
-            download_name=att.get(
-                "original_name",
-                filename
-            )
+            download_name=att["original_name"]
         )
-
-    except Exception as e:
-
-        print(
-            "ATTACHMENT VIEW ERROR:",
-            repr(e)
-        )
-
-        return (
-            "Unable to open attachment. "
-            "Please try again.",
-            500
-        )
-
     finally:
         conn.close()
 
@@ -2147,6 +1636,11 @@ def save_signature():
 
 def register_request_workflow(app, socketio=None):
     init_request_tables()
+    app.jinja_env.globals.update(
+        currency_symbol=currency_symbol,
+        format_currency=format_currency,
+        supported_currencies=SUPPORTED_CURRENCIES,
+    )
     app.register_blueprint(requests_bp)
 
     requests_bp.socketio = socketio
