@@ -396,33 +396,33 @@ def save_attachments(conn, request_id, files, upload_root=None):
                 "resource_type": resource_type,
             })
 
-            c.execute("""
-                INSERT INTO request_attachments
-                (
-                    request_id,
-                    original_name,
-                    stored_name,
-                    uploaded_by,
-                    uploaded_at,
-                    cloudinary_url,
-                    cloudinary_public_id,
-                    cloudinary_resource_type,
-                    file_size,
-                    mime_type
-                )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, (
+        c.execute("""
+            INSERT INTO request_attachments
+            (
                 request_id,
-                original,
-                None,
-                session["user_id"],
-                now(),
-                secure_url,
-                public_id,
-                resource_type,
+                original_name,
+                stored_name,
+                uploaded_by,
+                uploaded_at,
+                cloudinary_url,
+                cloudinary_public_id,
+                cloudinary_resource_type,
                 file_size,
-                getattr(file, "mimetype", None),
-            ))
+                mime_type
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            request_id,
+            original,
+            public_id,
+            session["user_id"],
+            now(),
+            secure_url,
+            public_id,
+            resource_type,
+            getattr(file, "content_length", None),
+            getattr(file, "mimetype", None)
+        ))
 
     except Exception:
         # PostgreSQL rollback does not remove Cloudinary assets, so clean up
