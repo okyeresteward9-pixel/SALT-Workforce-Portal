@@ -151,19 +151,32 @@ def init_request_tables():
     conn.close()
 
 def next_request_no(c):
+    """Generate the next request number safely for concurrent submissions."""
     year = datetime.now().year
     prefix = f"REQ-{year}-"
+
+    # Serialize number generation for this year only. The lock is released
+    # automatically when the surrounding transaction commits/rolls back.
+    c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (prefix,))
+
     c.execute(
-        "SELECT request_no FROM requests WHERE request_no LIKE %s ORDER BY id DESC LIMIT 1",
+        """SELECT request_no
+           FROM requests
+           WHERE request_no LIKE %s
+           ORDER BY id DESC
+           LIMIT 1""",
         (prefix + "%",)
     )
     row = c.fetchone()
+
     if not row:
         return prefix + "0001"
+
     try:
         number = int(row["request_no"].split("-")[-1]) + 1
-    except Exception:
+    except (TypeError, ValueError, AttributeError):
         number = 1
+
     return prefix + f"{number:04d}"
 
 def notify(conn, user_id, message):
@@ -332,14 +345,7 @@ def _cloudinary_ready():
 
 
 def save_attachments(conn, request_id, files, upload_root=None):
-    """
-    Upload request attachments to Cloudinary and store the Cloudinary
-    metadata in PostgreSQL.
-
-    Cloudinary is the source of truth for new request files. If a database
-    insert fails after an upload, the uploaded Cloudinary asset is removed
-    so we do not leave orphaned files behind.
-    """
+    """Upload each attachment to Cloudinary and save its metadata."""
     if not _cloudinary_ready():
         raise RuntimeError(
             "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, "
@@ -358,14 +364,13 @@ def save_attachments(conn, request_id, files, upload_root=None):
             if not original:
                 continue
 
-            # Capture the size before Cloudinary consumes the stream.
             file_size = getattr(file, "content_length", None)
             if not file_size:
                 try:
-                    current_pos = file.stream.tell()
+                    pos = file.stream.tell()
                     file.stream.seek(0, os.SEEK_END)
                     file_size = file.stream.tell()
-                    file.stream.seek(current_pos)
+                    file.stream.seek(pos)
                 except Exception:
                     file_size = None
 
@@ -396,37 +401,29 @@ def save_attachments(conn, request_id, files, upload_root=None):
                 "resource_type": resource_type,
             })
 
-        c.execute("""
-            INSERT INTO request_attachments
-            (
-                request_id,
-                original_name,
-                stored_name,
-                uploaded_by,
-                uploaded_at,
-                cloudinary_url,
-                cloudinary_public_id,
-                cloudinary_resource_type,
-                file_size,
-                mime_type
+            # Keep stored_name populated because the existing production
+            # database has a NOT NULL constraint on this column.
+            c.execute(
+                """INSERT INTO request_attachments
+                   (request_id, original_name, stored_name, uploaded_by,
+                    uploaded_at, cloudinary_url, cloudinary_public_id,
+                    cloudinary_resource_type, file_size, mime_type)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (
+                    request_id,
+                    original,
+                    public_id,
+                    session["user_id"],
+                    now(),
+                    secure_url,
+                    public_id,
+                    resource_type,
+                    file_size,
+                    getattr(file, "mimetype", None),
+                )
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        """, (
-            request_id,
-            original,
-            public_id,
-            session["user_id"],
-            now(),
-            secure_url,
-            public_id,
-            resource_type,
-            getattr(file, "content_length", None),
-            getattr(file, "mimetype", None)
-        ))
 
     except Exception:
-        # PostgreSQL rollback does not remove Cloudinary assets, so clean up
-        # anything uploaded during this call before re-raising the error.
         for asset in uploaded_assets:
             try:
                 cloudinary.uploader.destroy(
@@ -435,10 +432,7 @@ def save_attachments(conn, request_id, files, upload_root=None):
                     invalidate=True,
                 )
             except Exception as cleanup_error:
-                print(
-                    "CLOUDINARY UPLOAD CLEANUP ERROR:",
-                    repr(cleanup_error)
-                )
+                print("CLOUDINARY UPLOAD CLEANUP ERROR:", repr(cleanup_error))
         raise
 
 def approvers_for_position(conn, positions):
@@ -513,7 +507,12 @@ def new_request():
         memo_body = request.form.get("memo_body", "").strip()
         currency = normalize_currency(request.form.get("currency", "GHS"))
 
-        is_draft = request.form.get("save_draft") == "yes"
+        action = request.form.get("request_action", "").strip().lower()
+        # Support the current request_action buttons and the older
+        # save_draft=yes form value for backwards compatibility.
+        is_draft = action == "draft" or (
+            not action and request.form.get("save_draft") == "yes"
+        )
 
         # A draft still needs enough information to be useful/editable.
         if not title or not memo_body:
