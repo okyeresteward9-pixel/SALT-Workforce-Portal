@@ -1,76 +1,232 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SALT — Requests</title>
+{% extends "request_base.html" %}
+
+{% block title %}SALT — My Requests{% endblock %}
+
+{% block content %}
 <style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;color:#17212b}
-a{color:#1269a8}
-.request-page{max-width:1200px;margin:0 auto;padding:28px 20px}
-.request-head{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px}
-.request-head h1{margin:0 0 6px;font-size:28px}
-.request-head p{margin:0;color:#667085}
-.card{background:#fff;border-radius:14px;padding:22px;margin-bottom:20px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
-.request-form label{display:block;margin:12px 0;font-weight:600}
-.request-form input,.request-form select,.request-form textarea{display:block;width:100%;margin-top:7px;padding:11px;border:1px solid #d7dce2;border-radius:8px;font:inherit;background:#fff}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:15px}
-.item-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:10px}
-.item-row input{margin:0}
-.btn{display:inline-block;border:0;border-radius:8px;padding:10px 15px;text-decoration:none;cursor:pointer;background:#eef1f4;color:#17212b}
-.btn-primary{background:#1269a8;color:#fff}.btn-danger{background:#b42318;color:#fff}
-.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:25px}
-.notice{padding:14px;border-radius:10px;background:#fff4d6;margin-bottom:20px}
-.muted{color:#667085}
-table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px;border-bottom:1px solid #e7e9ec}
-.status{padding:5px 9px;border-radius:20px;background:#eef1f4}.status-completed{background:#dff7e7}.status-rejected{background:#ffe1e1}.status-returned{background:#fff0cf}
-.timeline{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
-.timeline-step{border:1px solid #ddd;border-radius:10px;padding:14px;background:#f7f8fa}
-.timeline-step.approved{border-left:5px solid #22a06b}.timeline-step.pending{border-left:5px solid #e5a000}.timeline-step.waiting{opacity:.65}.timeline-step.rejected{border-left:5px solid #c62828}.timeline-step.returned{border-left:5px solid #e5a000}
-.approval-box{border:2px solid #1269a8}
-@media(max-width:700px){.grid2,.item-row{grid-template-columns:1fr}.request-head{align-items:flex-start;flex-direction:column}}
+.rq-list-hero{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+    margin-bottom:18px;
+}
+.rq-list-hero-copy{min-width:0}
+.rq-list-hero h1{
+    margin:0;
+    color:var(--rq-navy);
+    font-size:clamp(24px,3vw,32px);
+    font-weight:950;
+    letter-spacing:-.035em;
+}
+.rq-list-hero p{
+    margin:6px 0 0;
+    color:var(--rq-muted);
+    font-size:12px;
+    line-height:1.5;
+}
+.rq-notice{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+    padding:15px 17px;
+    margin-bottom:18px;
+    border:1px solid #efdba5;
+    border-radius:15px;
+    background:linear-gradient(135deg,#fffaf0,#fff6dc);
+    color:#705200;
+    box-shadow:0 7px 20px rgba(165,107,0,.06);
+}
+.rq-notice-main{display:flex;align-items:center;gap:11px;min-width:0}
+.rq-notice-icon{
+    width:38px;height:38px;flex:0 0 38px;
+    display:grid;place-items:center;
+    border-radius:11px;
+    background:#fff;
+    color:#a56b00;
+    border:1px solid #efdba5;
+}
+.rq-notice strong{color:#7a5100}
+.rq-notice a{color:#8c5d00;font-weight:900;text-decoration:none}
+.rq-notice a:hover{text-decoration:underline}
+.rq-list-card{padding:0;overflow:hidden}
+.rq-list-card .rq-card-head{
+    margin:0;
+    padding:20px 22px;
+    border-bottom:1px solid var(--rq-line);
+}
+.rq-list-card .rq-card-title{min-width:0}
+.rq-list-table-wrap{overflow:auto}
+.rq-list-table{
+    width:100%;
+    min-width:780px;
+    border-collapse:separate;
+    border-spacing:0;
+}
+.rq-list-table th{
+    padding:12px 16px;
+    background:#f7faff;
+    border-bottom:1px solid var(--rq-line);
+    color:#718198;
+    font-size:9px;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    white-space:nowrap;
+}
+.rq-list-table td{
+    padding:15px 16px;
+    border-bottom:1px solid #edf1f5;
+    color:#344054;
+    font-size:12px;
+    vertical-align:middle;
+}
+.rq-list-table tbody tr:last-child td{border-bottom:0}
+.rq-list-table tbody tr{transition:background .16s}
+.rq-list-table tbody tr:hover{background:#fbfdff}
+.rq-no{
+    display:block;
+    color:var(--rq-blue2);
+    font-weight:950;
+    text-decoration:none;
+    font-size:11px;
+}
+.rq-no:hover{text-decoration:underline}
+.rq-title-cell{
+    max-width:340px;
+    color:var(--rq-navy);
+    font-weight:800;
+}
+.rq-date{color:#718198;white-space:nowrap}
+.rq-view{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:8px 11px;
+    border-radius:10px;
+    background:#eef6ff;
+    color:var(--rq-blue2);
+    border:1px solid #d6e8f7;
+    text-decoration:none;
+    font-size:10px;
+    font-weight:900;
+    white-space:nowrap;
+    transition:.16s;
+}
+.rq-view:hover{background:var(--rq-blue2);color:#fff;transform:translateY(-1px)}
+.rq-empty-modern{
+    padding:55px 20px;
+    text-align:center;
+}
+.rq-empty-modern .rq-empty-icon{
+    background:#eef6ff;
+    color:var(--rq-blue2);
+}
+.rq-empty-modern h3{margin:0 0 5px}
+.rq-empty-modern p{margin:0 0 18px}
+@media(max-width:760px){
+    .rq-list-hero{align-items:flex-start;flex-direction:column}
+    .rq-list-hero .rq-btn{width:100%}
+    .rq-notice{align-items:flex-start;flex-direction:column}
+    .rq-notice a{display:inline-block;margin-top:4px}
+    .rq-list-card .rq-card-head{padding:17px}
+}
 </style>
-</head>
-<body>
-<div class="request-page">
-  <div class="request-head">
-    <div>
-      <h1>Requests</h1>
-      <p>Create requests and track every approval stage.</p>
+
+<div class="rq-list-hero">
+    <div class="rq-list-hero-copy">
+        <div class="rq-eyebrow">Request Management</div>
+        <h1>My Requests</h1>
+        <p>Create requests, follow approval progress, and review the history of every submission.</p>
     </div>
-    <a class="btn btn-primary" href="{{ url_for('requests_bp.new_request') }}">+ New Request</a>
-  </div>
-
-  {% if pending %}
-  <div class="notice">You have <strong>{{ pending }}</strong> request(s) waiting for your approval.
-    <a href="{{ url_for('requests_bp.approvals') }}">Open approvals</a>
-  </div>
-  {% endif %}
-
-  <div class="card">
-    <h2>My Requests</h2>
-    {% if my_requests %}
-    <table>
-      <thead><tr><th>Request No.</th><th>Subject</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-      {% for r in my_requests %}
-      <tr>
-        <td>{{ r.request_no }}</td>
-        <td>{{ r.title }}</td>
-        <td>{{ format_currency(r.total_amount, r.currency) }}</td>
-        <td>{{ r.created_at.strftime('%Y-%m-%d') if r.created_at else '—' }}</td>
-        <td><span class="status status-{{ r.status }}">{{ r.status|replace('_',' ')|title }}</span></td>
-        <td><a href="{{ url_for('requests_bp.detail', request_id=r.id) }}">View</a></td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-      <p>No requests yet.</p>
-    {% endif %}
-  </div>
 </div>
 
-</body>
-</html>
+{% if pending %}
+<div class="rq-notice">
+    <div class="rq-notice-main">
+        <div class="rq-notice-icon"><i class="fas fa-clipboard-check"></i></div>
+        <div>
+            You have <strong>{{ pending }}</strong> request(s) waiting for your approval.
+            <a href="{{ url_for('requests_bp.approvals') }}">Open approvals <i class="fas fa-arrow-right"></i></a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="rq-card rq-list-card">
+    <div class="rq-card-head">
+        <div class="rq-card-title">
+            <div class="rq-icon"><i class="fas fa-file-signature"></i></div>
+            <div>
+                <h2>My Requests</h2>
+                <p class="rq-card-sub">Your submitted, returned, rejected, completed, and draft requests.</p>
+            </div>
+        </div>
+        {% if my_requests %}
+        <span class="rq-muted" style="font-size:11px;font-weight:800;">
+            {{ my_requests|length }} request{% if my_requests|length != 1 %}s{% endif %}
+        </span>
+        {% endif %}
+    </div>
+
+    {% if my_requests %}
+    <div class="rq-list-table-wrap">
+        <table class="rq-list-table">
+            <thead>
+                <tr>
+                    <th>Request</th>
+                    <th>Subject</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in my_requests %}
+                <tr>
+                    <td>
+                        <a class="rq-no" href="{{ url_for('requests_bp.detail', request_id=r.id) }}">
+                            {{ r.request_no }}
+                        </a>
+                    </td>
+                    <td>
+                        <div class="rq-title-cell">{{ r.title }}</div>
+                    </td>
+                    <td>
+                        <strong style="color:var(--rq-navy);white-space:nowrap;">
+                            {{ format_currency(r.total_amount, r.currency) }}
+                        </strong>
+                    </td>
+                    <td class="rq-date">
+                        {{ r.created_at.strftime('%Y-%m-%d') if r.created_at else '—' }}
+                    </td>
+                    <td>
+                        <span class="rq-status rq-status-{{ r.status }}">
+                            {{ r.status|replace('_',' ')|title }}
+                        </span>
+                    </td>
+                    <td style="text-align:right">
+                        <a class="rq-view" href="{{ url_for('requests_bp.detail', request_id=r.id) }}">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="rq-empty-modern">
+        <div class="rq-empty-icon"><i class="fas fa-file-circle-plus"></i></div>
+        <h3>No requests yet</h3>
+        <p class="rq-muted">Create your first request to begin the approval workflow.</p>
+        <a class="rq-btn rq-primary" href="{{ url_for('requests_bp.new_request') }}">
+            <i class="fas fa-plus"></i> Create New Request
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
