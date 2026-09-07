@@ -37,35 +37,7 @@
             border-radius: 10px;
         }
 
-    
-    /* Chat composer controls */
-    #emoji-picker {
-        z-index: 9999 !important;
-        pointer-events: auto;
-    }
-
-    #emoji-picker.hidden {
-        display: none !important;
-    }
-
-    #preview-container {
-        position: relative;
-        z-index: 30;
-    }
-
-    #attach-btn,
-    #emoji-btn,
-    #remove-preview {
-        position: relative;
-        z-index: 40;
-        cursor: pointer;
-    }
-
-    #file-input {
-        display: none;
-    }
-
-</style>
+    </style>
 
 
 <style>
@@ -388,27 +360,6 @@
             animation-duration: .01ms !important;
         }
     }
-
-    /* Smooth conversation switching */
-    #chat-box.chat-switching {
-        opacity: .65;
-        transition: opacity .15s ease;
-    }
-
-    #chat-box.chat-switching::before {
-        content: "Loading conversation…";
-        display: block;
-        text-align: center;
-        color: #94a3b8;
-        font-size: 12px;
-        padding: 10px;
-    }
-
-    #remove-preview:not(.hidden) {
-        display: grid;
-        place-items: center;
-    }
-
 </style>
 
 </head>
@@ -431,7 +382,7 @@
     aria-hidden="true"></div>
 
     <!-- EMOJI PICKER -->
-    <div id="emoji-picker" role="dialog" aria-label="Emoji picker"
+    <div id="emoji-picker"
          class="hidden fixed bottom-24 right-5 md:right-10 bg-white/95 backdrop-blur-lg border border-gray-200 rounded-3xl shadow-2xl p-4 w-72 z-50">
 
         <div class="grid grid-cols-6 gap-3 text-2xl">
@@ -538,8 +489,8 @@
                 <a href="/messages/{{ user.id }}"
                    class="user-item group flex items-center gap-4 p-3 md:p-4 rounded-2xl hover:bg-blue-50 transition-all duration-200"
                    data-user-id="{{ user.id }}"
-                   data-user-name="{{ user.name|e }}"
-                   data-user-email="{{ user.email|default('', true)|e }}">
+                   data-user-name="{{ user.name|lower|e }}"
+                   data-user-email="{{ user.email|default('', true)|lower|e }}">
 
                     <div class="relative">
                         <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md">
@@ -671,6 +622,17 @@
             <!-- INPUT -->
             <div class="bg-white border-t border-gray-200 px-4 md:px-6 py-5">
 
+                <!-- UPLOAD PROGRESS -->
+                <div id="upload-progress" class="hidden max-w-[1100px] mx-auto mb-3" aria-live="polite">
+                    <div class="flex items-center justify-between mb-1 text-xs font-medium text-gray-500">
+                        <span id="upload-progress-text">Uploading...</span>
+                        <span id="upload-progress-percent">0%</span>
+                    </div>
+                    <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="upload-progress-bar" class="h-full rounded-full transition-all duration-200" style="width:0%;"></div>
+                    </div>
+                </div>
+
                 <div id="preview-container" class="hidden px-4 pb-3">
 
                     <div id="preview-media" class="hidden space-y-2">
@@ -697,19 +659,22 @@
 
                         <button type="button"
                                 id="remove-preview"
-                                aria-label="Remove attachment"
-                                title="Remove attachment"
-                                aria-label="Remove attachment"
-                                title="Remove attachment"
-                                class="hidden absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 rounded-full shadow hover:bg-red-600 transition z-10">
+                                class="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 rounded-full shadow">
 
-                            <i class="fas fa-times"></i>
+                            ✕
 
                         </button>
 
                     </div>
 
-                    
+                    <div class="relative inline-block">
+                
+                        <img id="preview-image"
+                             class="hidden max-w-[180px] rounded-2xl shadow border">
+                
+                        <div id="preview-file"
+                             class="hidden bg-gray-100 border rounded-xl px-4 py-3 text-sm text-gray-700">
+                        </div>
                 
                         <button type="button"
                                 id="remove-preview"
@@ -1116,8 +1081,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 
-    /* Close after choosing a conversation on mobile.
-       chat.js handles the actual navigation without a full reload. */
+    /* Close after choosing a conversation on mobile. */
 
     if (usersList) {
 
@@ -1126,10 +1090,15 @@ document.addEventListener("DOMContentLoaded", function () {
             function (event) {
 
                 const userLink =
-                    event.target.closest(".user-item");
+                    event.target.closest(
+                        ".user-item"
+                    );
+
 
                 if (userLink) {
+
                     closeSidebar();
+
                 }
 
             }

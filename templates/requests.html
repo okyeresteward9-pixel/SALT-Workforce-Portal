@@ -1,117 +1,76 @@
-{% extends "request_base.html" %}
-{% block title %}SALT — My Requests{% endblock %}
-{% block content %}
-<div class="rq-hero"><div><div class="rq-eyebrow">Requests workspace</div><h1>My Requests</h1><p>Submit, monitor and follow every approval stage from one place.</p></div><div class="rq-actions"></div></div>
-
-{% if request_message %}
-<div class="rq-alert rq-message-{{ request_message_type|default('success') }}"
-     id="requestWorkflowMessage">
-    <strong>{{ request_message }}</strong>
-</div>
-{% endif %}
-
-{% set ns = namespace(active=0, completed=0) %}
-{% for r in my_requests %}{% if r.status in ['submitted','pending','pending_approval','returned'] %}{% set ns.active=ns.active+1 %}{% endif %}{% if r.status=='completed' %}{% set ns.completed=ns.completed+1 %}{% endif %}{% endfor %}
-{% if pending %}<div class="rq-alert"><strong>{{ pending }} approval{{ 's' if pending != 1 else '' }} waiting for your action.</strong> <a href="{{ url_for('requests_bp.approvals') }}">Open Pending Approvals →</a></div>{% endif %}
-<div class="rq-stats"><div class="rq-stat"><div class="rq-stat-label">Total requests</div><div class="rq-stat-value">{{ my_requests|length }}</div></div><div class="rq-stat"><div class="rq-stat-label">In progress</div><div class="rq-stat-value">{{ ns.active }}</div></div><div class="rq-stat"><div class="rq-stat-label">Completed</div><div class="rq-stat-value">{{ ns.completed }}</div></div><div class="rq-stat"><div class="rq-stat-label">Pending approvals</div><div class="rq-stat-value">{{ pending }}</div></div></div>
-<div class="rq-card"><div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">▣</div><div><h2>Request history</h2><div class="rq-card-sub">Your submitted requests and their current stage.</div></div></div></div>
-<div class="rq-tabs"><button class="rq-tab active" data-filter="all">All</button><button class="rq-tab" data-filter="submitted">Submitted</button><button class="rq-tab" data-filter="pending">In review</button><button class="rq-tab" data-filter="completed">Completed</button><button class="rq-tab" data-filter="returned">Returned</button><button class="rq-tab" data-filter="rejected">Rejected</button></div>
-{% if my_requests %}<div class="rq-table-wrap"><table class="rq-table" id="requestTable"><thead><tr><th>Request</th><th>Submitted</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody>
-{% for r in my_requests %}<tr data-status="{{ r.status }}"><td><div class="rq-request-title">{{ r.title }}</div><div class="rq-request-no">{{ r.request_no }}</div></td><td>{{ r.created_at.strftime('%d %b %Y') if r.created_at else '—' }}</td><td>{{ r.request_type|replace('_',' ')|title }}</td><td><span class="rq-status rq-status-{{ r.status }}">{{ r.status|replace('_',' ')|title }}</span></td><td><div class="rq-actions" style="justify-content:flex-start">
-<a class="rq-btn" href="{{ url_for('requests_bp.detail', request_id=r.id) }}">View →</a>
-{% if r.status in ['draft','returned','rejected'] %}
-<a class="rq-btn rq-primary" href="{{ url_for('requests_bp.edit_request', request_id=r.id) }}">✎ Edit</a>
-<form method="POST" action="{{ url_for('requests_bp.delete_request', request_id=r.id) }}" onsubmit="return confirm('Delete this request? This cannot be undone.')" style="margin:0"><button class="rq-btn rq-danger" type="submit">🗑 Delete</button></form>
-{% endif %}
-</div></td></tr>{% endfor %}
-</tbody></table></div>{% else %}<div class="rq-empty"><div class="rq-empty-icon">＋</div><h3>No requests yet</h3><p>Create your first request and track the approval journey here.</p><div style="margin-top:16px"><a class="rq-btn rq-primary" href="{{ url_for('requests_bp.new_request') }}">Create first request</a></div></div>{% endif %}
-</div>
-{% endblock %}
-
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SALT — Requests</title>
 <style>
-.rq-message-success {
-    border-left: 4px solid #16a34a;
-}
-
-.rq-message-error {
-    border-left: 4px solid #dc2626;
-}
-
-.rq-message-info {
-    border-left: 4px solid #2563eb;
-}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;color:#17212b}
+a{color:#1269a8}
+.request-page{max-width:1200px;margin:0 auto;padding:28px 20px}
+.request-head{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px}
+.request-head h1{margin:0 0 6px;font-size:28px}
+.request-head p{margin:0;color:#667085}
+.card{background:#fff;border-radius:14px;padding:22px;margin-bottom:20px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+.request-form label{display:block;margin:12px 0;font-weight:600}
+.request-form input,.request-form select,.request-form textarea{display:block;width:100%;margin-top:7px;padding:11px;border:1px solid #d7dce2;border-radius:8px;font:inherit;background:#fff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.item-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.item-row input{margin:0}
+.btn{display:inline-block;border:0;border-radius:8px;padding:10px 15px;text-decoration:none;cursor:pointer;background:#eef1f4;color:#17212b}
+.btn-primary{background:#1269a8;color:#fff}.btn-danger{background:#b42318;color:#fff}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:25px}
+.notice{padding:14px;border-radius:10px;background:#fff4d6;margin-bottom:20px}
+.muted{color:#667085}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px;border-bottom:1px solid #e7e9ec}
+.status{padding:5px 9px;border-radius:20px;background:#eef1f4}.status-completed{background:#dff7e7}.status-rejected{background:#ffe1e1}.status-returned{background:#fff0cf}
+.timeline{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.timeline-step{border:1px solid #ddd;border-radius:10px;padding:14px;background:#f7f8fa}
+.timeline-step.approved{border-left:5px solid #22a06b}.timeline-step.pending{border-left:5px solid #e5a000}.timeline-step.waiting{opacity:.65}.timeline-step.rejected{border-left:5px solid #c62828}.timeline-step.returned{border-left:5px solid #e5a000}
+.approval-box{border:2px solid #1269a8}
+@media(max-width:700px){.grid2,.item-row{grid-template-columns:1fr}.request-head{align-items:flex-start;flex-direction:column}}
 </style>
+</head>
+<body>
+<div class="request-page">
+  <div class="request-head">
+    <div>
+      <h1>Requests</h1>
+      <p>Create requests and track every approval stage.</p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('requests_bp.new_request') }}">+ New Request</a>
+  </div>
 
-{% block scripts %}
-<script>
-document.querySelectorAll('.rq-tab').forEach(t => t.addEventListener('click', () => {
+  {% if pending %}
+  <div class="notice">You have <strong>{{ pending }}</strong> request(s) waiting for your approval.
+    <a href="{{ url_for('requests_bp.approvals') }}">Open approvals</a>
+  </div>
+  {% endif %}
 
-    document
-        .querySelectorAll('.rq-tab')
-        .forEach(x => x.classList.remove('active'));
+  <div class="card">
+    <h2>My Requests</h2>
+    {% if my_requests %}
+    <table>
+      <thead><tr><th>Request No.</th><th>Subject</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for r in my_requests %}
+      <tr>
+        <td>{{ r.request_no }}</td>
+        <td>{{ r.title }}</td>
+        <td>{{ format_currency(r.total_amount, r.currency) }}</td>
+        <td>{{ r.created_at.strftime('%Y-%m-%d') if r.created_at else '—' }}</td>
+        <td><span class="status status-{{ r.status }}">{{ r.status|replace('_',' ')|title }}</span></td>
+        <td><a href="{{ url_for('requests_bp.detail', request_id=r.id) }}">View</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p>No requests yet.</p>
+    {% endif %}
+  </div>
+</div>
 
-    t.classList.add('active');
-
-    let f = t.dataset.filter;
-
-    document
-        .querySelectorAll('#requestTable tbody tr')
-        .forEach(r => {
-
-            const status = r.dataset.status;
-
-            const show =
-                f === 'all' ||
-                status === f ||
-                (
-                    f === 'pending' &&
-                    ['pending', 'pending_approval'].includes(status)
-                );
-
-            r.style.display = show ? '' : 'none';
-        });
-}));
-
-
-/* ==========================================
-   REQUEST WORKFLOW MESSAGE
-   ========================================== */
-
-const requestMessage =
-    document.getElementById(
-        'requestWorkflowMessage'
-    );
-
-if (requestMessage) {
-
-    /* Remove request_message parameters from URL */
-    const cleanUrl =
-        window.location.pathname +
-        window.location.hash;
-
-    window.history.replaceState(
-        {},
-        document.title,
-        cleanUrl
-    );
-
-
-    /* Automatically hide the message */
-    setTimeout(() => {
-
-        requestMessage.style.transition =
-            'opacity 0.4s ease, transform 0.4s ease';
-
-        requestMessage.style.opacity = '0';
-
-        requestMessage.style.transform =
-            'translateY(-5px)';
-
-        setTimeout(() => {
-            requestMessage.remove();
-        }, 400);
-
-    }, 5000);
-}
-</script>
-{% endblock %}
+</body>
+</html>
