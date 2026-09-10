@@ -1,4 +1,6 @@
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
+
 <style>
 .rq-review-btn.is-loading {
     opacity: .75;
@@ -54,3 +56,5 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
+
+<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>

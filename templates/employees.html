@@ -615,6 +615,8 @@ td{padding:15px 16px;border-top:1px solid #edf1f6;color:#334155;font-size:14px}t
     <meta name="apple-mobile-web-app-title" content="SALT Workforce">
     <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
 
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 </head>
 
 <body>
@@ -1257,5 +1259,7 @@ data-role="{{ emp['role']|lower }}">
     });
 })();
 </script>
+
+<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
 </body>
 </html>

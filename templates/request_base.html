@@ -46,6 +46,8 @@ html{scroll-behavior:smooth}body{background:var(--rq-bg);color:#172b4d}
     <meta name="apple-mobile-web-app-title" content="SALT Workforce">
     <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
 
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 </head>
 <body>
 <div class="wrapper">
@@ -104,4 +106,6 @@ html{scroll-behavior:smooth}body{background:var(--rq-bg);color:#172b4d}
 })();
 </script>
 {% block scripts %}{% endblock %}
+
+<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
 </body></html>

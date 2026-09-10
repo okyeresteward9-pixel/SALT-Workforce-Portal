@@ -1,3 +1,5 @@
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 {% extends "request_base.html" %}
 
 {% block title %}SALT — My Requests{% endblock %}
@@ -271,3 +273,4 @@
     {% endif %}
 </div>
 {% endblock %}
+<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
