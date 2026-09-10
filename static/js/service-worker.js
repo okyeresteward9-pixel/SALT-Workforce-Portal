@@ -12,8 +12,8 @@ const STATIC_ASSETS = [
     '/static/style.css',
     '/static/salt-logo.png',
     '/static/salt-mascot.png',
-    '/static/icons/icon.png',
-    '/static/icons/icon.png',
+    '/static/icons/icon-192.png',
+    '/static/icons/icon-512.png',
     '/static/js/pwa.js'
 ];
 
