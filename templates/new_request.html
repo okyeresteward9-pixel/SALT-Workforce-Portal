@@ -1,3 +1,5 @@
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 {% extends "request_base.html" %}
 {% block title %}SALT — New Request{% endblock %}
 {% block content %}
@@ -163,3 +165,4 @@ function prepareRequestSubmit(event){
 }
 document.getElementById('attachments').addEventListener('change',e=>{let box=document.getElementById('fileList');box.innerHTML='';[...e.target.files].forEach(f=>{let d=document.createElement('div');d.className='rq-attachment';d.innerHTML='<span>📎 '+f.name+'</span><span class="rq-muted">'+Math.max(1,Math.round(f.size/1024))+' KB</span>';box.appendChild(d)})});bindTotals();showStep(1);
 </script>{% endblock %}
+<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>

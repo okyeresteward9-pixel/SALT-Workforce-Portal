@@ -1,0 +1,171 @@
+
+/* SALT Workforce — Unified Design System + Mobile UI */
+:root {
+  --salt-primary: #0B3D91;
+  --salt-primary-dark: #082D6B;
+  --salt-primary-light: #EAF1FF;
+  --salt-background: #F5F7FB;
+  --salt-surface: #FFFFFF;
+  --salt-text: #172033;
+  --salt-text-secondary: #68758A;
+  --salt-border: #E2E8F0;
+  --salt-success: #198754;
+  --salt-success-light: #EAF7F0;
+  --salt-warning: #D99A00;
+  --salt-warning-light: #FFF7DF;
+  --salt-danger: #D64545;
+  --salt-danger-light: #FDECEC;
+  --salt-shadow: 0 8px 24px rgba(15, 42, 82, 0.08);
+  --salt-shadow-lg: 0 14px 35px rgba(15, 42, 82, 0.12);
+  --salt-radius: 14px;
+  --salt-radius-sm: 10px;
+  --salt-transition: 180ms ease;
+}
+
+html, body {
+  max-width: 100%;
+}
+
+body {
+  color: var(--salt-text);
+  background: var(--salt-background);
+}
+
+a {
+  color: var(--salt-primary);
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+button, .btn, a.btn {
+  border-radius: var(--salt-radius-sm);
+  transition: transform var(--salt-transition),
+              box-shadow var(--salt-transition),
+              background var(--salt-transition);
+}
+
+button:hover, .btn:hover, a.btn:hover {
+  transform: translateY(-1px);
+}
+
+input, select, textarea {
+  border-color: var(--salt-border);
+  border-radius: var(--salt-radius-sm);
+}
+
+.card, .dashboard-card, .stat-card, .panel, .box, .form-card {
+  border-radius: var(--salt-radius);
+  box-shadow: var(--salt-shadow);
+}
+
+.salt-primary-bg { background: var(--salt-primary) !important; }
+.salt-primary-text { color: var(--salt-primary) !important; }
+.salt-success { color: var(--salt-success) !important; }
+.salt-warning { color: var(--salt-warning) !important; }
+.salt-danger { color: var(--salt-danger) !important; }
+
+.salt-status-success {
+  color: var(--salt-success);
+  background: var(--salt-success-light);
+}
+.salt-status-warning {
+  color: var(--salt-warning);
+  background: var(--salt-warning-light);
+}
+.salt-status-danger {
+  color: var(--salt-danger);
+  background: var(--salt-danger-light);
+}
+
+/* Professional mobile bottom navigation */
+.salt-mobile-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+
+  .salt-mobile-nav {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    padding: 7px 6px calc(7px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255,255,255,.98);
+    border-top: 1px solid var(--salt-border);
+    box-shadow: 0 -8px 25px rgba(15,42,82,.08);
+    backdrop-filter: blur(14px);
+  }
+
+  .salt-mobile-nav a {
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: var(--salt-text-secondary);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 10px;
+  }
+
+  .salt-mobile-nav a i {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .salt-mobile-nav a.active {
+    color: var(--salt-primary);
+    background: var(--salt-primary-light);
+  }
+
+  body.salt-mobile-template {
+    padding-bottom: 82px;
+  }
+
+  /* Convert wide tables into horizontally scrollable containers. */
+  table {
+    max-width: 100%;
+  }
+
+  .table-responsive,
+  .responsive-table,
+  .table-container {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Forms stack naturally on narrow screens. */
+  .form-row,
+  .form-grid,
+  .grid,
+  .row {
+    max-width: 100%;
+  }
+
+  /* Common action groups become full-width where useful. */
+  .mobile-full-width {
+    width: 100% !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .salt-mobile-nav {
+    display: none !important;
+  }
+}

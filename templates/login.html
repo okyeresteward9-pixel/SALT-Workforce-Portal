@@ -306,6 +306,8 @@ input::placeholder{color:#a7b3c4}
     <meta name="apple-mobile-web-app-title" content="SALT Workforce">
     <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
 
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 </head>
 
 <body>
@@ -525,5 +527,7 @@ document.getElementById("password").addEventListener("keydown",function(e){
   if(e.key==="Enter") form.requestSubmit();
 });
 </script>
+
+<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
 </body>
 </html>

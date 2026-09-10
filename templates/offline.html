@@ -10,6 +10,8 @@
     <style>
         *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:Inter,Segoe UI,Arial,sans-serif;background:#f4f8ff;color:#10233f}.card{width:min(460px,100%);background:#fff;border:1px solid #e4ebf5;border-radius:24px;padding:40px 28px;text-align:center;box-shadow:0 18px 50px rgba(10,54,110,.12)}img{width:92px;height:92px;object-fit:contain;border-radius:22px;margin-bottom:18px}h1{margin:0 0 10px;font-size:28px}p{margin:0 0 24px;color:#718096;line-height:1.6}button{border:0;border-radius:12px;padding:13px 20px;background:#0878f9;color:#fff;font-weight:700;cursor:pointer}
     </style>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 </head>
 <body>
     <main class="card">
@@ -18,5 +20,7 @@
         <p>SALT Workforce needs an internet connection for secure employee data, attendance and live portal features.</p>
         <button onclick="location.reload()">Try Again</button>
     </main>
+
+<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
 </body>
 </html>

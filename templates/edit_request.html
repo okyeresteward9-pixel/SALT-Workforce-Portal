@@ -1,3 +1,5 @@
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 {% extends "request_base.html" %}
 {% block title %}SALT — Edit {{ req.request_no }}{% endblock %}
 {% block content %}
@@ -151,3 +153,5 @@ function toggleFinance(){const yes=document.querySelector('[name="finance_relate
 bindTotals();updateTotal();document.getElementById('currency')?.addEventListener('change',updateTotal);
 </script>
 {% endblock %}
+
+<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
