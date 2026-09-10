@@ -303,16 +303,31 @@ tr:hover {
 @media (max-width:768px){
 
     .sidebar {
-        position: absolute;
-        z-index: 10;
+        display: none !important;
     }
 
     .main {
-        margin-left: 0;
+        margin-left: 0 !important;
+        width: 100%;
     }
 
     .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .content {
+        padding: 12px;
+    }
+
+    .charts {
         grid-template-columns: 1fr;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .working-section {
+        margin-left: 0;
+        margin-right: 0;
     }
 }
 
