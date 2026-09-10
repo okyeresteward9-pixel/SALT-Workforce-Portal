@@ -169,3 +169,35 @@ input, select, textarea {
     display: none !important;
   }
 }
+
+/* Auth pages must never display authenticated mobile navigation. */
+.login-page .salt-mobile-nav { display: none !important; }
+
+
+/* Mobile navigation visibility/compatibility fix v3 */
+@media (max-width: 768px) {
+  .salt-mobile-nav {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .salt-mobile-nav .salt-nav-icon {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .salt-mobile-nav .salt-nav-label {
+    white-space: nowrap;
+  }
+
+  /* If Font Awesome is not loaded on a page, keep the navigation usable. */
+  .salt-mobile-nav i {
+    font-style: normal;
+    font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", sans-serif;
+    font-weight: 900;
+  }
+}
