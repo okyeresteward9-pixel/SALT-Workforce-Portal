@@ -293,6 +293,286 @@ input::placeholder{color:#a7b3c4}
   .welcome h2{font-size:29px}
   .login-panel{padding:25px 18px}
 }
+
+/* =========================================================
+   SALT MOBILE LOGIN — MODERN PHONE EXPERIENCE
+   ========================================================= */
+@media (max-width: 900px){
+  html,body{
+    width:100%;
+    min-height:100%;
+    background:#f6f9fe;
+  }
+
+  body{
+    overflow:auto;
+    display:block;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .shell{
+    min-height:100svh;
+    display:block;
+  }
+
+  .brand-panel{
+    display:none;
+  }
+
+  .login-panel{
+    min-height:100svh;
+    padding:0;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 90% 0%,rgba(25,200,255,.12),transparent 28%),
+      linear-gradient(180deg,#eef7ff 0,#f8fbff 34%,#fff 100%);
+  }
+
+  .login-wrap{
+    width:100%;
+    max-width:520px;
+    min-height:100svh;
+    padding:28px 20px 24px;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .mobile-logo{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:8px 0 22px;
+  }
+
+  .mobile-logo img{
+    width:68px;
+    height:68px;
+    padding:10px;
+    border-radius:20px;
+    background:#fff;
+    border:1px solid #e5edf8;
+    box-shadow:0 12px 30px rgba(6,43,99,.12);
+  }
+
+  .welcome{
+    margin-bottom:24px;
+    text-align:left;
+  }
+
+  .welcome h2{
+    font-size:28px;
+    line-height:1.15;
+    letter-spacing:-1px;
+    margin-bottom:8px;
+  }
+
+  .welcome p{
+    font-size:13px;
+    line-height:1.65;
+    max-width:390px;
+  }
+
+  .error-box{
+    border-radius:13px;
+    padding:12px 13px;
+    margin-bottom:16px;
+  }
+
+  .form-group{
+    margin-bottom:17px;
+  }
+
+  .form-label{
+    font-size:11px;
+    letter-spacing:.25px;
+    margin-bottom:7px;
+  }
+
+  input[type=email],
+  input[type=password],
+  input[type=text]{
+    height:55px;
+    border-radius:15px;
+    font-size:14px;
+    padding-left:44px;
+    padding-right:46px;
+    background:rgba(255,255,255,.92);
+    -webkit-appearance:none;
+  }
+
+  .input-wrap i.left-icon{
+    left:15px;
+    font-size:14px;
+  }
+
+  .toggle{
+    right:10px;
+    width:38px;
+    height:38px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .options{
+    margin:1px 0 20px;
+    gap:12px;
+  }
+
+  .remember{
+    font-size:11px;
+    gap:8px;
+  }
+
+  .remember input{
+    width:17px;
+    height:17px;
+  }
+
+  .forgot{
+    font-size:11px;
+  }
+
+  .login-btn{
+    height:55px;
+    border-radius:15px;
+    font-size:14px;
+    box-shadow:0 12px 26px rgba(8,120,249,.20);
+  }
+
+  .security{
+    margin-top:19px;
+    font-size:10px;
+  }
+
+  .footer{
+    position:static;
+    margin-top:auto;
+    padding-top:28px;
+    text-align:center;
+    font-size:10px;
+  }
+
+  .help-overlay{
+    align-items:flex-end;
+    padding:0;
+  }
+
+  .help-modal{
+    width:100%;
+    max-width:520px;
+    max-height:88svh;
+    overflow:auto;
+    border-radius:24px 24px 0 0;
+    padding:25px 20px 28px;
+    box-shadow:0 -20px 60px rgba(0,25,65,.20);
+  }
+
+  .help-close{
+    right:15px;
+    top:15px;
+  }
+
+  .help-icon{
+    width:46px;
+    height:46px;
+    border-radius:14px;
+    margin-bottom:14px;
+  }
+
+  .help-modal h3{
+    font-size:20px;
+  }
+
+  .support-item{
+    padding:13px;
+    border-radius:14px;
+  }
+}
+
+@media (max-width:430px){
+  .login-wrap{
+    padding:22px 17px 20px;
+  }
+
+  .mobile-logo{
+    margin-top:4px;
+    margin-bottom:20px;
+  }
+
+  .mobile-logo img{
+    width:62px;
+    height:62px;
+    border-radius:18px;
+    padding:9px;
+  }
+
+  .welcome h2{
+    font-size:26px;
+  }
+
+  .welcome p{
+    font-size:12px;
+  }
+
+  .options{
+    align-items:flex-start;
+  }
+
+  .remember{
+    max-width:62%;
+    line-height:1.35;
+  }
+}
+
+/* Small phones */
+@media (max-width:360px){
+  .login-wrap{
+    padding-left:14px;
+    padding-right:14px;
+  }
+
+  .welcome h2{
+    font-size:24px;
+  }
+
+  input[type=email],
+  input[type=password],
+  input[type=text],
+  .login-btn{
+    height:53px;
+  }
+
+  .remember{
+    font-size:10px;
+  }
+
+  .forgot{
+    font-size:10px;
+  }
+}
+
+/* Touch-friendly and accessibility improvements */
+@media (hover:none) and (pointer:coarse){
+  .login-btn,
+  .toggle,
+  .help-trigger,
+  .help-close,
+  .support-item{
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .login-btn:active{
+    transform:scale(.99);
+  }
+
+  input:focus{
+    box-shadow:0 0 0 4px rgba(8,120,249,.10);
+  }
+}
+
 </style>
 
     <!-- SALT Workforce PWA -->
@@ -347,7 +627,7 @@ input::placeholder{color:#a7b3c4}
       </div>
 
       <div class="welcome">
-        <h2>Welcome back 👋</h2>
+        <h2>Welcome back</h2>
         <p>Sign in to continue to your SALT workforce workspace.</p>
       </div>
 
@@ -528,6 +808,5 @@ document.getElementById("password").addEventListener("keydown",function(e){
 });
 </script>
 
-<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
 </body>
 </html>
