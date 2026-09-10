@@ -1552,6 +1552,10 @@ def clockout():
 
     return redirect('/dashboard')
 
+@app.route("/offline")
+def offline():
+    return render_template("offline.html")
+
 @app.route("/service-worker.js")
 def service_worker():
     return send_from_directory(
@@ -1740,18 +1744,6 @@ def get_notification_count(user_id):
     """, (user_id,))
 
     count = c.fetchone()["total"]
-
-    conn = get_db()
-    c = conn.cursor()
-
-    c.execute("""
-    SELECT COUNT(*) AS total
-    FROM notifications
-    WHERE user_id=%s AND is_read=FALSE
-    """, (user_id,))
-
-    count = c.fetchone()["total"]
-
 
     conn.close()
 
