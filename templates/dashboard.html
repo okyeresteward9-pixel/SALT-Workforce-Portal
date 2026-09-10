@@ -1816,7 +1816,554 @@
             }
         }
 
-    </style>
+    
+/* =========================================================
+   SALT WORKFORCE — MODERN MOBILE DASHBOARD
+   Dashboard-only mobile experience
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+    :root {
+        --mobile-blue: #0b3f80;
+        --mobile-blue-2: #1769c2;
+        --mobile-bg: #f5f8fc;
+        --mobile-card: #ffffff;
+        --mobile-text: #17365f;
+        --mobile-muted: #72839a;
+        --mobile-border: #e2eaf2;
+    }
+
+    html, body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body {
+        background: var(--mobile-bg) !important;
+        padding-bottom: 82px !important;
+    }
+
+    /* Hide desktop sidebar on phones */
+    .sidebar {
+        display: none !important;
+    }
+
+    .wrapper,
+    .main {
+        width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: var(--mobile-bg) !important;
+    }
+
+    /* ---------- Mobile top bar ---------- */
+
+    .topbar {
+        position: sticky !important;
+        top: 0 !important;
+        min-height: 64px !important;
+        height: auto !important;
+        padding: 9px 13px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 9px !important;
+        background: rgba(255,255,255,.96) !important;
+        border-bottom: 1px solid var(--mobile-border) !important;
+        box-shadow: 0 5px 18px rgba(15,76,151,.07) !important;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        z-index: 3000 !important;
+    }
+
+    #toggle-btn {
+        display: none !important;
+    }
+
+    .welcome-block {
+        flex: 1 !important;
+        min-width: 0 !important;
+        gap: 9px !important;
+    }
+
+    .welcome-icon {
+        width: 38px !important;
+        height: 38px !important;
+        flex: 0 0 38px !important;
+        border-radius: 11px !important;
+        background: #eaf4ff !important;
+        color: var(--mobile-blue-2) !important;
+        box-shadow: none !important;
+    }
+
+    .welcome-label {
+        font-size: 8px !important;
+        letter-spacing: .06em !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .welcome-block h3 {
+        font-size: 14px !important;
+        line-height: 1.25 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .topbar-right {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex: 0 0 auto !important;
+    }
+
+    .topbar-links {
+        display: none !important;
+    }
+
+    .notification-wrapper {
+        display: block !important;
+    }
+
+    .notification-btn {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 11px !important;
+    }
+
+    .profile-avatar-button {
+        width: 38px !important;
+        height: 38px !important;
+        flex-basis: 38px !important;
+    }
+
+    /* ---------- Main content ---------- */
+
+    .content {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 13px 12px 22px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Desktop notification permission card is too large for mobile */
+    #desktopNotificationCard {
+        margin: 0 0 12px !important;
+        padding: 12px !important;
+        border-radius: 14px !important;
+    }
+
+    #desktopNotificationCard > div:first-child {
+        min-width: 0 !important;
+    }
+
+    #desktopNotificationCard button {
+        width: 100% !important;
+        min-height: 42px !important;
+    }
+
+    /* ---------- Hero / slideshow ---------- */
+
+    .salt-slideshow {
+        min-height: 270px !important;
+        border-radius: 17px !important;
+        margin-bottom: 13px !important;
+        box-shadow: 0 8px 25px rgba(15,76,151,.08) !important;
+    }
+
+    .salt-slide {
+        padding: 20px 17px 58px !important;
+        gap: 0 !important;
+        align-items: flex-start !important;
+    }
+
+    .slide-icon {
+        display: none !important;
+    }
+
+    .slide-content {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .hero-eyebrow {
+        font-size: 8px !important;
+    }
+
+    .slide-content h1 {
+        margin: 10px 0 9px !important;
+        font-size: 25px !important;
+        line-height: 1.12 !important;
+    }
+
+    .slide-content p {
+        font-size: 12px !important;
+        line-height: 1.7 !important;
+    }
+
+    .slideshow-controls {
+        left: 14px !important;
+        right: 14px !important;
+        bottom: 12px !important;
+        justify-content: space-between !important;
+    }
+
+    /* ---------- Quick actions ---------- */
+
+    .quick-actions-section {
+        margin-bottom: 13px !important;
+    }
+
+    .section-heading {
+        margin-bottom: 9px !important;
+    }
+
+    .section-heading h2 {
+        font-size: 17px !important;
+    }
+
+    .section-kicker {
+        font-size: 8px !important;
+    }
+
+    .section-icon {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .quick-actions-section > div:last-child {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 9px !important;
+        align-items: stretch !important;
+    }
+
+    .quick-actions-section form,
+    .quick-actions-section form button,
+    .quick-actions-section > div:last-child > a {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .quick-actions-section .btn {
+        min-height: 48px !important;
+        padding: 10px 8px !important;
+        justify-content: center !important;
+        font-size: 11px !important;
+        box-shadow: 0 5px 15px rgba(15,76,151,.08) !important;
+    }
+
+    /* ---------- Announcements ---------- */
+
+    .announcements {
+        margin: 0 0 13px !important;
+        border-radius: 16px !important;
+    }
+
+    .announcement-header {
+        padding: 13px 14px 11px !important;
+    }
+
+    .announcement-header h3 {
+        font-size: 13px !important;
+    }
+
+    .announcement-header p {
+        font-size: 9px !important;
+    }
+
+    .announcement-slide {
+        padding: 16px 14px 17px !important;
+    }
+
+    .announcement-slide h4 {
+        font-size: 17px !important;
+    }
+
+    .announcement-slide-message {
+        font-size: 11px !important;
+        line-height: 1.65 !important;
+    }
+
+    .announcement-content-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .announcement-image-link img {
+        height: 135px !important;
+    }
+
+    .announcement-carousel-controls {
+        min-height: 48px !important;
+        padding: 7px 9px !important;
+    }
+
+    .announcement-arrow {
+        min-width: 68px !important;
+        height: 31px !important;
+        font-size: 9px !important;
+    }
+
+    /* ---------- Admin working employees ---------- */
+
+    .working-section {
+        margin-bottom: 13px !important;
+        padding: 14px !important;
+        border-radius: 16px !important;
+    }
+
+    .working-section h3 {
+        font-size: 14px !important;
+    }
+
+    .working-table {
+        min-width: 500px !important;
+    }
+
+    /* ---------- Admin stats ---------- */
+
+    .stats {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 9px !important;
+        margin-bottom: 13px !important;
+    }
+
+    .stats .card {
+        padding: 14px !important;
+        border-radius: 14px !important;
+    }
+
+    .stats .card h3 {
+        font-size: 8px !important;
+    }
+
+    .stats .card p {
+        font-size: 23px !important;
+    }
+
+    /* ---------- Map ---------- */
+
+    .content > h3 {
+        font-size: 14px !important;
+        margin: 0 0 8px !important;
+    }
+
+    #map {
+        height: 285px !important;
+        margin-bottom: 13px !important;
+        border-radius: 16px !important;
+    }
+
+    /* ---------- Charts ---------- */
+
+    .charts {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        margin: 0 !important;
+    }
+
+    .chart-box {
+        min-height: 285px !important;
+        padding: 14px !important;
+        border-radius: 16px !important;
+    }
+
+    .chart-box h3 {
+        font-size: 13px !important;
+        margin-bottom: 11px !important;
+    }
+
+    .chart-box canvas {
+        max-height: 225px !important;
+    }
+
+    /* ---------- Notification dropdown ---------- */
+
+    .notification-dropdown {
+        position: fixed !important;
+        top: 70px !important;
+        left: 10px !important;
+        right: 10px !important;
+        width: auto !important;
+        max-height: calc(100vh - 150px) !important;
+        overflow-y: auto !important;
+        border-radius: 16px !important;
+        z-index: 5000 !important;
+    }
+
+    .notification-header {
+        padding: 12px !important;
+    }
+
+    .notification-actions {
+        gap: 2px !important;
+    }
+
+    .notification-actions button {
+        font-size: 9px !important;
+        padding: 6px !important;
+    }
+
+    /* ---------- Chat ---------- */
+
+    #chatToggle {
+        right: 14px !important;
+        bottom: 92px !important;
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 0 !important;
+        border-width: 2px !important;
+    }
+
+    #chatToggle::after {
+        content: "\f075";
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+        font-size: 18px;
+    }
+
+    #saltyChat {
+        left: 10px !important;
+        right: 10px !important;
+        bottom: 88px !important;
+        width: auto !important;
+        max-height: calc(100vh - 115px) !important;
+        border-radius: 18px !important;
+    }
+
+    .chat-body {
+        height: min(52vh, 330px) !important;
+    }
+
+    .chat-input {
+        display: grid !important;
+        grid-template-columns: 1fr auto auto !important;
+    }
+
+    .chat-input input {
+        min-width: 0 !important;
+    }
+
+    .chat-input button {
+        min-height: 44px !important;
+        padding: 8px 9px !important;
+        font-size: 10px !important;
+    }
+
+    /* ---------- Profile viewer ---------- */
+
+    .profile-image-modal {
+        padding: 10px !important;
+    }
+
+    .profile-image-modal-content {
+        width: 94vw !important;
+        max-height: 84vh !important;
+        padding: 12px !important;
+        border-radius: 18px !important;
+    }
+
+    .profile-image-large {
+        width: 84vw !important;
+        height: 62vh !important;
+    }
+
+    /* ---------- Mobile bottom navigation ---------- */
+
+    .salt-dashboard-mobile-nav {
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 2px;
+        padding: 6px 5px calc(6px + env(safe-area-inset-bottom, 0px));
+        background: rgba(255,255,255,.98);
+        border-top: 1px solid #dfe8f1;
+        box-shadow: 0 -8px 28px rgba(12,45,84,.10);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+
+    .salt-dashboard-mobile-nav a {
+        min-height: 52px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: #7b8a9d;
+        text-decoration: none;
+        border-radius: 12px;
+        font-size: 9px;
+        font-weight: 800;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .salt-dashboard-mobile-nav a i {
+        width: 29px;
+        height: 29px;
+        display: grid;
+        place-items: center;
+        border-radius: 9px;
+        font-size: 15px;
+        transition: .18s ease;
+    }
+
+    .salt-dashboard-mobile-nav a.active {
+        color: #0b3f80;
+    }
+
+    .salt-dashboard-mobile-nav a.active i {
+        color: #1769c2;
+        background: #eaf4ff;
+    }
+
+    .salt-dashboard-mobile-nav a:active i {
+        transform: scale(.91);
+    }
+}
+
+@media (max-width: 390px) {
+    .content {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+
+    .welcome-label {
+        display: none !important;
+    }
+
+    .welcome-block h3 {
+        font-size: 13px !important;
+    }
+
+    .quick-actions-section .btn {
+        font-size: 10px !important;
+    }
+
+    .salt-dashboard-mobile-nav a {
+        font-size: 8px !important;
+    }
+}
+
+/* Never show dashboard mobile nav on desktop */
+@media (min-width: 769px) {
+    .salt-dashboard-mobile-nav {
+        display: none !important;
+    }
+}
+
+</style>
     
 
     <!-- SALT Workforce PWA -->
@@ -4626,5 +5173,51 @@ document.addEventListener("DOMContentLoaded", function () {
     <script src="{{ url_for('static', filename='js/salt-mobile-pwa.js') }}" defer></script>
 
 <script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}?v=3" defer></script>
+
+<script>
+/* Mobile dashboard nav active state */
+document.addEventListener("DOMContentLoaded", function () {
+    const current = window.location.pathname.replace(/\/+$/, "") || "/";
+    document.querySelectorAll(".salt-dashboard-mobile-nav a").forEach(function (link) {
+        const target = new URL(link.href, window.location.origin).pathname.replace(/\/+$/, "") || "/";
+        link.classList.toggle("active", target === current);
+    });
+});
+</script>
+
+
+<!-- =========================================================
+     SALT WORKFORCE — MOBILE DASHBOARD NAVIGATION
+     Dashboard only. Uses existing portal routes.
+     ========================================================= -->
+<nav class="salt-dashboard-mobile-nav" aria-label="Mobile dashboard navigation">
+
+    <a href="/dashboard" class="active">
+        <i class="fas fa-house"></i>
+        <span>Home</span>
+    </a>
+
+    <a href="/attendance">
+        <i class="fas fa-clock"></i>
+        <span>Attendance</span>
+    </a>
+
+    <a href="/tasks">
+        <i class="fas fa-list-check"></i>
+        <span>My Tasks</span>
+    </a>
+
+    <a href="/messages">
+        <i class="fas fa-comments"></i>
+        <span>Connect</span>
+    </a>
+
+    <a href="/settings/profile">
+        <i class="fas fa-user"></i>
+        <span>Profile</span>
+    </a>
+
+</nav>
+
 </body>
 </html>
