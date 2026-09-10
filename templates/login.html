@@ -294,6 +294,18 @@ input::placeholder{color:#a7b3c4}
   .login-panel{padding:25px 18px}
 }
 </style>
+
+    <!-- SALT Workforce PWA -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#0b3d91">
+    <meta name="application-name" content="SALT Workforce">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SALT Workforce">
+    <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
+
 </head>
 
 <body>
