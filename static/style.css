@@ -793,3 +793,11 @@ tr:hover {
         transform: translateY(0);
     }
 }
+
+/* Final dashboard mobile compatibility */
+@media (max-width:768px){
+  .sidebar{display:none!important}
+  .main,.main.expanded{margin-left:0!important;width:100%!important}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .charts{grid-template-columns:1fr!important}
+}
