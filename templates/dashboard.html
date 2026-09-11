@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>SALT Workforce Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
     <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -2939,9 +2940,56 @@
     <meta name="apple-mobile-web-app-title" content="SALT Workforce">
     <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-mobile-pwa.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}?v=3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-mobile-pwa.css') }}?v=20260911">
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}?v=3">
+    <style id="salt-dashboard-mobile-final">
+        /* Final dashboard mobile guard. External mobile CSS remains authoritative. */
+        @media (max-width: 768px) {
+            html, body {
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow-x: hidden !important;
+            }
+
+            .sidebar {
+                display: none !important;
+                visibility: hidden !important;
+            }
+
+            .main {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+
+            .salt-mobile-nav {
+                display: grid !important;
+                position: fixed !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                z-index: 100000 !important;
+            }
+
+            body {
+                padding-bottom: 80px !important;
+            }
+
+            .content {
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .salt-mobile-nav {
+                display: none !important;
+            }
+        }
+    </style>
+
 </head>
 
 <body>
@@ -5745,7 +5793,7 @@ document.addEventListener("DOMContentLoaded", function () {
 })();
 </script>
 
-    <script src="{{ url_for('static', filename='js/salt-mobile-pwa.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/salt-mobile-pwa.js') }}?v=20260911" defer></script>
 
 
 <script>
@@ -5766,7 +5814,7 @@ document.addEventListener("DOMContentLoaded", function () {
      ========================================================= -->
 <nav class="salt-mobile-nav" aria-label="Mobile dashboard navigation">
 
-    <a href="/dashboard" class="active">
+    <a href="/dashboard" {% if request.path == "/dashboard" %}class="active" aria-current="page"{% endif %}>
         <i class="fas fa-house"></i>
         <span>Home</span>
     </a>
@@ -5854,6 +5902,53 @@ document.addEventListener("DOMContentLoaded", function () {
     if (isPhone()) showInstallAction();
     else controls.style.display = 'none';
   });
+})();
+</script>
+
+
+<script>
+(function(){
+  const wrap=document.getElementById('saltPwaControls');
+  const btn=document.getElementById('saltInstallAppBtn');
+  if(!wrap || !btn) return;
+
+  let deferredPrompt=null;
+
+  function isPhone(){
+    return window.matchMedia('(max-width:768px)').matches;
+  }
+
+  function show(){
+    if(isPhone()) wrap.style.display='block';
+  }
+
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();
+    deferredPrompt=e;
+    show();
+  });
+
+  btn.addEventListener('click',async function(){
+    if(deferredPrompt){
+      deferredPrompt.prompt();
+      try{ await deferredPrompt.userChoice; }catch(e){}
+      deferredPrompt=null;
+      return;
+    }
+
+    alert(
+      'Install SALT Workforce:\\n\\n' +
+      'Android: open the browser menu and choose “Install app” or “Add to Home screen”.\\n\\n' +
+      'iPhone: tap Share, then “Add to Home Screen”.'
+    );
+  });
+
+  window.addEventListener('appinstalled',function(){
+    deferredPrompt=null;
+    wrap.style.display='none';
+  });
+
+  if(isPhone()) setTimeout(show,500);
 })();
 </script>
 
