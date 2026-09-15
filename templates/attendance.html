@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <title>Attendance History</title>
 
@@ -888,6 +888,271 @@
 
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-mobile-pwa.css') }}">
+
+<style id="salt-attendance-mobile-final">
+@media (max-width:850px){
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{background:#f4f8fd!important;padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))!important}
+
+/* Mobile drawer — preserve existing sidebar, only make it responsive */
+.attendance-page .salt-sidebar{
+ width:min(310px,84vw)!important;min-width:min(310px,84vw)!important;
+ left:0!important;transform:translateX(-110%)!important;
+ transition:transform .28s cubic-bezier(.22,.8,.28,1)!important;
+ border-radius:0 24px 24px 0!important;
+ box-shadow:18px 0 50px rgba(7,35,70,.22)!important
+}
+.attendance-page .salt-sidebar.mobile-open{
+ left:0!important;transform:translateX(0)!important
+}
+.attendance-page .main,.attendance-page .salt-sidebar.collapsed~.main{
+ margin-left:0!important;width:100%!important;min-width:0!important
+}
+
+/* Header */
+.attendance-page .topbar{
+ position:sticky!important;top:0!important;z-index:9000!important;
+ min-height:62px!important;padding:8px 10px!important;gap:8px!important;box-sizing:border-box
+}
+.attendance-page .menu-button,.attendance-page #toggle-btn{
+ width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;
+ border-radius:12px!important;display:inline-flex!important;align-items:center!important;
+ justify-content:center!important;flex:0 0 40px!important
+}
+.attendance-page .topbar h2{margin:0!important;min-width:0!important;font-size:15px!important;
+ white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis}
+.attendance-page .topbar h2:before{font-size:14px!important}
+.attendance-page .topbar-right{margin-left:auto!important}
+.attendance-page .topbar-right .btn.green{
+ width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;
+ border-radius:12px!important;font-size:0!important;display:inline-flex!important;
+ align-items:center!important;justify-content:center!important
+}
+.attendance-page .topbar-right .btn.green:before{
+ content:"\f56d";font-family:"Font Awesome 6 Free";font-weight:900;font-size:14px
+}
+
+/* Content */
+.attendance-page .content,.attendance-page .main-inner{
+ padding:16px 12px 24px!important;box-sizing:border-box!important
+}
+.attendance-heading{margin-bottom:14px!important;gap:10px!important}
+.attendance-heading h1{font-size:21px!important;line-height:1.2!important}
+.attendance-heading p{font-size:11px!important;line-height:1.45!important}
+.attendance-heading .record-count{padding:7px 10px!important;font-size:10px!important}
+
+/* Compact 3-stat strip */
+.attendance-page .stats{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:8px!important;margin-bottom:14px!important
+}
+.attendance-page .stats .card{
+ min-height:94px!important;padding:12px 10px!important;border-radius:14px!important
+}
+.attendance-page .stats .card small:first-child{font-size:8px!important;letter-spacing:.02em!important}
+.attendance-page .stats .card p{
+ margin:8px 0 3px!important;font-size:18px!important;overflow:hidden!important;
+ text-overflow:ellipsis!important;white-space:nowrap!important
+}
+.attendance-page .stats .card small:not(:first-child){font-size:8px!important}
+.attendance-page .stat-caption i{font-size:8px!important}
+
+/* Filters */
+.attendance-filter-card{margin-bottom:14px!important;padding:13px!important;border-radius:14px!important}
+.filter-heading{margin-bottom:11px!important;gap:8px!important}
+.filter-heading h3{font-size:13px!important}.filter-heading p{font-size:9px!important}
+.filter-reset{padding:7px 9px!important;font-size:9px!important}
+.quick-filter-row{
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:7px!important;padding-bottom:11px!important
+}
+.quick-filter{min-height:36px!important;justify-content:center!important;padding:7px 8px!important;
+ font-size:9px!important;border-radius:9px!important}
+.advanced-filter-row{display:grid!important;grid-template-columns:1fr!important;gap:9px!important;padding-top:11px!important}
+.filter-field label{font-size:8px!important}
+.filter-input-wrap select,.filter-input-wrap input{
+ height:42px!important;font-size:11px!important;border-radius:9px!important
+}
+.apply-filter-btn{width:100%!important;height:42px!important;border-radius:9px!important;font-size:10px!important}
+
+/* History */
+.attendance-page .working-section{border-radius:14px!important}
+.attendance-section-header{padding:13px!important;gap:9px!important}
+.attendance-section-icon{width:34px!important;height:34px!important;min-width:34px!important}
+.attendance-section-title{gap:8px!important}
+.attendance-section-title h3{font-size:12px!important}
+.attendance-section-title p{font-size:9px!important}
+.history-count{padding:6px 8px!important;font-size:9px!important}
+.attendance-table-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important}
+.attendance-page table{min-width:520px!important}
+.attendance-page table th{padding:10px 12px!important;font-size:8px!important}
+.attendance-page table td{padding:12px!important;font-size:10px!important}
+.employee-avatar{width:29px!important;height:29px!important;min-width:29px!important}
+.attendance-time strong{font-size:10px!important}.attendance-time small{font-size:8px!important}
+.attendance-page .badge{padding:5px 8px!important;font-size:8px!important}
+.attendance-empty{padding:44px 16px!important}
+
+/* Bottom navigation supplied by the portal JS */
+.salt-mobile-nav{
+ position:fixed!important;left:0!important;right:0!important;bottom:0!important;
+ z-index:10000!important;padding-bottom:calc(5px + env(safe-area-inset-bottom,0px))!important
+}
+}
+@media(max-width:380px){
+.attendance-page .stats{gap:6px!important}
+.attendance-page .stats .card{padding:10px 8px!important}
+.attendance-page .stats .card p{font-size:16px!important}
+.attendance-page .stats .card small:first-child{font-size:7px!important}
+}
+</style>
+
+
+<style id="salt-attendance-history-mobile-fit">
+@media (max-width: 850px) {
+
+  /* Attendance History must fit the phone viewport.
+     No horizontal scrolling is required on mobile. */
+  .attendance-page .attendance-table-wrap {
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  .attendance-page table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+  }
+
+  .attendance-page table th,
+  .attendance-page table td {
+    box-sizing: border-box !important;
+  }
+
+  /* Admin: Employee / Clock In / Clock Out / Status */
+  .attendance-page table th:nth-child(1),
+  .attendance-page table td:nth-child(1) {
+    width: 30% !important;
+  }
+
+  .attendance-page table th:nth-child(2),
+  .attendance-page table td:nth-child(2) {
+    width: 23% !important;
+  }
+
+  .attendance-page table th:nth-child(3),
+  .attendance-page table td:nth-child(3) {
+    width: 23% !important;
+  }
+
+  .attendance-page table th:nth-child(4),
+  .attendance-page table td:nth-child(4) {
+    width: 24% !important;
+  }
+
+  .attendance-page table th {
+    padding: 9px 6px !important;
+    font-size: 7px !important;
+    white-space: normal !important;
+  }
+
+  .attendance-page table td {
+    padding: 10px 6px !important;
+    font-size: 9px !important;
+    overflow: hidden !important;
+  }
+
+  .attendance-page .employee-name {
+    min-width: 0 !important;
+    gap: 5px !important;
+  }
+
+  .attendance-page .employee-name span {
+    min-width: 0 !important;
+    max-width: calc(100% - 34px) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .attendance-page .employee-avatar {
+    width: 27px !important;
+    height: 27px !important;
+    min-width: 27px !important;
+    font-size: 9px !important;
+  }
+
+  .attendance-page .attendance-time strong {
+    display: block !important;
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+  }
+
+  .attendance-page .attendance-time small {
+    margin-top: 2px !important;
+    font-size: 7px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+  }
+
+  .attendance-page .on-duty {
+    gap: 3px !important;
+    font-size: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  .attendance-page .badge {
+    max-width: 100% !important;
+    padding: 5px 5px !important;
+    gap: 3px !important;
+    font-size: 7px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Employee/non-admin view has only Clock In / Clock Out / Status.
+     Give those columns equal usable space. */
+  .attendance-page table:not(:has(th:nth-child(4))) th,
+  .attendance-page table:not(:has(th:nth-child(4))) td {
+    width: 33.333% !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .attendance-page table th {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    font-size: 6.5px !important;
+  }
+
+  .attendance-page table td {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .attendance-page .employee-avatar {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    font-size: 8px !important;
+  }
+
+  .attendance-page .employee-name span {
+    max-width: calc(100% - 29px) !important;
+  }
+
+  .attendance-page .attendance-time strong {
+    font-size: 8px !important;
+  }
+
+  .attendance-page .attendance-time small,
+  .attendance-page .badge,
+  .attendance-page .on-duty {
+    font-size: 6.5px !important;
+  }
+}
+</style>
+
 </head>
 
 <body>
@@ -895,84 +1160,81 @@
 <div class="wrapper attendance-page">
 
   <!-- SIDEBAR -->
-  <aside class="salt-sidebar" id="sidebar">
+  <div class="sidebar">
 
-    <div class="sidebar-brand">
-      <div class="flex items-center gap-3">
-        <div class="brand-logo">
-          <img src="{{ url_for('static', filename='salt-logo.png') }}" alt="SALT">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='salt-logo.png') }}">
+            <p class="portal-name">Workforce Portal</p>
         </div>
-        <div class="brand-text">
-          <h2 class="text-lg font-bold tracking-tight">SALT Portal</h2>
-          <p class="text-xs text-blue-200">Workforce Management</p>
+    
+        <ul>
+            <li>
+                <a href="/dashboard">
+                    <i class="fas fa-home"></i> <span>Dashboard</span>
+                </a>
+            </li>
+    
+            {% if role == 'admin' %}
+            <li>
+                <a href="/admin/employees">
+                    <i class="fas fa-users"></i> <span>Employees</span>
+                </a>
+            </li>
+            <li>
+                <a href="/admin/tasks">
+                    <i class="fas fa-table"></i> <span>Task Board</span>
+                </a>
+            </li>
+            <li>
+                <a href="/admin/assign_task">
+                    <i class="fas fa-plus"></i> <span>Assign Task</span>
+                </a>
+            </li>
+            <li>
+                <a href="/admin/announcements">
+                    <i class="fas fa-bullhorn"></i> <span>Announcements</span>
+                </a>
+            </li>
+            {% endif %}
+    
+            <li class="active">
+                <a href="/attendance">
+                    <i class="fas fa-clock"></i> <span>Attendance</span>
+                </a>
+            </li>
+            <li>
+                <a href="/tasks">
+                    <i class="fas fa-tasks"></i>
+                    <span>My Tasks</span>
+                </a>
+            </li>
+            
+            <li class="{% if request.path.startswith('/messages') %}active{% endif %}">
+                <a href="/messages">
+                    <i class="fas fa-comments"></i>
+                    <span>SALT Connect</span>
+                </a>
+            </li>
+            <li>
+                <a href="/logout" onclick="return confirm('Are you sure you want to logout?')">
+                    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- 🔽 SETTINGS GOES HERE (BOTTOM FIXED AREA) -->
+        <div class="sidebar-bottom">
+            <a href="/settings/profile">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
         </div>
-      </div>
-    </div>
-
-    <nav class="flex-1 p-4">
-
-      <a href="/dashboard" class="sidebar-link">
-        <span class="sidebar-icon"><i class="fas fa-home"></i></span>
-        <span class="sidebar-label">Dashboard</span>
-      </a>
-
-      {% if role == 'admin' %}
-      <a href="/admin/employees" class="sidebar-link">
-        <span class="sidebar-icon"><i class="fas fa-users"></i></span>
-        <span class="sidebar-label">Employees</span>
-      </a>
-
-      <a href="/admin/tasks" class="sidebar-link">
-        <span class="sidebar-icon"><i class="fas fa-table"></i></span>
-        <span class="sidebar-label">Task Board</span>
-      </a>
-
-      <a href="/admin/assign_task" class="sidebar-link">
-        <span class="sidebar-icon"><i class="fas fa-plus"></i></span>
-        <span class="sidebar-label">Assign Task</span>
-      </a>
-
-      <a href="/admin/announcements" class="sidebar-link">
-        <span class="sidebar-icon"><i class="fas fa-bullhorn"></i></span>
-        <span class="sidebar-label">Announcements</span>
-      </a>
-      {% endif %}
-
-      <a href="/attendance" class="sidebar-link active">
-        <span class="sidebar-icon"><i class="fas fa-clock"></i></span>
-        <span class="sidebar-label">Attendance</span>
-      </a>
-
-      <a href="/tasks" class="sidebar-link">
-        <span class="sidebar-icon"><i class="fas fa-tasks"></i></span>
-        <span class="sidebar-label">My Tasks</span>
-      </a>
-
-      <a href="/messages" class="sidebar-link">
-        <span class="sidebar-icon"><i class="fas fa-comments"></i></span>
-        <span class="sidebar-label">SALT Connect</span>
-      </a>
-
-    </nav>
-
-    <div class="p-4 border-t border-white/10">
-
-      <a href="/settings/profile" class="sidebar-link">
-        <span class="sidebar-icon"><i class="fas fa-cog"></i></span>
-        <span class="sidebar-label">Settings</span>
-      </a>
-
-      <a href="/logout"
-         class="sidebar-link !bg-red-500/90 hover:!bg-red-600"
-         onclick="return confirm('Are you sure you want to logout?')">
-        <span class="sidebar-icon"><i class="fas fa-sign-out-alt"></i></span>
-        <span class="sidebar-label">Logout</span>
-      </a>
 
     </div>
-  </aside>
 
   <!-- MAIN -->
+  <div class="salt-mobile-sidebar-overlay" id="saltMobileSidebarOverlay" aria-hidden="true"></div>
+
   <div class="main">
 
     <!-- TOPBAR -->
@@ -1350,40 +1612,93 @@
 </div>
 
 
+<nav class="salt-mobile-nav" aria-label="Mobile navigation">
+
+    <a href="/dashboard" {% if request.path == "/dashboard" %}class="active" aria-current="page"{% endif %}>
+        <i class="fas fa-house"></i>
+        <span>Home</span>
+    </a>
+
+    <a href="/attendance" class="active" aria-current="page">
+        <i class="fas fa-clock"></i>
+        <span>Attendance</span>
+    </a>
+
+    <a href="/tasks" {% if request.path.startswith('/tasks') %}class="active" aria-current="page"{% endif %}>
+        <i class="fas fa-list-check"></i>
+        <span>My Tasks</span>
+    </a>
+
+    <a href="/messages" {% if request.path.startswith('/messages') %}class="active" aria-current="page"{% endif %}>
+        <i class="fas fa-comments"></i>
+        <span>Connect</span>
+    </a>
+
+    <a href="/settings/profile" {% if request.path.startswith('/settings/profile') %}class="active" aria-current="page"{% endif %}>
+        <i class="fas fa-user"></i>
+        <span>Profile</span>
+    </a>
+
+</nav>
+
 <script>
 (function () {
-  "use strict";
+    const toggle = document.getElementById("toggle-btn");
+    const overlay = document.getElementById("saltMobileSidebarOverlay");
+    const sidebar = document.querySelector(".sidebar");
+    const main = document.querySelector(".main");
 
-  const sidebar = document.getElementById("sidebar");
-  const toggleBtn = document.getElementById("toggle-btn");
+    if (!toggle || !sidebar) return;
 
-  if (!sidebar || !toggleBtn) return;
-
-  toggleBtn.addEventListener("click", function () {
-
-    if (window.innerWidth <= 850) {
-      sidebar.classList.toggle("mobile-open");
-    } else {
-      sidebar.classList.toggle("collapsed");
+    function isMobile() {
+        return window.matchMedia("(max-width: 768px)").matches;
     }
 
-  });
-
-  document.addEventListener("click", function (event) {
-
-    if (window.innerWidth > 850) return;
-
-    if (
-      sidebar.contains(event.target) ||
-      toggleBtn.contains(event.target)
-    ) {
-      return;
+    function openMobileMenu() {
+        document.body.classList.add("salt-mobile-menu-open");
+        if (overlay) overlay.setAttribute("aria-hidden", "false");
+        toggle.setAttribute("aria-expanded", "true");
+        toggle.innerHTML = '<i class="fas fa-times"></i>';
     }
 
-    sidebar.classList.remove("mobile-open");
+    function closeMobileMenu() {
+        document.body.classList.remove("salt-mobile-menu-open");
+        if (overlay) overlay.setAttribute("aria-hidden", "true");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.innerHTML = '<i class="fas fa-bars"></i>';
+    }
 
-  });
+    toggle.setAttribute("aria-expanded", "false");
 
+    toggle.addEventListener("click", function () {
+        if (isMobile()) {
+            document.body.classList.contains("salt-mobile-menu-open")
+                ? closeMobileMenu()
+                : openMobileMenu();
+            return;
+        }
+
+        if (main) {
+            sidebar.classList.toggle("collapsed");
+            main.classList.toggle("expanded");
+        }
+    });
+
+    if (overlay) overlay.addEventListener("click", closeMobileMenu);
+
+    sidebar.querySelectorAll("a").forEach(function (link) {
+        link.addEventListener("click", function () {
+            if (isMobile()) closeMobileMenu();
+        });
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && isMobile()) closeMobileMenu();
+    });
+
+    window.addEventListener("resize", function () {
+        if (!isMobile()) closeMobileMenu();
+    });
 })();
 </script>
 

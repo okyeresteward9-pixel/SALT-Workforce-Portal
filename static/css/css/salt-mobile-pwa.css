@@ -1,0 +1,587 @@
+
+/* SALT Workforce — Professional Mobile/PWA Experience
+   No cartoon/emoji UI icons. Uses the existing icon system (e.g. Font Awesome).
+*/
+:root {
+  --salt-blue: #0b3d91;
+  --salt-blue-dark: #082d6b;
+  --salt-surface: #ffffff;
+  --salt-bg: #f5f7fb;
+  --salt-border: rgba(15, 42, 82, .10);
+  --salt-shadow: 0 8px 24px rgba(15, 42, 82, .08);
+}
+
+@media (max-width: 768px) {
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    background: var(--salt-bg);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Comfortable touch targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+
+  /* App-like top spacing */
+  .mobile-app-spacer {
+    display: block;
+    height: env(safe-area-inset-top, 0px);
+  }
+
+  /* Hide desktop-only sidebar when a mobile sidebar exists. */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Professional bottom navigation */
+  .salt-mobile-nav {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255,255,255,.97);
+    border-top: 1px solid var(--salt-border);
+    box-shadow: 0 -8px 25px rgba(15,42,82,.08);
+    backdrop-filter: blur(14px);
+  }
+
+  .salt-mobile-nav a {
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    text-decoration: none;
+    color: #68758a;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 10px;
+  }
+
+  .salt-mobile-nav a i {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .salt-mobile-nav a.active {
+    color: var(--salt-blue);
+    background: rgba(11,61,145,.07);
+  }
+
+  /* Prevent content being hidden behind bottom nav */
+  .salt-mobile-content {
+    padding-bottom: 92px !important;
+  }
+
+  /* Install prompt */
+  .salt-install-banner.show {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .salt-install-banner .install-copy {
+    flex: 1;
+  }
+
+  .salt-install-banner strong {
+    display: block;
+    color: #172033;
+    margin-bottom: 3px;
+  }
+
+  .salt-install-banner small {
+    color: #6b778c;
+  }
+
+  .salt-install-banner button {
+    border: 0;
+    border-radius: 10px;
+    padding: 9px 12px;
+    background: var(--salt-blue);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .salt-install-banner .dismiss {
+    background: transparent;
+    color: #68758a;
+    padding: 7px;
+  }
+
+  /* Larger clock action */
+  .clock-action,
+  .clock-in-btn,
+  .clock-out-btn,
+  button[data-clock-action] {
+    width: 100%;
+    max-width: 520px;
+    min-height: 58px;
+    border-radius: 14px;
+    font-weight: 700;
+  }
+
+  /* Make cards breathe on smaller screens */
+  .card, .dashboard-card, .stat-card {
+    border-radius: 16px;
+  }
+
+  /* Avoid horizontal tables on phones */
+  .responsive-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 769px) {
+  .salt-mobile-nav,
+  .salt-install-banner,
+  .mobile-app-spacer {
+    display: none !important;
+  }
+}
+
+
+/* =========================================================
+   SALT WORKFORCE — MASTER MOBILE UI
+   Final authoritative rules
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden !important;
+  }
+
+  body {
+    margin: 0;
+    padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+    background: var(--salt-background);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Keep the desktop sidebar out of the mobile layout. */
+  
+
+  .main,
+  .main.expanded {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  .content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 12px !important;
+  }
+
+  /* Mobile topbar */
+  .topbar {
+    position: sticky !important;
+    top: 0;
+    z-index: 5000;
+    width: 100%;
+    min-height: 60px;
+    padding: 8px 12px !important;
+    background: rgba(255,255,255,.97) !important;
+    border-bottom: 1px solid var(--salt-border);
+    box-shadow: 0 5px 18px rgba(15,42,82,.07);
+    backdrop-filter: blur(16px);
+  }
+
+  .topbar-links {
+    display: none !important;
+  }
+
+  /* Dashboard cards */
+  .stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    width: 100%;
+    margin: 12px 0 !important;
+  }
+
+  .card,
+  .dashboard-card,
+  .stat-card,
+  .panel,
+  .box,
+  .form-card {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .charts {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    width: 100%;
+    margin: 12px 0 !important;
+  }
+
+  .chart-box {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--salt-radius);
+  }
+
+  #map {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: var(--salt-radius);
+  }
+
+  /* Tables */
+  .table-responsive,
+  .responsive-table,
+  .table-container,
+  .working-section {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 600px;
+  }
+
+  /* Touch-friendly controls */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  /* Canonical bottom navigation */
+  .salt-mobile-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 99999 !important;
+
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    width: 100% !important;
+    min-height: 64px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+
+    padding: 5px 5px calc(5px + env(safe-area-inset-bottom, 0px));
+
+    background: rgba(255,255,255,.98);
+    border-top: 1px solid var(--salt-border);
+    box-shadow: 0 -8px 28px rgba(15,42,82,.12);
+    backdrop-filter: blur(16px);
+  }
+
+  .salt-mobile-nav a {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+
+    min-width: 0;
+    min-height: 52px;
+
+    gap: 4px;
+    padding: 4px 2px;
+
+    color: var(--salt-text-secondary);
+    text-decoration: none;
+    font-size: 9px;
+    font-weight: 700;
+    border-radius: 12px;
+  }
+
+  .salt-mobile-nav a i,
+  .salt-mobile-nav .salt-nav-icon {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 28px;
+    font-size: 15px;
+  }
+
+  .salt-mobile-nav .salt-nav-label {
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .salt-mobile-nav a.active {
+    color: var(--salt-primary);
+    background: var(--salt-primary-light);
+  }
+
+  /* Hide mobile navigation on authentication pages. */
+  .login-page .salt-mobile-nav {
+    display: none !important;
+  }
+
+  /* Mobile install prompt */
+  /* Optional compact floating install control */
+  .salt-install-button-wrap {
+    display: block !important;
+    position: fixed;
+    top: 70px;
+    right: 11px;
+    z-index: 99998;
+  }
+
+  .salt-install-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 13px;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0878f9, #0757c8);
+    color: #fff;
+    font: 700 11px Inter, sans-serif;
+    box-shadow: 0 10px 25px rgba(8,120,249,.24);
+  }
+
+  /* Notifications */
+  .notification-dropdown {
+    position: fixed !important;
+    top: 67px !important;
+    left: 9px !important;
+    right: 9px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 72svh !important;
+    overflow-y: auto;
+    z-index: 99997 !important;
+    border-radius: 18px !important;
+  }
+
+  /* SALTY */
+  #chatToggle {
+    right: 12px !important;
+    bottom: 88px !important;
+    z-index: 9000 !important;
+  }
+
+  #saltyChat {
+    left: 9px !important;
+    right: 9px !important;
+    bottom: 140px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: calc(100svh - 165px) !important;
+    z-index: 8999 !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .content {
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+  }
+
+  .stats {
+    gap: 8px !important;
+  }
+
+  .salt-mobile-nav a {
+    font-size: 8px;
+  }
+
+  .salt-mobile-nav a i,
+  .salt-mobile-nav .salt-nav-icon {
+    width: 28px;
+    height: 27px;
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 769px) {
+  .salt-mobile-nav,
+  .salt-install-button-wrap,
+  }
+
+/* =========================================================
+   SALT WORKFORCE — MOBILE UI MASTER
+   Single authority for mobile behavior
+   ========================================================= */
+
+@media (max-width: 768px) {
+  html, body {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  body {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ---------- Mobile app header ---------- */
+  .topbar,
+  .salt-mobile-header {
+    position: sticky;
+    top: 0;
+    z-index: 1200;
+  }
+
+  /* ---------- Real glass sidebar drawer ---------- */
+  .sidebar {
+    display: flex !important;
+    visibility: visible !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: min(84vw, 340px) !important;
+    max-width: 340px !important;
+    height: 100dvh !important;
+    z-index: 3000 !important;
+    overflow-y: auto !important;
+
+    transform: translateX(-105%) !important;
+    transition: transform .28s cubic-bezier(.22,.61,.36,1) !important;
+
+    background: rgba(8, 28, 55, .82) !important;
+    backdrop-filter: blur(24px) saturate(145%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(145%) !important;
+    border-right: 1px solid rgba(255,255,255,.16) !important;
+    box-shadow: 18px 0 55px rgba(0,0,0,.28) !important;
+  }
+
+  body.salt-menu-open .sidebar,
+  .sidebar.salt-open {
+    transform: translateX(0) !important;
+  }
+
+  /* Do not show the old desktop sidebar-bottom on phones */
+  .sidebar-bottom {
+    display: none !important;
+  }
+
+  /* ---------- Glass scrim ---------- */
+  .salt-mobile-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 2900;
+    background: rgba(3, 12, 24, .42);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .22s ease, visibility .22s ease;
+  }
+
+  body.salt-menu-open .salt-mobile-scrim {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  /* ---------- Hamburger ---------- */
+  .salt-mobile-menu-btn,
+  #saltMobileMenuBtn,
+  #mobileMenuBtn,
+  #toggle-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 13px;
+    background: rgba(255,255,255,.10);
+    color: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ---------- Hide legacy bottom install UI ---------- */
+  .salt-install-banner,
+  .salt-pwa-install-wrap {
+    display: none !important;
+  }
+
+  /* ---------- Mobile bottom navigation ---------- */
+  .salt-mobile-nav {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed !important;
+    left: 10px;
+    right: 10px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    z-index: 1800;
+    min-height: 62px;
+    padding: 7px 5px;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 20px;
+    background: rgba(8, 28, 55, .78);
+    backdrop-filter: blur(22px) saturate(145%);
+    -webkit-backdrop-filter: blur(22px) saturate(145%);
+    box-shadow: 0 12px 36px rgba(0,0,0,.22);
+  }
+
+  .salt-mobile-nav a {
+    min-width: 0;
+    min-height: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 14px;
+    text-decoration: none;
+  }
+
+  .salt-mobile-nav i {
+    font-size: 17px;
+  }
+
+  .salt-mobile-nav span {
+    font-size: 10px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .salt-mobile-nav a.active {
+    background: rgba(255,255,255,.13);
+  }
+}
+
+/* Desktop: mobile-only controls remain hidden */
+@media (min-width: 769px) {
+  .salt-mobile-nav,
+  .salt-mobile-scrim,
+  .salt-mobile-menu-btn,
+  #saltMobileMenuBtn,
+  #mobileMenuBtn {
+    display: none !important;
+  }
+}

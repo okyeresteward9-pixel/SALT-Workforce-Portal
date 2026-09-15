@@ -376,6 +376,218 @@
 
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
+<style id="dashboard-master-sidebar-chat">
+#salt-master-sidebar{position:fixed;left:0;top:0;width:250px;height:100vh;z-index:22000;display:flex;flex-direction:column;background:linear-gradient(180deg,#001f3f 0%,#002b5c 100%);color:#fff}
+#salt-master-sidebar .logo{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px 15px;text-align:center}
+#salt-master-sidebar .logo img{width:52px;height:52px;object-fit:contain}#salt-master-sidebar .portal-name{margin:8px 0 0;color:#fff;font-size:14px;font-weight:700}
+#salt-master-sidebar ul{list-style:none;margin:0;padding:8px 12px}#salt-master-sidebar li{list-style:none;margin:0 0 4px}
+#salt-master-sidebar li a,#salt-master-sidebar .sidebar-bottom a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;color:#dbeafe;text-decoration:none;transition:.2s ease}
+#salt-master-sidebar li a:hover,#salt-master-sidebar li.active a,#salt-master-sidebar .sidebar-bottom a:hover{background:rgba(255,255,255,.12);color:#fff}
+#salt-master-sidebar li a i,#salt-master-sidebar .sidebar-bottom a i{width:20px;text-align:center;flex-shrink:0}
+#salt-master-sidebar .sidebar-bottom{margin-top:auto;padding:12px}
+@media(min-width:768px){body>.flex.h-screen{margin-left:250px!important}#chat-users-sidebar{flex:0 0 320px!important;width:320px!important}}
+@media(max-width:767px){
+#salt-master-sidebar{width:min(310px,84vw)!important;height:100dvh!important;padding:18px 14px!important;transform:translateX(-110%);transition:transform .28s cubic-bezier(.22,.8,.28,1)!important;background:rgba(255,255,255,.78)!important;border-right:1px solid rgba(255,255,255,.72)!important;border-radius:0 26px 26px 0!important;box-shadow:18px 0 50px rgba(7,35,70,.22)!important;backdrop-filter:blur(28px) saturate(155%);-webkit-backdrop-filter:blur(28px) saturate(155%);z-index:22000!important}
+body.salt-mobile-menu-open #salt-master-sidebar{transform:translateX(0)!important}
+#salt-master-sidebar .logo{padding:8px 8px 18px!important;margin-bottom:8px;border-bottom:1px solid rgba(18,77,135,.10)}
+#salt-master-sidebar .portal-name{color:#183653!important}
+#salt-master-sidebar li a,#salt-master-sidebar .sidebar-bottom a{min-height:48px;padding:0 14px;border-radius:14px;color:#27415f}
+#salt-master-sidebar li a i,#salt-master-sidebar .sidebar-bottom a i{width:24px;min-width:24px;margin-right:11px}
+#salt-master-sidebar li.active a,#salt-master-sidebar li a:hover,#salt-master-sidebar .sidebar-bottom a:hover{background:rgba(27,112,202,.11);color:#0752a0}
+#salt-master-sidebar .sidebar-bottom{border-top:1px solid rgba(18,77,135,.10)}
+#saltMasterSidebarOverlay{position:fixed;inset:0;z-index:21000;background:rgba(7,30,57,.44);opacity:0;visibility:hidden;pointer-events:none;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visible;pointer-events:auto}
+}
+</style>
+<style>
+@media (max-width: 767px) {
+    .salt-mobile-nav {
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        bottom: calc(10px + env(safe-area-inset-bottom));
+        height: 64px;
+        z-index: 15000;
+        display: flex;
+        align-items: stretch;
+        padding: 6px;
+        border: 1px solid rgba(255,255,255,.72);
+        border-radius: 22px;
+        background: rgba(255,255,255,.88);
+        box-shadow: 0 12px 35px rgba(7,35,70,.18);
+        backdrop-filter: blur(24px) saturate(150%);
+        -webkit-backdrop-filter: blur(24px) saturate(150%);
+    }
+    .salt-mobile-nav a {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        border-radius: 16px;
+        text-decoration: none;
+        color: #61738a;
+        font-size: 10px;
+        font-weight: 700;
+    }
+    .salt-mobile-nav a i { font-size: 18px; }
+    .salt-mobile-nav a.active {
+        color: #0752a0;
+        background: rgba(27,112,202,.11);
+    }
+}
+@media (min-width: 768px) {
+    .salt-mobile-nav { display: none !important; }
+}
+</style>
+
+
+<style id="salt-connect-final-mobile-rules">
+@media (max-width: 767px) {
+    /* Portal sidebar button: visible only on conversation-list / empty state. */
+    #master-menu-btn-users,
+    #master-menu-btn-empty {
+        display: inline-flex !important;
+    }
+
+    /* Once a conversation is open, only the chat Back button remains. */
+    body.salt-mobile-chat-open #master-menu-btn,
+    body.salt-mobile-chat-open #master-menu-btn-empty,
+    body.salt-mobile-chat-open #master-menu-btn-users {
+        display: none !important;
+    }
+
+    /* Portal bottom navigation belongs to the conversation-list screen,
+       not the individual chat screen. */
+    body.salt-mobile-chat-open .salt-mobile-nav {
+        display: none !important;
+    }
+
+    /* Leave comfortable room for the bottom navigation on the list screen. */
+    body:not(.salt-mobile-chat-open) #users-list {
+        padding-bottom: 90px !important;
+    }
+}
+</style>
+
+
+<style id="salt-connect-chat-back-button">
+@media (max-width: 767px) {
+    body.salt-mobile-chat-open #menu-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    body.salt-mobile-chat-open #master-menu-btn {
+        display: none !important;
+    }
+}
+</style>
+
+
+<style id="salt-connect-desktop-clean-layout">
+/* =========================================================
+   SALT CONNECT — CLEAN DESKTOP MESSAGING LAYOUT
+   Desktop keeps the portal sidebar hidden until ☰ is clicked.
+   The conversation list and chat remain the main workspace.
+   ========================================================= */
+
+@media (min-width: 768px) {
+
+    /* Hide the Workforce Portal drawer by default. */
+    #salt-master-sidebar {
+        transform: translateX(-110%) !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        transition: transform .28s cubic-bezier(.22,.8,.28,1),
+                    visibility .28s ease !important;
+    }
+
+    /* Remove the old permanent 250px desktop offset. */
+    body > .flex.h-screen {
+        margin-left: 0 !important;
+    }
+
+    /* Open the portal drawer only when ☰ is clicked. */
+    body.salt-mobile-menu-open #salt-master-sidebar {
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+
+    /* Desktop backdrop for the portal drawer. */
+    #saltMasterSidebarOverlay {
+        display: block !important;
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 21000 !important;
+        background: rgba(7,30,57,.38) !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        transition: opacity .25s ease, visibility .25s ease !important;
+        backdrop-filter: blur(2px) !important;
+        -webkit-backdrop-filter: blur(2px) !important;
+    }
+
+    body.salt-mobile-menu-open #saltMasterSidebarOverlay {
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+
+    /* Desktop portal menu button in the chat header. */
+    #master-menu-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 0 0 auto !important;
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    /* Empty state still has a usable portal menu button. */
+    #master-menu-btn-empty {
+        display: inline-flex !important;
+        position: absolute !important;
+        top: 20px !important;
+        left: 20px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 10 !important;
+    }
+
+    /* The conversation list is the dedicated messaging navigation. */
+    #chat-users-sidebar {
+        flex: 0 0 320px !important;
+        width: 320px !important;
+        position: relative !important;
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        box-shadow: none !important;
+    }
+
+    /* The webpage-style Dashboard link is unnecessary now that
+       the portal drawer provides Dashboard access. */
+    #chat-users-sidebar a[href="/dashboard"] {
+        display: none !important;
+    }
+
+    /* The chat header remains clean and compact. */
+    .chat-header {
+        min-height: 72px;
+    }
+
+    /* Keep the portal drawer above the messaging workspace. */
+    #salt-master-sidebar {
+        z-index: 22000 !important;
+    }
+}
+</style>
+
 </head>
 
 <body class="bg-[#f4f7fb]">
@@ -421,8 +633,19 @@
     <!-- MAIN -->
     <div class="flex h-screen overflow-hidden">
 
+        <aside id="salt-master-sidebar" class="sidebar">
+<div class="logo"><img src="{{ url_for('static', filename='salt-logo.png') }}"><p class="portal-name">Workforce Portal</p></div>
+<ul>
+<li><a href="/dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+{% if role == 'admin' %}<li><a href="/admin/employees"><i class="fas fa-users"></i><span>Employees</span></a></li><li><a href="/admin/tasks"><i class="fas fa-table"></i><span>Task Board</span></a></li><li><a href="/admin/assign_task"><i class="fas fa-plus"></i><span>Assign Task</span></a></li><li><a href="/admin/announcements"><i class="fas fa-bullhorn"></i><span>Announcements</span></a></li>{% endif %}
+<li><a href="/attendance"><i class="fas fa-clock"></i><span>Attendance</span></a></li>
+<li><a href="/tasks"><i class="fas fa-tasks"></i><span>My Tasks</span></a></li>
+<li class="active"><a href="/messages"><i class="fas fa-comments"></i><span>SALT Connect</span></a></li>
+<li><a href="/logout" onclick="return confirm('Are you sure you want to logout?')"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a></li>
+</ul><div class="sidebar-bottom"><a href="/settings/profile"><i class="fas fa-cog"></i><span>Settings</span></a></div>
+</aside><div class="salt-mobile-sidebar-overlay" id="saltMasterSidebarOverlay" aria-hidden="true"></div>
         <!-- SIDEBAR -->
-        <aside id="sidebar"
+        <aside id="chat-users-sidebar"
         class="fixed md:relative
         inset-y-0 left-0
         w-[min(88vw,360px)] md:w-80
@@ -441,6 +664,11 @@
             <div class="p-6 border-b border-gray-100">
 
                 <div class="flex items-center gap-3">
+
+                    <button id="master-menu-btn-users" type="button" aria-label="Open navigation" aria-expanded="false"
+                            class="md:hidden w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-lg hover:bg-blue-100 transition">
+                        <i class="fas fa-bars"></i>
+                    </button>
 
                     <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg">
 
@@ -569,6 +797,8 @@
             <div class="bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 md:px-8 py-5 flex items-center justify-between shadow-sm">
 
                 <div class="flex items-center gap-4">
+
+<button id="master-menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" class="md:hidden w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-lg hover:bg-blue-100 transition"><i class="fas fa-bars"></i></button>
 
                     <!-- MOBILE MENU -->
                     <button id="menu-btn"
@@ -763,6 +993,8 @@
 
             {% else %}
 
+<button id="master-menu-btn-empty" type="button" aria-label="Open navigation" aria-expanded="false" class="md:hidden w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-lg hover:bg-blue-100 transition"><i class="fas fa-bars"></i></button>
+
             <!-- EMPTY STATE -->
             <div class="flex-1 flex flex-col items-center justify-center text-center px-6">
 
@@ -791,6 +1023,15 @@
         </main>
 
     </div>
+
+    <!-- STANDARD MOBILE PORTAL NAVIGATION -->
+    <nav class="salt-mobile-nav" aria-label="Mobile dashboard navigation">
+        <a href="/dashboard"><i class="fas fa-house"></i><span>Home</span></a>
+        <a href="/attendance"><i class="fas fa-clock"></i><span>Attendance</span></a>
+        <a href="/tasks"><i class="fas fa-list-check"></i><span>My Tasks</span></a>
+        <a href="/messages" class="active" aria-current="page"><i class="fas fa-comments"></i><span>Connect</span></a>
+        <a href="/settings/profile"><i class="fas fa-user"></i><span>Profile</span></a>
+    </nav>
 
     {% if receiver %}
 
@@ -844,350 +1085,186 @@
 
 
 <script>
-/* =========================================================
-   SALTY CHAT — USER SEARCH + MOBILE SIDEBAR
-   ========================================================= */
-
+/* SALTY CHAT — WHATSAPP / TELEGRAM STYLE MOBILE NAVIGATION */
 document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("search-users");
+    const usersList = document.getElementById("users-list");
+    const noUsersFound = document.getElementById("no-users-found");
+    const sidebar = document.getElementById("chat-users-sidebar");
+    const chatMenuBtn = document.getElementById("menu-btn");
+    const hasReceiver = {{ "true" if receiver else "false" }};
 
-    const searchInput =
-        document.getElementById("search-users");
-
-    const usersList =
-        document.getElementById("users-list");
-
-    const noUsersFound =
-        document.getElementById("no-users-found");
-
-    const sidebar =
-        document.getElementById("sidebar");
-
-    const overlay =
-        document.getElementById("overlay");
-
-    const menuBtn =
-        document.getElementById("menu-btn");
-
-
-    /* =====================================================
-       USER SEARCH
-       ===================================================== */
-
+    /* User search */
     if (searchInput && usersList) {
-
-        const userItems =
-            Array.from(
-                usersList.querySelectorAll(".user-item")
-            );
-
+        const items = Array.from(usersList.querySelectorAll(".user-item"));
 
         function filterUsers() {
+            const q = searchInput.value.trim().toLowerCase();
+            let count = 0;
 
-            const query =
-                searchInput.value
-                    .trim()
-                    .toLowerCase();
-
-
-            let visibleCount = 0;
-
-
-            userItems.forEach(function (item) {
-
-                const name =
-                    item.dataset.userName || "";
-
-                const email =
-                    item.dataset.userEmail || "";
-
-                const text =
-                    item.textContent
-                        .toLowerCase();
-
-
-                const matches =
-                    !query ||
-                    name.includes(query) ||
-                    email.includes(query) ||
-                    text.includes(query);
-
-
-                item.classList.toggle(
-                    "hidden",
-                    !matches
-                );
-
-
-                if (matches) {
-                    visibleCount++;
-                }
-
+            items.forEach(item => {
+                const name = item.dataset.userName || "";
+                const email = item.dataset.userEmail || "";
+                const text = item.textContent.toLowerCase();
+                const match = !q || name.includes(q) || email.includes(q) || text.includes(q);
+                item.classList.toggle("hidden", !match);
+                if (match) count++;
             });
 
-
-            if (noUsersFound) {
-
-                noUsersFound.classList.toggle(
-                    "hidden",
-                    visibleCount !== 0
-                );
-
-            }
-
+            if (noUsersFound) noUsersFound.classList.toggle("hidden", count !== 0);
         }
 
+        searchInput.addEventListener("input", filterUsers);
 
-        searchInput.addEventListener(
-            "input",
-            filterUsers
-        );
-
-
-        /* Support Ctrl/Cmd + K to focus search. */
-
-        document.addEventListener(
-            "keydown",
-            function (event) {
-
-                if (
-                    (event.ctrlKey || event.metaKey) &&
-                    event.key.toLowerCase() === "k"
-                ) {
-
-                    event.preventDefault();
-
-                    searchInput.focus();
-
-                    searchInput.select();
-
-                }
-
-            }
-        );
-
-    }
-
-
-    /* =====================================================
-       MOBILE SIDEBAR
-       ===================================================== */
-
-    function openSidebar() {
-
-        if (!sidebar) {
-            return;
-        }
-
-        sidebar.classList.remove(
-            "-translate-x-full"
-        );
-
-        sidebar.classList.add(
-            "translate-x-0"
-        );
-
-
-        if (overlay) {
-
-            overlay.classList.remove(
-                "hidden"
-            );
-
-        }
-
-
-        if (menuBtn) {
-
-            menuBtn.setAttribute(
-                "aria-expanded",
-                "true"
-            );
-
-        }
-
-        document.body.classList.add(
-            "overflow-hidden"
-        );
-
-    }
-
-
-    function closeSidebar() {
-
-        if (!sidebar) {
-            return;
-        }
-
-        if (window.innerWidth >= 768) {
-            return;
-        }
-
-        sidebar.classList.remove(
-            "translate-x-0"
-        );
-
-        sidebar.classList.add(
-            "-translate-x-full"
-        );
-
-
-        if (overlay) {
-
-            overlay.classList.add(
-                "hidden"
-            );
-
-        }
-
-
-        if (menuBtn) {
-
-            menuBtn.setAttribute(
-                "aria-expanded",
-                "false"
-            );
-
-        }
-
-        document.body.classList.remove(
-            "overflow-hidden"
-        );
-
-    }
-
-
-    if (menuBtn) {
-
-        menuBtn.addEventListener(
-            "click",
-            function (event) {
-
+        document.addEventListener("keydown", event => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
                 event.preventDefault();
-
-                if (
-                    sidebar &&
-                    sidebar.classList.contains(
-                        "translate-x-0"
-                    )
-                ) {
-
-                    closeSidebar();
-
-                } else {
-
-                    openSidebar();
-
-                }
-
+                searchInput.focus();
+                searchInput.select();
             }
-        );
-
+        });
     }
 
-
-    if (overlay) {
-
-        overlay.addEventListener(
-            "click",
-            closeSidebar
-        );
-
+    function mobile() {
+        return window.matchMedia("(max-width: 767px)").matches;
     }
 
+    function showList() {
+        if (!mobile()) return;
+        document.body.classList.remove("salt-mobile-chat-open");
+        if (sidebar) {
+            sidebar.classList.remove("chat-mobile-hidden");
+            sidebar.classList.add("chat-mobile-visible");
+        }
+    }
 
-    /* Close after choosing a conversation on mobile. */
+    function showChat() {
+        if (!mobile()) return;
+        document.body.classList.add("salt-mobile-chat-open");
+        if (sidebar) {
+            sidebar.classList.remove("chat-mobile-visible");
+            sidebar.classList.add("chat-mobile-hidden");
+        }
+        if (chatMenuBtn) {
+            chatMenuBtn.innerHTML = '<i class="fas fa-arrow-left"></i>';
+            chatMenuBtn.setAttribute("aria-label", "Back to conversations");
+        }
+    }
 
+    /* Mobile entry screen: list first, chat when a receiver is selected. */
+    if (hasReceiver) showChat();
+    else showList();
+
+    /* Chat header button = WhatsApp/Telegram back button. */
+    if (chatMenuBtn) {
+        chatMenuBtn.addEventListener("click", function (event) {
+            if (!mobile()) return;
+            event.preventDefault();
+            window.location.href = "/messages";
+        });
+    }
+
+    /* Selecting a person loads that person's chat. */
     if (usersList) {
-
-        usersList.addEventListener(
-            "click",
-            function (event) {
-
-                const userLink =
-                    event.target.closest(
-                        ".user-item"
-                    );
-
-
-                if (userLink) {
-
-                    closeSidebar();
-
-                }
-
-            }
-        );
-
+        usersList.addEventListener("click", function (event) {
+            const link = event.target.closest(".user-item");
+            if (link && mobile()) document.body.classList.add("salt-mobile-chat-open");
+        });
     }
 
-
-    /* Escape closes the mobile sidebar. */
-
-    document.addEventListener(
-        "keydown",
-        function (event) {
-
-            if (
-                event.key === "Escape" &&
-                window.innerWidth < 768
-            ) {
-
-                closeSidebar();
-
+    window.addEventListener("resize", function () {
+        if (!mobile()) {
+            document.body.classList.remove("salt-mobile-chat-open");
+            if (sidebar) {
+                sidebar.classList.remove("chat-mobile-hidden");
+                sidebar.classList.add("chat-mobile-visible");
             }
-
+        } else if (hasReceiver) {
+            showChat();
+        } else {
+            showList();
         }
-    );
+    });
 
-
-    /* Keep the sidebar state correct when resizing. */
-
-    window.addEventListener(
-        "resize",
-        function () {
-
-            if (window.innerWidth >= 768) {
-
-                if (overlay) {
-                    overlay.classList.add("hidden");
-                }
-
-                document.body.classList.remove(
-                    "overflow-hidden"
-                );
-
-                if (sidebar) {
-
-                    sidebar.classList.remove(
-                        "-translate-x-full"
-                    );
-
-                    sidebar.classList.add(
-                        "translate-x-0"
-                    );
-
-                }
-
-            } else if (
-                sidebar &&
-                !sidebar.classList.contains(
-                    "translate-x-0"
-                )
-            ) {
-
-                sidebar.classList.add(
-                    "-translate-x-full"
-                );
-
-            }
-
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && mobile() && hasReceiver) {
+            window.location.href = "/messages";
         }
-    );
-
+    });
 });
 </script>
 
+<style>
+/* WhatsApp/Telegram-style mobile conversation flow */
+@media (max-width: 767px) {
+    #chat-users-sidebar {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        max-width: none !important;
+        height: 100dvh !important;
+        z-index: 100 !important;
+        transform: translateX(0) !important;
+        border-right: 0 !important;
+        box-shadow: none !important;
+        transition: none !important;
+    }
 
-<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
-</body>
+    #chat-users-sidebar.chat-mobile-visible {
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+
+    #chat-users-sidebar.chat-mobile-hidden,
+    body.salt-mobile-chat-open #chat-users-sidebar {
+        transform: translateX(-100%) !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    body.salt-mobile-chat-open > .flex.h-screen {
+        margin-left: 0 !important;
+    }
+
+    body.salt-mobile-chat-open > .flex.h-screen > main {
+        display: flex !important;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        z-index: 90 !important;
+        min-width: 0 !important;
+    }
+
+    #overlay {
+        display: none !important;
+    }
+
+    #chat-users-sidebar #users-list {
+        padding-bottom: 90px !important;
+    }
+}
+
+@media (min-width: 768px) {
+    #chat-users-sidebar {
+        position: relative !important;
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded",function(){
+ const side=document.getElementById("salt-master-sidebar"), ov=document.getElementById("saltMasterSidebarOverlay");
+ const buttons=document.querySelectorAll("#master-menu-btn,#master-menu-btn-empty,#master-menu-btn-users");
+ function open(){document.body.classList.add("salt-mobile-menu-open");ov?.setAttribute("aria-hidden","false");buttons.forEach(b=>{b.setAttribute("aria-expanded","true");b.innerHTML='<i class="fas fa-times"></i>';});}
+ function close(){document.body.classList.remove("salt-mobile-menu-open");ov?.setAttribute("aria-hidden","true");buttons.forEach(b=>{b.setAttribute("aria-expanded","false");b.innerHTML='<i class="fas fa-bars"></i>';});}
+ buttons.forEach(b=>b.addEventListener("click",e=>{e.preventDefault();document.body.classList.contains("salt-mobile-menu-open")?close():open();}));
+ ov?.addEventListener("click",close);
+ side?.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>{if(innerWidth<768)close();}));
+ document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
+});
+</script></body>
 </html>

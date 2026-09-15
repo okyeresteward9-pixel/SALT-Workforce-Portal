@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>SALT Workforce Portal</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
     <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -2940,55 +2940,482 @@
     <meta name="apple-mobile-web-app-title" content="SALT Workforce">
     <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}?v=3">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-mobile-pwa.css') }}?v=20260911">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-mobile-pwa.css') }}">
 
-    <style id="salt-dashboard-mobile-final">
-        /* Final dashboard mobile guard. External mobile CSS remains authoritative. */
-        @media (max-width: 768px) {
-            html, body {
-                width: 100% !important;
-                max-width: 100% !important;
-                overflow-x: hidden !important;
-            }
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}?v=3">
 
-            .sidebar {
-                display: none !important;
-                visibility: hidden !important;
-            }
 
-            .main {
-                width: 100% !important;
-                max-width: 100% !important;
-                margin-left: 0 !important;
-                margin-right: 0 !important;
-            }
+<style id="salt-dashboard-mobile-master">
+/* =========================================================
+   SALT WORKFORCE — SINGLE MOBILE APP LAYOUT
+   One source of truth for the responsive drawer + topbar.
+   ========================================================= */
 
-            .salt-mobile-nav {
-                display: grid !important;
-                position: fixed !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                z-index: 100000 !important;
-            }
+.salt-mobile-sidebar-overlay{
+    display:none;
+}
 
-            body {
-                padding-bottom: 80px !important;
-            }
+@media (max-width:768px){
 
-            .content {
-                width: 100% !important;
-                box-sizing: border-box !important;
-            }
-        }
+    html, body{
+        width:100%;
+        max-width:100%;
+        overflow-x:hidden;
+    }
 
-        @media (min-width: 769px) {
-            .salt-mobile-nav {
-                display: none !important;
-            }
-        }
-    </style>
+    body{
+        padding-bottom:calc(78px + env(safe-area-inset-bottom,0px)) !important;
+        background:#f4f8fd !important;
+    }
+
+    /* ---------- APP HEADER ---------- */
+    .topbar{
+        position:sticky !important;
+        top:0 !important;
+        z-index:9000 !important;
+        min-height:62px !important;
+        height:auto !important;
+        padding:8px 10px !important;
+        display:flex !important;
+        align-items:center !important;
+        gap:8px !important;
+        box-sizing:border-box !important;
+    }
+
+    #toggle-btn{
+        display:flex !important;
+        position:relative !important;
+        z-index:23001 !important;
+        width:40px !important;
+        height:40px !important;
+        min-width:40px !important;
+        flex:0 0 40px !important;
+        align-items:center !important;
+        justify-content:center !important;
+        border:0 !important;
+        border-radius:12px !important;
+        cursor:pointer !important;
+    }
+
+    .welcome-block{
+        min-width:0 !important;
+        flex:1 1 auto !important;
+        gap:8px !important;
+    }
+
+    .welcome-label,
+    .welcome-icon{
+        display:none !important;
+    }
+
+    .welcome-block h3{
+        margin:0 !important;
+        max-width:100% !important;
+        overflow:hidden !important;
+        text-overflow:ellipsis !important;
+        white-space:nowrap !important;
+        font-size:13px !important;
+    }
+
+    .topbar-right{
+        display:flex !important;
+        align-items:center !important;
+        gap:6px !important;
+        flex:0 0 auto !important;
+    }
+
+    .topbar-links{
+        display:none !important;
+    }
+
+    /* Install is ONLY in the header. */
+    .salt-pwa-install-wrap,
+    .salt-pwa-install-wrap[style]{
+        position:static !important;
+        top:auto !important;
+        right:auto !important;
+        bottom:auto !important;
+        left:auto !important;
+        margin:0 !important;
+        flex:0 0 auto !important;
+        z-index:9001 !important;
+    }
+
+    .salt-pwa-install-wrap:not(.is-visible){
+        display:none !important;
+    }
+
+    .salt-pwa-install-wrap.is-visible{
+        display:flex !important;
+    }
+
+    .salt-pwa-install-btn{
+        min-width:40px !important;
+        width:40px !important;
+        height:40px !important;
+        padding:0 !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        gap:0 !important;
+        border-radius:12px !important;
+    }
+
+    .salt-pwa-install-icon{
+        width:38px !important;
+        height:38px !important;
+        display:grid !important;
+        place-items:center !important;
+        background:transparent !important;
+    }
+
+    .salt-pwa-install-copy,
+    .salt-pwa-install-arrow{
+        display:none !important;
+    }
+
+    /* ---------- GLASS SIDEBAR DRAWER ---------- */
+    .sidebar{
+        display:flex !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        position:fixed !important;
+        top:0 !important;
+        left:0 !important;
+        bottom:0 !important;
+        width:min(310px,84vw) !important;
+        height:100dvh !important;
+        margin:0 !important;
+        padding:18px 14px !important;
+        box-sizing:border-box !important;
+        flex-direction:column !important;
+        z-index:22000 !important;
+        overflow-x:hidden !important;
+        overflow-y:auto !important;
+        transform:translateX(-110%) !important;
+        transition:transform .28s cubic-bezier(.22,.8,.28,1) !important;
+        background:rgba(255,255,255,.82) !important;
+        border-right:1px solid rgba(255,255,255,.75) !important;
+        border-radius:0 26px 26px 0 !important;
+        box-shadow:18px 0 50px rgba(7,35,70,.22) !important;
+        backdrop-filter:blur(28px) saturate(155%) !important;
+        -webkit-backdrop-filter:blur(28px) saturate(155%) !important;
+    }
+
+    /* Ignore the desktop collapsed state on phones. */
+    .sidebar.collapsed{
+        width:min(310px,84vw) !important;
+    }
+
+    .sidebar.collapsed li a span{
+        display:inline !important;
+    }
+
+    body.salt-mobile-menu-open .sidebar{
+        transform:translateX(0) !important;
+    }
+
+    .sidebar .logo{
+        flex:0 0 auto !important;
+        padding:8px 8px 18px !important;
+        margin-bottom:8px !important;
+        border-bottom:1px solid rgba(18,77,135,.10) !important;
+    }
+
+    .sidebar ul{
+        margin:0 !important;
+        padding:0 !important;
+        width:100% !important;
+    }
+
+    .sidebar li{
+        margin:4px 0 !important;
+        list-style:none !important;
+        width:100% !important;
+    }
+
+    .sidebar li a{
+        display:flex !important;
+        align-items:center !important;
+        width:100% !important;
+        min-height:48px !important;
+        padding:0 14px !important;
+        box-sizing:border-box !important;
+        border-radius:14px !important;
+        color:#27415f !important;
+        background:transparent !important;
+        opacity:1 !important;
+        visibility:visible !important;
+    }
+
+    .sidebar li a i{
+        display:inline-flex !important;
+        width:24px !important;
+        min-width:24px !important;
+        margin-right:11px !important;
+        align-items:center !important;
+        justify-content:center !important;
+    }
+
+    .sidebar li a span{
+        display:inline !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        white-space:nowrap !important;
+    }
+
+    .sidebar li.active a,
+    .sidebar li a:hover{
+        background:rgba(27,112,202,.11) !important;
+        color:#0752a0 !important;
+    }
+
+    .sidebar-bottom{
+        display:block !important;
+        margin-top:auto !important;
+        width:100% !important;
+    }
+
+    .sidebar-bottom a{
+        display:flex !important;
+        align-items:center !important;
+        min-height:48px !important;
+        padding:0 14px !important;
+        border-radius:14px !important;
+    }
+
+    /* ---------- DRAWER OVERLAY ---------- */
+    .salt-mobile-sidebar-overlay{
+        display:block !important;
+        position:fixed !important;
+        inset:0 !important;
+        z-index:21000 !important;
+        background:rgba(7,30,57,.44) !important;
+        opacity:0 !important;
+        visibility:hidden !important;
+        pointer-events:none !important;
+        transition:opacity .25s ease,visibility .25s ease !important;
+        backdrop-filter:blur(3px) !important;
+        -webkit-backdrop-filter:blur(3px) !important;
+    }
+
+    body.salt-mobile-menu-open .salt-mobile-sidebar-overlay{
+        opacity:1 !important;
+        visibility:visible !important;
+        pointer-events:auto !important;
+    }
+
+    body.salt-mobile-menu-open{
+        overflow:hidden !important;
+    }
+
+    /* ---------- MAIN ---------- */
+    .main{
+        width:100% !important;
+        min-width:0 !important;
+        margin:0 !important;
+    }
+
+    .main.expanded{
+        margin-left:0 !important;
+        width:100% !important;
+    }
+
+    /* ---------- BOTTOM NAV ---------- */
+    .salt-mobile-nav{
+        position:fixed !important;
+        left:0 !important;
+        right:0 !important;
+        bottom:0 !important;
+        z-index:10000 !important;
+        display:grid !important;
+        grid-template-columns:repeat(5,1fr) !important;
+        gap:2px !important;
+        padding:5px 5px calc(5px + env(safe-area-inset-bottom,0px)) !important;
+        background:rgba(255,255,255,.97) !important;
+        border-top:1px solid #dfe8f1 !important;
+        box-shadow:0 -10px 30px rgba(12,45,84,.12) !important;
+        backdrop-filter:blur(20px) !important;
+        -webkit-backdrop-filter:blur(20px) !important;
+    }
+
+    .salt-mobile-nav a{
+        min-height:54px !important;
+        gap:4px !important;
+        border-radius:13px !important;
+        font-size:8px !important;
+    }
+
+    .salt-mobile-nav a i{
+        width:30px !important;
+        height:30px !important;
+        border-radius:10px !important;
+        font-size:14px !important;
+    }
+}
+
+@media (min-width:769px){
+    .salt-mobile-nav,
+    .salt-mobile-sidebar-overlay{
+        display:none !important;
+    }
+
+    .salt-pwa-install-wrap{
+        position:static !important;
+        top:auto !important;
+        right:auto !important;
+        bottom:auto !important;
+        left:auto !important;
+    }
+}
+</style>
+
+
+<style id="salt-mobile-dashboard-polish">
+/* =========================================================
+   SALT WORKFORCE — MOBILE DASHBOARD POLISH
+   Sidebar intentionally excluded.
+   ========================================================= */
+@media (max-width: 768px) {
+
+  /* Dashboard content spacing */
+  .main-content,
+  .dashboard-content,
+  .content {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Welcome / hero */
+  .hero,
+  .welcome-card,
+  .dashboard-hero {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 18px 16px !important;
+    border-radius: 18px !important;
+  }
+
+  /* Stat cards */
+  .stats-grid,
+  .statistics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .stat-card {
+    min-width: 0 !important;
+    padding: 13px !important;
+    border-radius: 16px !important;
+  }
+
+  .stat-card h3 {
+    font-size: 20px !important;
+  }
+
+  .stat-card p,
+  .stat-card span {
+    font-size: 11px !important;
+  }
+
+  /* Quick actions */
+  .quick-actions-grid,
+  .quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .quick-action,
+  .quick-action-card {
+    min-height: 82px !important;
+    padding: 12px 8px !important;
+    border-radius: 15px !important;
+  }
+
+  /* Announcement / slideshow */
+  .announcement-carousel,
+  .announcement-slider,
+  .announcements-carousel,
+  .announcement-container {
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 17px !important;
+  }
+
+  .announcement-carousel .carousel-btn,
+  .announcement-slider .carousel-btn,
+  .announcements-carousel .carousel-btn,
+  .announcement-container .carousel-btn,
+  .announcement-carousel button,
+  .announcement-slider button,
+  .announcements-carousel button,
+  .announcement-container button {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    z-index: 20 !important;
+  }
+
+  /* Keep carousel arrows from covering too much content. */
+  .announcement-carousel .prev,
+  .announcement-carousel .next,
+  .announcement-slider .prev,
+  .announcement-slider .next,
+  .announcements-carousel .prev,
+  .announcements-carousel .next {
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+
+  /* Generic carousel controls used by the dashboard. */
+  .carousel-prev,
+  .carousel-next,
+  .prev-btn,
+  .next-btn,
+  .announcement-prev,
+  .announcement-next {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+  }
+
+  /* Announcement text gets breathing room around arrows. */
+  .announcement-content,
+  .announcement-slide-content {
+    padding-left: 46px !important;
+    padding-right: 46px !important;
+  }
+
+  /* Charts should never force horizontal scrolling. */
+  .chart-container,
+  .chart-card,
+  canvas {
+    max-width: 100% !important;
+  }
+
+  /* Touch-friendly buttons without oversized controls. */
+  button,
+  .btn {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+</style>
 
 </head>
 
@@ -2999,16 +3426,7 @@
      Desktop: floating action
      Mobile: compact top app action
      ========================================================= -->
-<div id="saltPwaControls" class="salt-pwa-install-wrap">
-    <button id="saltInstallAppBtn" type="button" class="salt-pwa-install-btn">
-        <span class="salt-pwa-install-icon"><i class="fas fa-download"></i></span>
-        <span class="salt-pwa-install-copy">
-            <strong>Install App</strong>
-            <small>Quick access to SALT Workforce</small>
-        </span>
-        <i class="fas fa-chevron-right salt-pwa-install-arrow"></i>
-    </button>
-</div>
+
 
 <div id="saltPwaUpdate" class="salt-pwa-update">
     <span>
@@ -3093,6 +3511,9 @@
 
     </div>
 </div>
+
+<!-- Mobile glass sidebar overlay -->
+<div class="salt-mobile-sidebar-overlay" id="saltMobileSidebarOverlay" aria-hidden="true"></div>
 
 <div class="wrapper">
 
@@ -3209,6 +3630,17 @@
                     </a>
                 
                 </div>
+                <!-- PWA INSTALL -->
+                <div id="saltPwaControls" class="salt-pwa-install-wrap" aria-label="Install SALT Workforce">
+                    <button id="saltInstallAppBtn" type="button" class="salt-pwa-install-btn" title="Install SALT Workforce">
+                        <span class="salt-pwa-install-icon"><i class="fas fa-download"></i></span>
+                        <span class="salt-pwa-install-copy">
+                            <strong>Install App</strong>
+                            <small>SALT Workforce</small>
+                        </span>
+                    </button>
+                </div>
+
                 <!-- NOTIFICATION -->
                 <div class="notification-wrapper">
 
@@ -3544,39 +3976,47 @@
                     align-items:center;
                 ">
 
-                    {% if not clocked_in and not clocked_out %}
+                {% if not clocked_in and not clocked_out %}
 
-                        <form method="POST" action="/clockin" style="margin:0;">
-                            <input type="hidden" name="latitude" id="lat">
-                            <input type="hidden" name="longitude" id="lon">
-                            <button type="submit" class="btn green">
-                                <i class="fas fa-location-dot"></i> Clock In
-                            </button>
-                        </form>
+                    <form method="POST" action="/clockin" style="margin:0;"
+                        onsubmit="return handleAttendanceSubmit(this, 'clockin');">
 
-                    {% elif clocked_in and not clocked_out %}
+                        <input type="hidden" name="latitude" id="lat">
+                        <input type="hidden" name="longitude" id="lon">
 
-                    <form method="POST" action="/clockout" style="margin:0;"
-                            onsubmit="return confirm('Are you sure you want to clock out?');">
-                        <button type="submit" class="btn red">
-                            <i class="fas fa-sign-out-alt"></i> Clock Out
+                        <button type="submit" class="btn green" id="clockInBtn">
+                            <i class="fas fa-location-dot"></i>
+                            <span class="attendance-btn-text">Clock In</span>
                         </button>
+
                     </form>
 
-                    {% elif clocked_out %}
+                {% elif clocked_in and not clocked_out %}
 
-                        <div style="
-                            padding: 12px 16px;
-                            background: #0d6efd;
-                            color: white;
-                            border-radius: 10px;
-                            text-align: center;
-                            font-weight: bold;
-                        ">
-                            ✅ You are done for today 🎉
-                        </div>
+                    <form method="POST" action="/clockout" style="margin:0;"
+                        onsubmit="return handleAttendanceSubmit(this, 'clockout');">
 
-                    {% endif %}
+                        <button type="submit" class="btn red" id="clockOutBtn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span class="attendance-btn-text">Clock Out</span>
+                        </button>
+
+                    </form>
+
+                {% elif clocked_out %}
+
+                    <div style="
+                        padding: 12px 16px;
+                        background: #0d6efd;
+                        color: white;
+                        border-radius: 10px;
+                        text-align: center;
+                        font-weight: bold;
+                    ">
+                        ✅ You are done for today 🎉
+                    </div>
+
+                {% endif %}
 
                     <!-- REQUESTS: AVAILABLE TO STAFF AND ADMIN -->
                     <a href="/requests/" class="btn" style="
@@ -4067,22 +4507,74 @@
 
 </script>
 
-<!-- Sidebar Toggle -->
+
+
+
+<!-- SALT Responsive Sidebar Toggle -->
 <script>
-const toggleBtn = document.getElementById("toggle-btn");
-const sidebar = document.querySelector(".sidebar");
-const main = document.querySelector(".main");
+(function () {
+    const toggle = document.getElementById("toggle-btn");
+    const overlay = document.getElementById("saltMobileSidebarOverlay");
+    const sidebar = document.querySelector(".sidebar");
+    const main = document.querySelector(".main");
 
-if (toggleBtn && sidebar && main) {
+    if (!toggle || !sidebar) return;
 
-    toggleBtn.addEventListener("click", () => {
+    function isMobile() {
+        return window.matchMedia("(max-width: 768px)").matches;
+    }
 
-        sidebar.classList.toggle("collapsed");
-        main.classList.toggle("expanded");
+    function openMobileMenu() {
+        document.body.classList.add("salt-mobile-menu-open");
+        if (overlay) overlay.setAttribute("aria-hidden", "false");
+        toggle.setAttribute("aria-expanded", "true");
+        toggle.innerHTML = '<i class="fas fa-times"></i>';
+    }
 
+    function closeMobileMenu() {
+        document.body.classList.remove("salt-mobile-menu-open");
+        if (overlay) overlay.setAttribute("aria-hidden", "true");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.innerHTML = '<i class="fas fa-bars"></i>';
+    }
+
+    toggle.setAttribute("aria-expanded", "false");
+
+    toggle.addEventListener("click", function () {
+        if (isMobile()) {
+            if (document.body.classList.contains("salt-mobile-menu-open")) {
+                closeMobileMenu();
+            } else {
+                openMobileMenu();
+            }
+            return;
+        }
+
+        /* Desktop keeps the original collapsible sidebar behavior. */
+        if (main) {
+            sidebar.classList.toggle("collapsed");
+            main.classList.toggle("expanded");
+        }
     });
 
-}
+    if (overlay) {
+        overlay.addEventListener("click", closeMobileMenu);
+    }
+
+    sidebar.querySelectorAll("a").forEach(function (link) {
+        link.addEventListener("click", function () {
+            if (isMobile()) closeMobileMenu();
+        });
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && isMobile()) closeMobileMenu();
+    });
+
+    window.addEventListener("resize", function () {
+        if (!isMobile()) closeMobileMenu();
+    });
+})();
 </script>
 
 <!-- GPS -->
@@ -5808,6 +6300,111 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 
+
+<script>
+/* SALT Workforce install fallback. The main PWA helper handles supported native prompts;
+   this fallback keeps a visible install action on desktop/mobile when the prompt is unavailable. */
+(function () {
+    const controls = document.getElementById('saltPwaControls');
+    const btn = document.getElementById('saltInstallAppBtn');
+    if (!controls || !btn) return;
+
+    let deferredPrompt = null;
+    const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+
+    function show() { controls.style.display = 'flex'; }
+    function hide() { controls.style.display = 'none'; }
+
+    window.addEventListener('beforeinstallprompt', function (event) {
+        event.preventDefault();
+        deferredPrompt = event;
+        show();
+    });
+
+    window.addEventListener('salt-install-available', show);
+    window.addEventListener('salt-install-finished', hide);
+    window.addEventListener('salt-app-installed', hide);
+    window.addEventListener('appinstalled', hide);
+
+    btn.addEventListener('click', async function () {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            try { await deferredPrompt.userChoice; } catch (_) {}
+            deferredPrompt = null;
+            return;
+        }
+
+        if (window.SALTInstallApp) {
+            try {
+                await window.SALTInstallApp();
+                return;
+            } catch (_) {}
+        }
+
+        alert(
+            'Install SALT Workforce:\n\n' +
+            'Chrome/Edge: use the browser menu and choose “Install app” or “Add to Home screen”.\n\n' +
+            'iPhone/Safari: tap Share, then “Add to Home Screen”.'
+        );
+    });
+
+    /* Keep the action visible as a manual fallback. Supported browsers will use the native prompt. */
+    setTimeout(show, 800);
+})();
+</script>
+<script>
+    /* =========================================================
+       SALT WORKFORCE — ATTENDANCE LOADING STATE
+       ========================================================= */
+    
+    function handleAttendanceSubmit(form, action) {
+    
+        // Clock Out confirmation
+        if (action === "clockout") {
+    
+            const confirmed = confirm(
+                "Are you sure you want to clock out?"
+            );
+    
+            if (!confirmed) {
+                return false;
+            }
+        }
+    
+        const button =
+            form.querySelector("button[type='submit']");
+    
+        if (!button) {
+            return true;
+        }
+    
+        // Prevent double-clicking
+        button.disabled = true;
+    
+        button.style.cursor = "wait";
+        button.style.opacity = "0.85";
+        button.style.transform = "none";
+    
+        if (action === "clockin") {
+    
+            button.innerHTML = `
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Clocking In...</span>
+            `;
+    
+        } else if (action === "clockout") {
+    
+            button.innerHTML = `
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Clocking Out...</span>
+            `;
+        }
+    
+        // Allow the form to submit normally to Flask
+        return true;
+    }
+</script>
+
 <!-- =========================================================
      SALT WORKFORCE — MOBILE DASHBOARD NAVIGATION
      Dashboard only. Uses existing portal routes.
@@ -5842,115 +6439,10 @@ document.addEventListener("DOMContentLoaded", function () {
 </nav>
 
 
-<script>
-/* SALT mobile PWA install fallback.
-   Shows the install action on phones even when beforeinstallprompt is unavailable
-   (e.g. iPhone Safari), while still using the native prompt when supported. */
-(function () {
-  const controls = document.getElementById('saltPwaControls');
-  const installBtn = document.getElementById('saltInstallAppBtn');
-  if (!controls || !installBtn) return;
-
-  let deferredPrompt = null;
-
-  function isPhone() {
-    return window.matchMedia('(max-width: 768px)').matches;
-  }
-
-  function showInstallAction() {
-    if (isPhone()) {
-      controls.style.display = 'block';
-    }
-  }
-
-  window.addEventListener('beforeinstallprompt', function (event) {
-    event.preventDefault();
-    deferredPrompt = event;
-    showInstallAction();
-  });
-
-  window.addEventListener('appinstalled', function () {
-    deferredPrompt = null;
-    controls.style.display = 'none';
-  });
-
-  installBtn.addEventListener('click', async function () {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      try {
-        await deferredPrompt.userChoice;
-      } catch (_) {}
-      deferredPrompt = null;
-      return;
-    }
-
-    if (isPhone()) {
-      alert(
-        'To install SALT Workforce:\\n\\n' +
-        'Android/Chrome: use the browser menu and choose “Install app” or “Add to Home screen”.\\n\\n' +
-        'iPhone/Safari: tap Share, then choose “Add to Home Screen”.'
-      );
-    }
-  });
-
-  /* Keep it visible on phones; the native prompt is used automatically when available. */
-  if (isPhone()) {
-    setTimeout(showInstallAction, 700);
-  }
-
-  window.addEventListener('resize', function () {
-    if (isPhone()) showInstallAction();
-    else controls.style.display = 'none';
-  });
-})();
-</script>
 
 
-<script>
-(function(){
-  const wrap=document.getElementById('saltPwaControls');
-  const btn=document.getElementById('saltInstallAppBtn');
-  if(!wrap || !btn) return;
 
-  let deferredPrompt=null;
 
-  function isPhone(){
-    return window.matchMedia('(max-width:768px)').matches;
-  }
-
-  function show(){
-    if(isPhone()) wrap.style.display='block';
-  }
-
-  window.addEventListener('beforeinstallprompt',function(e){
-    e.preventDefault();
-    deferredPrompt=e;
-    show();
-  });
-
-  btn.addEventListener('click',async function(){
-    if(deferredPrompt){
-      deferredPrompt.prompt();
-      try{ await deferredPrompt.userChoice; }catch(e){}
-      deferredPrompt=null;
-      return;
-    }
-
-    alert(
-      'Install SALT Workforce:\\n\\n' +
-      'Android: open the browser menu and choose “Install app” or “Add to Home screen”.\\n\\n' +
-      'iPhone: tap Share, then “Add to Home Screen”.'
-    );
-  });
-
-  window.addEventListener('appinstalled',function(){
-    deferredPrompt=null;
-    wrap.style.display='none';
-  });
-
-  if(isPhone()) setTimeout(show,500);
-})();
-</script>
 
 </body>
 </html>
