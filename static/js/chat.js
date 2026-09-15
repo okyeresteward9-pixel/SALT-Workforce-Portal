@@ -2283,6 +2283,35 @@ class ChatApp {
 
 
     // =====================================================
+    // READ JSON RESPONSE
+    // =====================================================
+
+    async readJSON(response) {
+
+        const text = await response.text();
+
+        if (!text) {
+            return {};
+        }
+
+        try {
+            return JSON.parse(text);
+        }
+        catch (error) {
+            console.error(
+                "Server returned non-JSON response:",
+                text
+            );
+
+            throw new Error(
+                `Server returned an invalid response (HTTP ${response.status}).`
+            );
+        }
+
+    }
+
+
+    // =====================================================
     // TOAST
     // =====================================================
 
@@ -2747,119 +2776,214 @@ class ChatApp {
 
     async editMessage(messageId) {
 
-        const chat =
-            this.messages.get(
-                messageId
-            );
+        const id = String(messageId);
 
+        const chat =
+            this.messages.get(id);
 
         if (!chat) {
+            console.warn("Edit: message not found:", id);
+            this.showToast("Unable to find this message.");
             return;
         }
 
+        /*
+         * Use the Edit Message modal already present in messages.html.
+         * The previous implementation used prompt(), which bypassed the
+         * modal completely.
+         */
+        const modal =
+            document.getElementById("edit-modal");
 
-        const newMessage =
-            prompt(
-                "Edit message",
-                chat.message || ""
+        const editText =
+            document.getElementById("edit-text");
+
+        const saveEdit =
+            document.getElementById("save-edit");
+
+        const cancelEdit =
+            document.getElementById("cancel-edit");
+
+        if (!modal || !editText || !saveEdit) {
+            console.error("Edit modal elements are missing.");
+            this.showToast("Edit window is unavailable.");
+            return;
+        }
+
+        // Close the message menu immediately.
+        document
+            .querySelectorAll("[id^='menu-']")
+            .forEach(menu => menu.classList.add("hidden"));
+
+        // Load the current message into the editor.
+        editText.value = chat.message || "";
+
+        // Remember which message is being edited.
+        modal.dataset.messageId = id;
+
+        modal.classList.remove("hidden");
+
+        // Focus and select the message text.
+        requestAnimationFrame(() => {
+            editText.focus();
+            editText.setSelectionRange(
+                editText.value.length,
+                editText.value.length
             );
+        });
 
-
-        if (
-            newMessage === null
-        ) {
-
+        // Avoid stacking duplicate event listeners if the modal is opened
+        // repeatedly during the same page session.
+        if (saveEdit.dataset.bound === "true") {
             return;
-
         }
 
+        saveEdit.dataset.bound = "true";
 
-        if (
-            !newMessage.trim()
-        ) {
+        const closeModal = () => {
+            modal.classList.add("hidden");
+            delete modal.dataset.messageId;
+        };
 
-            this.showToast(
-                "Message cannot be empty."
-            );
-
-            return;
-
-        }
-
-
-        const formData =
-            new FormData();
-
-
-        formData.append(
-            "message",
-            newMessage.trim()
+        cancelEdit?.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
+                closeModal();
+            }
         );
 
+        modal.addEventListener(
+            "click",
+            event => {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            }
+        );
 
-        try {
+        document.addEventListener(
+            "keydown",
+            event => {
+                if (
+                    event.key === "Escape" &&
+                    !modal.classList.contains("hidden")
+                ) {
+                    closeModal();
+                }
+            }
+        );
 
-            const response =
-                await fetch(
-                    `/edit_message/${encodeURIComponent(messageId)}`,
-                    {
-                        method: "POST",
-                        body: formData,
-                        headers: {
-                            "Accept": "application/json"
-                        }
+        saveEdit.addEventListener(
+            "click",
+            async event => {
+
+                event.preventDefault();
+
+                const currentId =
+                    modal.dataset.messageId;
+
+                if (!currentId) {
+                    this.showToast("No message selected.");
+                    return;
+                }
+
+                const newMessage =
+                    editText.value.trim();
+
+                if (!newMessage) {
+                    this.showToast(
+                        "Message cannot be empty."
+                    );
+                    editText.focus();
+                    return;
+                }
+
+                const originalHTML =
+                    saveEdit.innerHTML;
+
+                saveEdit.disabled = true;
+                saveEdit.innerHTML =
+                    '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+                const formData =
+                    new FormData();
+
+                formData.append(
+                    "message",
+                    newMessage
+                );
+
+                try {
+
+                    const response =
+                        await fetch(
+                            `/edit_message/${encodeURIComponent(currentId)}`,
+                            {
+                                method: "POST",
+                                body: formData,
+                                headers: {
+                                    "Accept": "application/json"
+                                }
+                            }
+                        );
+
+                    const data =
+                        await this.readJSON(response);
+
+                    if (
+                        !response.ok ||
+                        !data.success
+                    ) {
+                        throw new Error(
+                            data.message ||
+                            "Unable to edit message."
+                        );
                     }
-                );
 
+                    if (data.message) {
+                        this.update(data.message);
+                    }
 
-            const data =
-                await this.readJSON(
-                    response
-                );
+                    closeModal();
 
+                    this.showToast(
+                        "Message updated."
+                    );
 
-            if (
-                !response.ok ||
-                !data.success
-            ) {
+                }
+                catch (error) {
 
-                throw new Error(
-                    data.message ||
-                    "Unable to edit message."
-                );
+                    console.error(
+                        "Edit message error:",
+                        error
+                    );
+
+                    this.showToast(
+                        error.message ||
+                        "Unable to edit message."
+                    );
+
+                }
+                finally {
+
+                    saveEdit.disabled = false;
+                    saveEdit.innerHTML = originalHTML;
+
+                }
 
             }
-
-
-            this.update(
-                data.message
-            );
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Edit message error:",
-                error
-            );
-
-
-            this.showToast(
-                error.message ||
-                "Unable to edit message."
-            );
-
-        }
+        );
 
     }
-
 
     // =====================================================
     // DELETE MESSAGE
     // =====================================================
 
     async deleteMessage(messageId) {
+
+        const id = String(messageId);
 
         if (
             !confirm(
@@ -2876,7 +3000,7 @@ class ChatApp {
 
             const response =
                 await fetch(
-                    `/delete_message/${encodeURIComponent(messageId)}`,
+                    `/delete_message/${encodeURIComponent(id)}`,
                     {
                         method: "POST",
                         headers: {
@@ -2937,7 +3061,7 @@ class ChatApp {
 
         const chat =
             this.messages.get(
-                messageId
+                String(messageId)
             );
 
 
