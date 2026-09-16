@@ -880,7 +880,29 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 }
 .salt-social-post {
     padding:15px 17px;
+    max-width:820px;
 }
+.salt-social-post-media {
+    margin-top:12px;
+    width:100%;
+    max-width:780px;
+    border:1px solid #e6ebf2;
+    border-radius:14px;
+    overflow:hidden;
+    background:#f8fafc;
+}
+.salt-social-post-media img,
+.salt-social-post-media video {
+    display:block;
+    width:100%;
+    height:360px;
+    object-fit:contain;
+    background:#f8fafc;
+}
+.salt-social-post-media video {
+    background:#020617;
+}
+
 .salt-social-post-head {
     display:flex;
     align-items:flex-start;
@@ -1307,7 +1329,7 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 <style id="salt-social-video-support">
 .salt-social-video-preview{display:none;margin-top:10px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;background:#0f172a}
 .salt-social-video-preview video{display:block;width:100%;max-height:360px;object-fit:contain}
-.salt-social-media-video{display:block;width:100%;max-height:520px;object-fit:contain;background:#020617}
+.salt-social-media-video{display:block;width:100%;height:360px;object-fit:contain;background:#020617}
 .salt-social-upload-note{font-size:10px;color:#94a3b8;margin-top:5px}
 </style>
 </head>
@@ -2346,10 +2368,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function mediaHtml(media) {
         if (!Array.isArray(media) || !media.length) return "";
-        return media.map(m => m.type === "image" && m.url
-            ? `<div class="mt-3 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
-                 <img src="${esc(m.url)}" alt="Post image" class="w-full max-h-[520px] object-cover" loading="lazy">
-               </div>` : "").join("");
+        return media.map(m => {
+            if (!m || !m.url) return "";
+            if (m.type === "video") {
+                return `<div class="salt-social-post-media">
+                    <video class="salt-social-media-video" controls playsinline preload="metadata">
+                        <source src="${esc(m.url)}" type="${esc(m.mime_type || "video/mp4")}">
+                        Your browser does not support video playback.
+                    </video>
+                </div>`;
+            }
+            if (m.type === "image") {
+                return `<div class="salt-social-post-media">
+                    <img src="${esc(m.url)}" alt="Post image" loading="lazy">
+                </div>`;
+            }
+            return "";
+        }).join("");
     }
 
     window.renderSaltPoll = function(poll, postId) {
