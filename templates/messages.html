@@ -1326,6 +1326,38 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 .salt-share-status{padding:0 20px 18px;font-size:11px;color:#64748b;min-height:18px}
 </style>
 
+
+<style id="salt-social-compose-preview-css">
+.salt-social-compose-preview{
+    margin-top:12px;
+    border:1px solid #e2e8f0;
+    border-radius:16px;
+    overflow:hidden;
+    background:#f8fafc;
+}
+.salt-social-compose-preview[hidden]{display:none!important}
+.salt-social-compose-preview-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 12px;background:#fff;border-bottom:1px solid #e8edf3;
+}
+.salt-social-compose-preview-head strong{display:block;font-size:11px;color:#0f172a;font-weight:900}
+.salt-social-compose-preview-head span{display:block;margin-top:2px;font-size:10px;color:#94a3b8}
+#saltSocialPreviewRemove{
+    width:30px;height:30px;border:0;border-radius:10px;background:#f1f5f9;
+    color:#64748b;cursor:pointer;flex:none;
+}
+#saltSocialPreviewRemove:hover{background:#fee2e2;color:#dc2626}
+.salt-social-compose-preview-stage{
+    display:flex;align-items:center;justify-content:center;min-height:120px;
+    max-height:300px;background:#0f172a;
+}
+.salt-social-compose-preview-stage img,
+.salt-social-compose-preview-stage video{
+    display:block;width:100%;max-height:300px;object-fit:contain;
+}
+.salt-social-compose-preview-stage img{background:#fff}
+</style>
+
 <style id="salt-social-video-support">
 .salt-social-video-preview{display:none;margin-top:10px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;background:#0f172a}
 .salt-social-video-preview video{display:block;width:100%;max-height:360px;object-fit:contain}
@@ -1637,13 +1669,26 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
         </div>
 
         <input id="saltSocialPhotoInput" type="file"
-               accept="image/jpeg,image/png,image/gif,image/webp"
+               accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm"
                class="hidden">
+
+        <div id="saltSocialMediaPreview" class="salt-social-compose-preview" hidden>
+            <div class="salt-social-compose-preview-head">
+                <div>
+                    <strong id="saltSocialPreviewTitle">Selected media</strong>
+                    <span id="saltSocialPreviewMeta"></span>
+                </div>
+                <button type="button" id="saltSocialPreviewRemove" aria-label="Remove selected media">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div id="saltSocialPreviewStage" class="salt-social-compose-preview-stage"></div>
+        </div>
 
         <div class="salt-social-tools mt-3">
             <div class="flex flex-wrap gap-2">
                 <button type="button" id="saltSocialPhotoBtn" class="salt-social-tool">
-                    <i class="fas fa-image mr-1"></i> Photo
+                    <i class="fas fa-photo-film mr-1"></i> Photo / Video
                 </button>
                 <button type="button" id="saltSocialAchievementBtn" class="salt-social-tool ach">
                     <i class="fas fa-trophy mr-1"></i> Achievement
@@ -2488,7 +2533,10 @@ document.addEventListener("DOMContentLoaded", function () {
             const data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.message || "Could not create post");
             composerText.value = "";
-            if (photoInput) photoInput.value = "";
+            if (photoInput) {
+                photoInput.value = "";
+                photoInput.dispatchEvent(new Event("change", {bubbles:true}));
+            }
             if (photoName) photoName.textContent = "";
             collapseComposer();
             await loadFeed();
@@ -3538,15 +3586,37 @@ document.addEventListener("DOMContentLoaded", function () {
   const MAX_IMAGE = 10 * 1024 * 1024;
   const videoExt = ["mp4","mov","webm"];
   const imageExt = ["jpg","jpeg","png","gif","webp"];
+  let previewUrl = null;
 
   function findInput(){
     const inputs = [...document.querySelectorAll('input[type="file"]')];
-    return inputs.find(i => {
-      const formText = (i.closest("form")?.innerText || "").toLowerCase();
-      return (i.id || "").toLowerCase().includes("social") ||
-             (i.name || "").toLowerCase().includes("social") ||
-             (formText.includes("post") && formText.includes("photo"));
-    }) || inputs.find(i => (i.accept || "").includes("video"));
+    return inputs.find(i => (i.id || "").toLowerCase() === "saltsocialphotoinput") ||
+           inputs.find(i => {
+             const formText = (i.closest("form")?.innerText || "").toLowerCase();
+             return (i.id || "").toLowerCase().includes("social") ||
+                    (i.name || "").toLowerCase().includes("social") ||
+                    (formText.includes("post") && formText.includes("photo"));
+           }) || inputs.find(i => (i.accept || "").includes("video"));
+  }
+
+  function clearPreview(input){
+    const box = document.getElementById("saltSocialMediaPreview");
+    const stage = document.getElementById("saltSocialPreviewStage");
+    const title = document.getElementById("saltSocialPreviewTitle");
+    const meta = document.getElementById("saltSocialPreviewMeta");
+    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+    if (stage) stage.innerHTML = "";
+    if (title) title.textContent = "Selected media";
+    if (meta) meta.textContent = "";
+    if (box) box.hidden = true;
+    if (input) input.value = "";
+    const name = document.getElementById("saltSocialPhotoName");
+    if (name) name.textContent = "";
+  }
+
+  function formatBytes(bytes){
+    if (bytes < 1024*1024) return Math.round(bytes/1024) + " KB";
+    return (bytes/(1024*1024)).toFixed(1) + " MB";
   }
 
   function setup(){
@@ -3555,14 +3625,22 @@ document.addEventListener("DOMContentLoaded", function () {
     input.dataset.videoSupportReady = "1";
     input.accept = "image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm";
 
-    input.addEventListener("change", function(){
-      const box = document.getElementById("saltSocialVideoPreview");
-      const player = document.getElementById("saltSocialVideoPreviewPlayer");
-      if (box) box.style.display = "none";
-      if (player) { player.pause(); player.removeAttribute("src"); player.load(); }
+    const removeBtn = document.getElementById("saltSocialPreviewRemove");
+    removeBtn?.addEventListener("click", function(){ clearPreview(input); });
 
+    input.addEventListener("change", function(){
       const file = this.files && this.files[0];
-      if (!file) return;
+      const box = document.getElementById("saltSocialMediaPreview");
+      const stage = document.getElementById("saltSocialPreviewStage");
+      const title = document.getElementById("saltSocialPreviewTitle");
+      const meta = document.getElementById("saltSocialPreviewMeta");
+      const name = document.getElementById("saltSocialPhotoName");
+
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+      if (stage) stage.innerHTML = "";
+      if (box) box.hidden = true;
+
+      if (!file) { if (name) name.textContent = ""; return; }
 
       const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
       const isVideo = videoExt.includes(ext) || file.type.startsWith("video/");
@@ -3570,7 +3648,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (!isVideo && !isImage) {
         alert("Unsupported file. Choose an image or MP4, MOV or WEBM video.");
-        this.value = "";
+        clearPreview(this);
         return;
       }
 
@@ -3579,14 +3657,31 @@ document.addEventListener("DOMContentLoaded", function () {
         alert(isVideo
           ? "This video is larger than 90 MB. Please choose a video up to 90 MB."
           : "This image is larger than 10 MB. Please choose an image up to 10 MB.");
-        this.value = "";
+        clearPreview(this);
         return;
       }
 
-      if (isVideo && box && player) {
-        player.src = URL.createObjectURL(file);
-        box.style.display = "block";
+      previewUrl = URL.createObjectURL(file);
+      if (name) name.textContent = file.name;
+      if (title) title.textContent = isVideo ? "Video preview" : "Photo preview";
+      if (meta) meta.textContent = `${file.name} · ${formatBytes(file.size)}`;
+
+      if (stage) {
+        if (isVideo) {
+          const video = document.createElement("video");
+          video.src = previewUrl;
+          video.controls = true;
+          video.playsInline = true;
+          video.preload = "metadata";
+          stage.appendChild(video);
+        } else {
+          const img = document.createElement("img");
+          img.src = previewUrl;
+          img.alt = "Selected image preview";
+          stage.appendChild(img);
+        }
       }
+      if (box) box.hidden = false;
     });
   }
 
