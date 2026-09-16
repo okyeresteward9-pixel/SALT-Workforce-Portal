@@ -573,6 +573,186 @@ input::placeholder{color:#a7b3c4}
   }
 }
 
+
+/* =========================================================
+   SALT WORKFORCE — MODERN TECH STARTUP LOADER
+   ========================================================= */
+#saltTechLoader{
+  position:fixed;
+  inset:0;
+  z-index:999999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 45%,rgba(25,200,255,.13),transparent 22%),
+    radial-gradient(circle at 15% 85%,rgba(8,120,249,.16),transparent 30%),
+    radial-gradient(circle at 85% 15%,rgba(25,200,255,.10),transparent 28%),
+    linear-gradient(145deg,#020d20,#041d43 52%,#03152f);
+  transition:opacity .65s ease,visibility .65s ease;
+}
+#saltTechLoader.loader-done{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+}
+.salt-loader-grid{
+  position:absolute;
+  inset:0;
+  opacity:.20;
+  background-image:
+    linear-gradient(rgba(105,190,255,.10) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(105,190,255,.10) 1px,transparent 1px);
+  background-size:42px 42px;
+  mask-image:radial-gradient(circle at center,#000 0%,transparent 72%);
+  -webkit-mask-image:radial-gradient(circle at center,#000 0%,transparent 72%);
+}
+.salt-loader-noise{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:radial-gradient(circle at center,transparent 0 35%,rgba(0,0,0,.24) 100%);
+}
+.salt-loader-core{
+  position:relative;
+  width:220px;
+  height:220px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.salt-loader-ring{
+  position:absolute;
+  border:1px solid rgba(72,205,255,.34);
+  border-radius:50%;
+}
+.salt-loader-ring.r1{
+  width:178px;height:178px;
+  border-top-color:#19c8ff;
+  border-right-color:rgba(25,200,255,.05);
+  animation:saltSpin 2.2s linear infinite;
+  box-shadow:0 0 22px rgba(25,200,255,.10);
+}
+.salt-loader-ring.r2{
+  width:142px;height:142px;
+  border-left:2px solid #0878f9;
+  border-bottom-color:rgba(8,120,249,.08);
+  animation:saltSpinReverse 1.7s linear infinite;
+}
+.salt-loader-ring.r3{
+  width:110px;height:110px;
+  border-style:dashed;
+  border-color:rgba(126,231,255,.25);
+  animation:saltSpin 3.5s linear infinite;
+}
+.salt-loader-orbit{
+  position:absolute;
+  width:195px;height:195px;
+  animation:saltSpin 3s linear infinite;
+}
+.salt-loader-orbit:before,
+.salt-loader-orbit:after{
+  content:"";
+  position:absolute;
+  width:6px;height:6px;
+  border-radius:50%;
+  background:#19c8ff;
+  box-shadow:0 0 12px 3px rgba(25,200,255,.65);
+}
+.salt-loader-orbit:before{top:7px;left:50%}
+.salt-loader-orbit:after{
+  bottom:28px;right:5px;
+  width:4px;height:4px;
+  background:#0878f9;
+}
+.salt-loader-logo{
+  position:relative;
+  z-index:4;
+  width:74px;height:74px;
+  object-fit:contain;
+  padding:10px;
+  border-radius:21px;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.15);
+  box-shadow:
+    0 0 0 8px rgba(25,200,255,.035),
+    0 0 35px rgba(25,200,255,.22);
+  animation:saltLogoPulse 2s ease-in-out infinite;
+}
+.salt-loader-scan{
+  position:absolute;
+  z-index:3;
+  width:96px;height:1px;
+  background:linear-gradient(90deg,transparent,#66e4ff,transparent);
+  box-shadow:0 0 12px rgba(25,200,255,.7);
+  animation:saltScan 1.8s ease-in-out infinite;
+}
+.salt-loader-content{
+  position:absolute;
+  top:calc(50% + 122px);
+  left:50%;
+  transform:translateX(-50%);
+  text-align:center;
+  white-space:nowrap;
+}
+.salt-loader-title{
+  color:#fff;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  text-shadow:0 0 18px rgba(25,200,255,.22);
+}
+.salt-loader-status{
+  margin-top:9px;
+  color:rgba(187,219,245,.62);
+  font-size:10px;
+  letter-spacing:1.4px;
+}
+.salt-loader-status:after{
+  content:"";
+  display:inline-block;
+  width:18px;
+  text-align:left;
+  animation:saltDots 1.2s steps(4,end) infinite;
+}
+.salt-loader-corner{
+  position:absolute;
+  width:28px;height:28px;
+  border-color:rgba(72,205,255,.38);
+}
+.salt-loader-corner.tl{top:24px;left:24px;border-top:1px solid;border-left:1px solid}
+.salt-loader-corner.tr{top:24px;right:24px;border-top:1px solid;border-right:1px solid}
+.salt-loader-corner.bl{bottom:24px;left:24px;border-bottom:1px solid;border-left:1px solid}
+.salt-loader-corner.br{bottom:24px;right:24px;border-bottom:1px solid;border-right:1px solid}
+
+@keyframes saltSpin{to{transform:rotate(360deg)}}
+@keyframes saltSpinReverse{to{transform:rotate(-360deg)}}
+@keyframes saltLogoPulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 0 8px rgba(25,200,255,.035),0 0 35px rgba(25,200,255,.20)}
+  50%{transform:scale(1.035);box-shadow:0 0 0 12px rgba(25,200,255,.025),0 0 48px rgba(25,200,255,.34)}
+}
+@keyframes saltScan{
+  0%,100%{transform:translateY(-38px);opacity:.25}
+  50%{transform:translateY(38px);opacity:1}
+}
+@keyframes saltDots{
+  0%{content:""}
+  25%{content:"."}
+  50%{content:".."}
+  75%,100%{content:"..."}
+}
+@media(max-width:430px){
+  .salt-loader-core{transform:scale(.88)}
+  .salt-loader-content{top:calc(50% + 110px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .salt-loader-ring,.salt-loader-orbit,.salt-loader-logo,.salt-loader-scan{
+    animation:none!important;
+  }
+}
+
 </style>
 
     <!-- SALT Workforce PWA -->
@@ -591,6 +771,36 @@ input::placeholder{color:#a7b3c4}
 </head>
 
 <body>
+
+<!-- SALT Workforce Modern Tech Startup Loader -->
+<div id="saltTechLoader" aria-label="Loading SALT Workforce">
+  <div class="salt-loader-grid"></div>
+  <div class="salt-loader-noise"></div>
+
+  <span class="salt-loader-corner tl"></span>
+  <span class="salt-loader-corner tr"></span>
+  <span class="salt-loader-corner bl"></span>
+  <span class="salt-loader-corner br"></span>
+
+  <div class="salt-loader-core">
+    <div class="salt-loader-ring r1"></div>
+    <div class="salt-loader-ring r2"></div>
+    <div class="salt-loader-ring r3"></div>
+    <div class="salt-loader-orbit"></div>
+    <div class="salt-loader-scan"></div>
+
+    <img
+      class="salt-loader-logo"
+      src="{{ url_for('static', filename='salt-logo.png') }}"
+      alt="SALT">
+  </div>
+
+  <div class="salt-loader-content">
+    <div class="salt-loader-title">SALT Workforce</div>
+    <div class="salt-loader-status">Initializing workspace</div>
+  </div>
+</div>
+
 <div class="shell">
 
   <section class="brand-panel">
@@ -806,6 +1016,31 @@ form.addEventListener("submit",function(e){
 document.getElementById("password").addEventListener("keydown",function(e){
   if(e.key==="Enter") form.requestSubmit();
 });
+</script>
+
+
+<script>
+/* SALT Workforce startup loader */
+(function () {
+  const loader = document.getElementById("saltTechLoader");
+  if (!loader) return;
+
+  const hideLoader = function () {
+    setTimeout(function () {
+      loader.classList.add("loader-done");
+
+      setTimeout(function () {
+        loader.remove();
+      }, 700);
+    }, 5000);
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", hideLoader, { once:true });
+  } else {
+    hideLoader();
+  }
+})();
 </script>
 
 </body>
