@@ -588,6 +588,728 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 }
 </style>
 
+
+<style id="salt-connect-social-corrected">
+/* =========================================================
+   SALT CONNECT — CORRECTED CHAT/SOCIAL ARCHITECTURE
+   CHAT:
+      Existing conversation list + existing chat remain.
+   SOCIAL:
+      Hide conversation list, reveal Workforce Portal sidebar,
+      and use the supplied Social visual.
+   ========================================================= */
+
+.salt-social-view {
+    background:#f4f8fd;
+    overflow-y:auto;
+    min-width:0;
+}
+
+.salt-social-topbar {
+    height:68px;
+    background:rgba(255,255,255,.97);
+    border-bottom:1px solid #e2e8f0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+    padding:0 24px;
+    position:sticky;
+    top:0;
+    z-index:20;
+}
+
+.salt-social-search {
+    width:min(370px,42vw);
+    height:42px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:0 14px;
+    border-radius:13px;
+    background:#f1f5fb;
+    border:1px solid #e5ebf3;
+    color:#64748b;
+}
+.salt-social-search input {
+    width:100%;
+    border:0;
+    outline:0;
+    background:transparent;
+    font-size:13px;
+    color:#334155;
+}
+.salt-social-search input::placeholder { color:#94a3b8; }
+
+.salt-social-switch {
+    display:flex;
+    align-items:center;
+    gap:3px;
+    padding:4px;
+    border-radius:15px;
+    background:#edf2f8;
+    border:1px solid #dfe7f0;
+}
+.salt-social-switch button {
+    min-width:105px;
+    border:0;
+    border-radius:11px;
+    padding:9px 17px;
+    background:transparent;
+    color:#64748b;
+    font-size:13px;
+    font-weight:800;
+    cursor:pointer;
+    transition:.2s ease;
+}
+.salt-social-switch button.active {
+    color:#fff;
+    background:linear-gradient(135deg,#2878ed,#4338ca);
+    box-shadow:0 7px 17px rgba(37,99,235,.2);
+}
+
+.salt-social-profile {
+    display:flex;
+    align-items:center;
+    gap:9px;
+    color:#173760;
+    font-size:13px;
+    font-weight:800;
+}
+.salt-social-mini-avatar {
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg,#2563eb,#4338ca);
+    color:#fff;
+    font-weight:900;
+}
+.salt-social-mini-avatar img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+.salt-social-content {
+    max-width:1260px;
+    width:100%;
+    margin:0 auto;
+    padding:14px 22px 35px;
+}
+
+.salt-social-hero {
+    height:177px;
+    border-radius:18px;
+    overflow:hidden;
+    position:relative;
+    color:#fff;
+    background:
+        linear-gradient(110deg,#07529b,#1677cf 65%,#0d5aa9);
+    box-shadow:0 13px 30px rgba(9,66,130,.17);
+}
+.salt-social-hero:after {
+    content:"";
+    position:absolute;
+    left:-5%;
+    right:-5%;
+    bottom:-62px;
+    height:110px;
+    border-radius:50%;
+    background:rgba(255,255,255,.08);
+    transform:rotate(-4deg);
+}
+.salt-social-hero-inner {
+    position:relative;
+    z-index:2;
+    padding:25px 28px;
+}
+.salt-social-hero h2 {
+    margin:0;
+    font-size:32px;
+    line-height:1;
+    font-weight:900;
+}
+.salt-social-hero p {
+    margin:8px 0 0;
+    font-size:14px;
+    color:#e7f2ff;
+}
+.salt-social-script {
+    position:absolute;
+    right:35px;
+    top:23px;
+    z-index:2;
+    text-align:center;
+    font:italic 25px/1.02 cursive;
+    transform:rotate(-5deg);
+}
+.salt-social-hero-links {
+    display:flex;
+    flex-wrap:wrap;
+    gap:27px;
+    margin-top:24px;
+    font-size:12px;
+    font-weight:800;
+}
+.salt-social-hero-links span {
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.salt-social-grid {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 275px;
+    gap:18px;
+    margin-top:18px;
+}
+.salt-social-card {
+    background:#fff;
+    border:1px solid #e4eaf2;
+    border-radius:16px;
+    box-shadow:0 8px 25px rgba(15,23,42,.055);
+}
+.salt-social-composer { padding:14px 17px; }
+.salt-social-compose-row {
+    display:flex;
+    gap:12px;
+    align-items:center;
+}
+.salt-social-avatar {
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    overflow:hidden;
+    flex:none;
+    background:linear-gradient(135deg,#2563eb,#4338ca);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:900;
+}
+.salt-social-avatar img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+.salt-social-compose-input {
+    height:52px;
+    flex:1;
+    border:1px solid #dfe7f0;
+    border-radius:28px;
+    display:flex;
+    align-items:center;
+    padding:0 19px;
+    color:#94a3b8;
+    font-size:14px;
+    cursor:text;
+    background:#fff;
+}
+.salt-social-tools {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:12px;
+    padding-left:56px;
+    gap:10px;
+}
+.salt-social-tool {
+    border:0;
+    border-radius:11px;
+    padding:9px 12px;
+    background:#eff6ff;
+    color:#1970d7;
+    font-size:12px;
+    font-weight:800;
+}
+.salt-social-tool.ach {
+    background:#fff8e6;
+    color:#a06b00;
+}
+.salt-social-tool.poll {
+    background:#f2efff;
+    color:#6b55c8;
+}
+.salt-social-post-btn {
+    border:0;
+    border-radius:11px;
+    background:#1677ed;
+    color:#fff;
+    padding:10px 22px;
+    font-size:12px;
+    font-weight:800;
+    box-shadow:0 7px 17px rgba(37,99,235,.2);
+}
+
+.salt-social-tabs {
+    display:flex;
+    gap:27px;
+    border-bottom:1px solid #dce5ef;
+    margin-top:13px;
+}
+.salt-social-tab {
+    border:0;
+    background:transparent;
+    color:#687b93;
+    font-size:13px;
+    font-weight:700;
+    padding:11px 2px 10px;
+    position:relative;
+}
+.salt-social-tab.active { color:#1769d1; }
+.salt-social-tab.active:after {
+    content:"";
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:-1px;
+    height:2px;
+    background:#1677ed;
+}
+
+.salt-social-feed {
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin-top:14px;
+}
+.salt-social-post {
+    padding:15px 17px;
+}
+.salt-social-post-head {
+    display:flex;
+    align-items:flex-start;
+    gap:11px;
+}
+.salt-social-user {
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    overflow:hidden;
+    flex:none;
+    background:linear-gradient(135deg,#2563eb,#4338ca);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:900;
+}
+.salt-social-user img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+.salt-social-meta {
+    flex:1;
+    min-width:0;
+}
+.salt-social-meta strong {
+    display:block;
+    color:#173760;
+    font-size:14px;
+    font-weight:900;
+}
+.salt-social-meta span {
+    display:block;
+    color:#8292a7;
+    font-size:11px;
+    margin-top:2px;
+}
+.salt-social-post-text {
+    margin-top:10px;
+    color:#193b68;
+    font-size:14px;
+    line-height:1.62;
+}
+.salt-social-actions {
+    display:flex;
+    gap:25px;
+    margin-top:11px;
+}
+.salt-social-actions button {
+    border:0;
+    background:transparent;
+    color:#60758f;
+    font-size:12px;
+    font-weight:700;
+    display:flex;
+    gap:7px;
+    align-items:center;
+}
+.salt-social-actions button:hover { color:#1769d1; }
+.salt-social-actions .liked { color:#ef4053; }
+
+.salt-social-side {
+    padding:17px;
+}
+.salt-social-side-title {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:#173760;
+    font-size:14px;
+    font-weight:900;
+    margin-bottom:12px;
+}
+.salt-social-side-item {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 0;
+}
+.salt-social-item-icon {
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:#eaf3ff;
+    color:#2877df;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex:none;
+}
+.salt-social-side-item strong {
+    display:block;
+    color:#173760;
+    font-size:12px;
+}
+.salt-social-side-item small {
+    display:block;
+    color:#8998aa;
+    font-size:10px;
+    margin-top:2px;
+}
+.salt-social-quote {
+    padding:20px;
+    border-radius:16px;
+    background:#dfedfc;
+    color:#1d4b84;
+    font-size:14px;
+    line-height:1.55;
+    font-style:italic;
+}
+.salt-social-quote b {
+    font-size:34px;
+    line-height:.4;
+    display:block;
+}
+
+/* SOCIAL MODE — desktop: portal sidebar stays, conversation list disappears. */
+@media (min-width:768px) {
+    body.salt-social-mode #salt-master-sidebar {
+        transform:translateX(0) !important;
+        visibility:visible !important;
+        pointer-events:auto !important;
+    }
+
+    body.salt-social-mode > .flex.h-screen {
+        margin-left:250px !important;
+    }
+
+    body.salt-social-mode #chat-users-sidebar {
+        display:none !important;
+    }
+
+    body.salt-social-mode #saltConnectChatView {
+        display:none !important;
+    }
+
+    body.salt-social-mode #saltConnectSocialView {
+        display:block !important;
+        width:100% !important;
+    }
+
+    body.salt-social-mode #saltConnectModeBar {
+        display:none !important;
+    }
+}
+
+/* SOCIAL MODE — mobile: hide conversation list and show Social full screen. */
+@media (max-width:767px) {
+    .salt-social-topbar {
+        height:60px;
+        padding:0 12px;
+    }
+    .salt-social-search { display:none; }
+    .salt-social-profile span,
+    .salt-social-profile > i { display:none; }
+    .salt-social-switch button {
+        min-width:88px;
+        padding:8px 12px;
+    }
+    .salt-social-content {
+        padding:10px 12px 85px;
+    }
+    .salt-social-hero { height:160px; }
+    .salt-social-hero-inner { padding:22px 19px; }
+    .salt-social-hero h2 { font-size:27px; }
+    .salt-social-script {
+        font-size:18px;
+        right:16px;
+    }
+    .salt-social-hero-links {
+        gap:13px;
+        margin-top:19px;
+        font-size:10px;
+    }
+    .salt-social-grid { display:block; margin-top:12px; }
+    .salt-social-grid > aside { display:none; }
+    .salt-social-tools { padding-left:0; }
+    .salt-social-tabs {
+        gap:16px;
+        overflow-x:auto;
+    }
+    .salt-social-tab { white-space:nowrap; }
+
+    body.salt-social-mode #chat-users-sidebar {
+        display:none !important;
+    }
+    body.salt-social-mode #saltConnectChatView {
+        display:none !important;
+    }
+    body.salt-social-mode #saltConnectSocialView {
+        display:block !important;
+        position:fixed !important;
+        inset:0 !important;
+        z-index:80 !important;
+        width:100vw !important;
+        height:100dvh !important;
+    }
+    body.salt-social-mode #salt-master-sidebar {
+        z-index:22000 !important;
+    }
+}
+</style>
+
+
+<style id="salt-connect-width-fix">
+@media (min-width:768px) {
+    body.salt-social-mode #saltConnectSocialView {
+        flex:1 1 auto !important;
+        width:100% !important;
+        min-width:0 !important;
+        display:block !important;
+    }
+    body.salt-social-mode #saltConnectChatView {
+        display:none !important;
+    }
+    body.salt-social-mode #chat-users-sidebar {
+        display:none !important;
+        width:0 !important;
+        min-width:0 !important;
+        flex:0 0 0 !important;
+    }
+}
+</style>
+
+<style id="salt-social-poll-ui">
+.salt-poll-modal{position:fixed;inset:0;background:rgba(7,30,57,.48);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);z-index:30000;display:none;align-items:center;justify-content:center;padding:18px}
+.salt-poll-modal.open{display:flex}
+.salt-poll-dialog{width:min(520px,100%);max-height:90dvh;overflow-y:auto;background:#fff;border-radius:20px;box-shadow:0 25px 70px rgba(15,23,42,.25);padding:20px}
+.salt-poll-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.salt-poll-head h3{margin:0;color:#173760;font-size:18px;font-weight:900}
+.salt-poll-close{width:34px;height:34px;border:0;border-radius:10px;background:#f1f5f9;color:#64748b;cursor:pointer}
+.salt-poll-label{display:block;color:#334155;font-size:12px;font-weight:800;margin:12px 0 6px}
+.salt-poll-input{width:100%;height:44px;border:1px solid #dce5ef;border-radius:11px;padding:0 12px;outline:none;font-size:13px}
+.salt-poll-input:focus{border-color:#60a5fa;box-shadow:0 0 0 4px #eff6ff}
+.salt-poll-option-row{display:flex;gap:8px;margin-top:8px}
+.salt-poll-option-row .salt-poll-input{flex:1}
+.salt-poll-remove{width:40px;border:0;border-radius:10px;background:#fef2f2;color:#dc2626;cursor:pointer}
+.salt-poll-add{margin-top:9px;border:0;background:#eff6ff;color:#1769d1;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;cursor:pointer}
+.salt-poll-footer{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+.salt-poll-cancel,.salt-poll-submit{border:0;border-radius:11px;padding:10px 17px;font-size:12px;font-weight:800;cursor:pointer}
+.salt-poll-cancel{background:#f1f5f9;color:#475569}
+.salt-poll-submit{background:#1677ed;color:#fff}
+.salt-poll-card{margin-top:12px;padding:13px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fbff}
+.salt-poll-question{font-weight:900;color:#173760;font-size:13px;line-height:1.45}
+.salt-poll-choice{position:relative;width:100%;overflow:hidden;margin-top:8px;border:1px solid #dce5ef;border-radius:11px;background:#fff;text-align:left;padding:9px 11px;cursor:pointer;color:#334155;font-size:12px;font-weight:750}
+.salt-poll-choice .bar{position:absolute;left:0;top:0;bottom:0;background:#dbeafe;width:0;z-index:0}
+.salt-poll-choice .choice-content{position:relative;z-index:1;display:flex;justify-content:space-between;gap:10px}
+.salt-poll-choice.selected{border-color:#60a5fa}
+.salt-poll-meta{margin-top:8px;color:#94a3b8;font-size:10px}
+</style>
+
+<style id="salt-social-profile-menu">
+.salt-social-profile-wrap{position:relative}
+.salt-social-profile-trigger{border:0;background:transparent;display:flex;align-items:center;gap:9px;color:#173760;font-size:13px;font-weight:800;cursor:pointer;border-radius:13px;padding:4px 6px}
+.salt-social-profile-trigger:hover{background:#f1f5f9}
+.salt-social-profile-trigger .salt-social-mini-avatar{flex:none}
+.salt-social-profile-menu{position:absolute;right:0;top:calc(100% + 9px);width:215px;background:#fff;border:1px solid #e2e8f0;border-radius:15px;box-shadow:0 18px 45px rgba(15,23,42,.16);padding:7px;display:none;z-index:100}
+.salt-social-profile-menu.open{display:block;animation:saltMenuIn .18s ease}
+.salt-social-profile-menu button,.salt-social-profile-menu a{width:100%;border:0;background:transparent;text-decoration:none;display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:10px;color:#334155;font-size:12px;font-weight:750;text-align:left;cursor:pointer}
+.salt-social-profile-menu button:hover,.salt-social-profile-menu a:hover{background:#eff6ff;color:#1769d1}
+.salt-social-profile-menu .danger:hover{background:#fef2f2;color:#dc2626}
+.salt-social-profile-menu i{width:18px;text-align:center;color:#64748b}
+.salt-social-profile-menu .danger i{color:#dc2626}
+.salt-social-saved-empty{padding:35px 15px;text-align:center}
+.salt-social-saved-empty .icon{width:58px;height:58px;margin:0 auto 12px;border-radius:18px;background:#eff6ff;color:#1769d1;display:grid;place-items:center;font-size:22px}
+@keyframes saltMenuIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:767px){
+ .salt-social-profile-menu{position:fixed;right:10px;top:67px;width:min(250px,calc(100vw - 20px))}
+}
+</style>
+
+<style id="salt-social-post-menu-fix">
+.salt-social-post-head{position:relative}
+.salt-social-post-menu-wrap{position:relative;margin-left:auto;flex:none}
+.salt-social-post-menu-btn{width:34px;height:34px;border:0;background:transparent;color:#64748b;border-radius:10px;display:grid;place-items:center;cursor:pointer}
+.salt-social-post-menu-btn:hover{background:#f1f5f9;color:#173760}
+.salt-social-post-menu{position:absolute;right:0;top:40px;width:170px;background:#fff;border:1px solid #e2e8f0;border-radius:13px;box-shadow:0 16px 40px rgba(15,23,42,.14);padding:6px;display:none;z-index:80}
+.salt-social-post-menu.open{display:block;animation:saltPostMenuIn .16s ease}
+.salt-social-post-menu button{width:100%;border:0;background:transparent;text-align:left;padding:10px 11px;border-radius:9px;font-size:12px;font-weight:750;color:#334155;cursor:pointer;display:flex;align-items:center;gap:9px}
+.salt-social-post-menu button:hover{background:#f8fafc}
+.salt-social-post-menu button.danger{color:#dc2626}
+.salt-social-post-menu button.danger:hover{background:#fef2f2}
+@keyframes saltPostMenuIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.salt-poll-choice{transition:border-color .16s ease,box-shadow .16s ease,transform .12s ease}
+.salt-poll-choice:active{transform:scale(.995)}
+.salt-poll-choice .bar{transition:width .35s cubic-bezier(.2,.8,.2,1)}
+.salt-poll-vote-status{min-height:18px}
+.salt-poll-choice-label{position:relative;z-index:2}
+.salt-poll-choice-pct{position:relative;z-index:2;font-weight:800;color:#2563eb}
+</style>
+<style id="salt-social-functional-fixes">
+.salt-social-side-loading,.salt-social-side-empty{padding:10px 4px;color:#94a3b8;font-size:12px}
+.salt-social-side-link{width:100%;border:0;background:transparent;text-align:left;cursor:pointer}
+.salt-social-side-link:hover{background:#f8fafc}
+.salt-poll-card{margin-top:14px;padding:16px;border:1px solid #e2e8f0;border-radius:18px;background:#f8fbff}
+.salt-poll-question{font-weight:800;color:#0f172a;margin-bottom:12px}
+.salt-poll-options{display:grid;gap:8px}
+.salt-poll-choice{position:relative;width:100%;min-height:44px;padding:10px 12px;border:1px solid #dbe4f0;border-radius:13px;background:#fff;overflow:hidden;text-align:left;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;cursor:pointer}
+.salt-poll-choice:disabled{cursor:default}
+.salt-poll-choice.selected{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08)}
+.salt-poll-choice-bar{grid-column:1/-1;height:7px;background:#e8eef7;border-radius:99px;overflow:hidden}
+.salt-poll-choice-bar .bar{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#60a5fa);border-radius:99px;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.salt-poll-choice-pct{font-size:11px;font-weight:800;color:#2563eb;min-width:34px;text-align:right}
+.salt-poll-vote-status{margin-top:10px;font-size:11px;color:#64748b;font-weight:700}
+.salt-poll-vote-loading{display:inline-flex;align-items:center;gap:7px;color:#2563eb}
+.salt-poll-choice .bar.shimmer{background:linear-gradient(90deg,#bfdbfe,#60a5fa,#bfdbfe);background-size:200% 100%;animation:saltPollShimmer 1s linear infinite}
+@keyframes saltPollShimmer{to{background-position:-200% 0}}
+.salt-social-achievement-link .salt-social-user img,.salt-social-birthday-link .salt-social-user img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+</style>
+
+<style id="salt-social-modal-final-fix">
+/* Final modal layer: kept outside all other style blocks. */
+.salt-poll-modal{
+    position:fixed !important;
+    inset:0 !important;
+    z-index:99999 !important;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(2,18,40,.62);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+}
+.salt-poll-modal.open{
+    display:flex !important;
+    visibility:visible !important;
+    opacity:1 !important;
+}
+.salt-poll-dialog{
+    position:relative;
+    z-index:100000;
+    width:min(540px,calc(100vw - 32px));
+    max-height:min(88dvh,760px);
+    overflow-y:auto;
+    background:#fff;
+    border-radius:22px;
+    padding:22px;
+    box-shadow:0 30px 90px rgba(0,0,0,.30);
+    transform:translateY(0) scale(1);
+}
+.salt-poll-modal:not(.open){pointer-events:none !important;}
+.salt-poll-modal.open{pointer-events:auto !important;}
+.salt-poll-dialog button,.salt-poll-dialog input,.salt-poll-dialog select,.salt-poll-dialog textarea{pointer-events:auto !important;}
+.salt-notification-item{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:11px;
+    border:0;
+    border-radius:12px;
+    background:transparent;
+    cursor:pointer;
+}
+.salt-notification-item:hover{background:#f1f5f9;}
+.salt-notification-item.unread{background:#eff6ff;}
+</style>
+
+<style id="salt-social-composer-functional">
+.salt-social-composer.is-expanded{
+    box-shadow:0 12px 32px rgba(15,23,42,.08);
+    border-color:#bfdbfe;
+}
+.salt-social-composer.is-expanded .salt-social-compose-input{
+    border-color:#93c5fd;
+    background:#f8fbff;
+}
+#saltSocialPostText{
+    resize:vertical;
+    min-height:110px;
+    color:#173760;
+    background:#fff;
+    caret-color:#1677ed;
+}
+#saltSocialPostText:focus{
+    border-color:#60a5fa !important;
+    box-shadow:0 0 0 4px rgba(96,165,250,.14);
+}
+#saltSocialPostText.salt-composer-visible{
+    display:block !important;
+}
+#saltSocialPostOptions.salt-composer-visible{
+    display:flex !important;
+}
+</style>
+
+
+<style id="salt-social-share-sheet">
+.salt-share-backdrop{
+    position:fixed; inset:0; z-index:50000;
+    display:none; align-items:center; justify-content:center;
+    padding:18px; background:rgba(15,23,42,.48);
+    backdrop-filter:blur(6px);
+}
+.salt-share-backdrop.open{display:flex}
+.salt-share-sheet{
+    width:min(440px,100%); background:#fff; border:1px solid #e2e8f0;
+    border-radius:24px; box-shadow:0 25px 70px rgba(15,23,42,.22);
+    overflow:hidden; animation:saltShareIn .18s ease-out;
+}
+@keyframes saltShareIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.salt-share-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #eef2f7}
+.salt-share-head h3{margin:0;font-size:15px;font-weight:900;color:#0f172a}
+.salt-share-close{width:34px;height:34px;border:0;border-radius:11px;background:#f1f5f9;color:#64748b;cursor:pointer}
+.salt-share-preview{margin:16px 20px;padding:13px 14px;border:1px solid #e5eaf1;border-radius:16px;background:#f8fafc}
+.salt-share-preview-name{font-size:12px;font-weight:900;color:#334155}
+.salt-share-preview-text{margin-top:5px;font-size:12px;line-height:1.5;color:#64748b;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.salt-share-options{padding:0 20px 20px;display:grid;gap:9px}
+.salt-share-option{
+    width:100%;display:flex;align-items:center;gap:13px;padding:13px 14px;
+    border:1px solid #e5eaf1;border-radius:15px;background:#fff;text-align:left;
+    cursor:pointer;transition:.15s ease;
+}
+.salt-share-option:hover{border-color:#bfdbfe;background:#f8fbff;transform:translateY(-1px)}
+.salt-share-option-icon{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#eff6ff;color:#2563eb;font-size:15px;flex:none}
+.salt-share-option strong{display:block;font-size:12px;color:#0f172a}
+.salt-share-option small{display:block;margin-top:2px;font-size:10px;color:#94a3b8}
+.salt-share-status{padding:0 20px 18px;font-size:11px;color:#64748b;min-height:18px}
+</style>
+
+<style id="salt-social-video-support">
+.salt-social-video-preview{display:none;margin-top:10px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;background:#0f172a}
+.salt-social-video-preview video{display:block;width:100%;max-height:360px;object-fit:contain}
+.salt-social-media-video{display:block;width:100%;max-height:520px;object-fit:contain;background:#020617}
+.salt-social-upload-note{font-size:10px;color:#94a3b8;margin-top:5px}
+</style>
 </head>
 
 <body class="bg-[#f4f7fb]">
@@ -788,10 +1510,302 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 
         </aside>
 
+        <!-- SOCIAL AREA -->
+        <main id="saltConnectSocialView" class="salt-social-view hidden flex-1 min-w-0">
+
+            <div class="salt-social-topbar">
+                <div class="salt-social-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search people, posts, or topics...">
+                </div>
+
+                <div class="salt-social-switch">
+                    <button type="button" data-salt-mode="chat">
+                        <i class="fas fa-comments mr-1"></i> Chat
+                    </button>
+                    <button type="button" data-salt-mode="social" class="active">
+                        <i class="fas fa-globe mr-1"></i> Social
+                    </button>
+                </div>
+
+                <div class="salt-social-profile-wrap">
+                    <div class="salt-social-profile">
+
+                        <button type="button" id="saltSocialProfileTrigger" class="salt-social-profile-trigger" aria-expanded="false">
+                            <div class="salt-social-mini-avatar">
+                                {% if receiver and receiver.profile_pic %}
+                                    <img src="{{ receiver.profile_pic }}" alt="{{ session.get('name','User') }}">
+                                {% else %}
+                                    {{ (session.get('name','U') or 'U')[0] }}
+                                {% endif %}
+                            </div>
+                            <span>{{ session.get('name','User') }}</span>
+                            <i id="saltSocialProfileChevron" class="fas fa-chevron-down text-[10px]"></i>
+                        </button>
+                    </div>
+
+                    <div id="saltSocialProfileMenu" class="salt-social-profile-menu" role="menu">
+                        <a href="/settings/profile">
+                            <i class="fas fa-user"></i><span>View Profile</span>
+                        </a>
+                        <button type="button" id="saltSocialSavedPostsBtn">
+                            <i class="fas fa-bookmark"></i><span>Saved Posts</span>
+                        </button>
+                        <button type="button" id="saltSocialMyAchievementsBtn">
+                            <i class="fas fa-trophy"></i><span>My Achievements</span>
+                        </button>
+                        <a href="/settings/profile">
+                            <i class="fas fa-gear"></i><span>Account Settings</span>
+                        </a>
+                        <a href="/logout" class="danger" onclick="return confirm('Are you sure you want to logout?')">
+                            <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="salt-social-content">
+
+                <section class="salt-social-hero">
+                    <div class="salt-social-hero-inner">
+                        <h2>SALT Connect</h2>
+                        <p>A stronger team. A brighter tomorrow.</p>
+                        <div class="salt-social-hero-links">
+                            <span><i class="fas fa-comment-dots text-lg"></i> Share Updates</span>
+                            <span><i class="fas fa-trophy text-lg"></i> Recognise Achievements</span>
+                            <span><i class="fas fa-users text-lg"></i> Build Community</span>
+                        </div>
+                    </div>
+                    <div class="salt-social-script">Share<br>Connect<br>Celebrate</div>
+                </section>
+
+                <div class="salt-social-grid">
+                    <section>
+
+                        <div class="salt-social-card salt-social-composer" id="saltSocialComposer">
+    <div class="salt-social-compose-row" id="saltSocialComposerPrompt">
+        <div class="salt-social-avatar">
+            {{ (session.get('name','U') or 'U')[0] }}
+        </div>
+        <button id="saltSocialComposerOpen"
+                type="button"
+                class="salt-social-compose-input text-left">
+            What's happening at SALT?
+        </button>
+    </div>
+
+    <div id="saltSocialComposerEditor" class="salt-composer-editor" hidden>
+        <textarea id="saltSocialPostText"
+                  class="w-full rounded-2xl border border-slate-200 p-3 outline-none text-sm"
+                  placeholder="Share an update with the SALT community..."
+                  aria-label="Write a SALT Connect post"></textarea>
+
+        <div id="saltSocialPostOptions" class="mt-3 flex flex-wrap items-center gap-2">
+            <select id="saltSocialPostType" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold outline-none">
+                <option value="post">Post</option>
+                <option value="achievement">Achievement</option>
+                <option value="announcement">Announcement</option>
+                <option value="poll">Poll</option>
+            </select>
+            <select id="saltSocialVisibility" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold outline-none">
+                <option value="everyone">Everyone</option>
+                <option value="staff">Staff</option>
+            </select>
+            <span id="saltSocialPhotoName" class="text-xs text-slate-500"></span>
+        </div>
+
+        <input id="saltSocialPhotoInput" type="file"
+               accept="image/jpeg,image/png,image/gif,image/webp"
+               class="hidden">
+
+        <div class="salt-social-tools mt-3">
+            <div class="flex flex-wrap gap-2">
+                <button type="button" id="saltSocialPhotoBtn" class="salt-social-tool">
+                    <i class="fas fa-image mr-1"></i> Photo
+                </button>
+                <button type="button" id="saltSocialAchievementBtn" class="salt-social-tool ach">
+                    <i class="fas fa-trophy mr-1"></i> Achievement
+                </button>
+                <button type="button" id="saltSocialPollBtn" class="salt-social-tool poll">
+                    <i class="fas fa-chart-column mr-1"></i> Poll
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" id="saltSocialComposerCancel" class="salt-social-cancel-btn">
+                    Cancel
+                </button>
+                <button type="button" id="saltSocialPostBtn" class="salt-social-post-btn">
+                    <i class="fas fa-paper-plane mr-1"></i> Post
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+                        <div class="salt-social-tabs">
+                            <button type="button" class="salt-social-tab active">All Posts</button>
+                            <button type="button" class="salt-social-tab">Announcements</button>
+                            <button type="button" class="salt-social-tab">Achievements</button>
+                            <button type="button" class="salt-social-tab">My Posts</button>
+                        </div>
+
+                        <div class="salt-social-feed">
+
+                            <article class="salt-social-card salt-social-post">
+                                <div class="salt-social-post-head">
+                                    <div class="salt-social-user">AM</div>
+                                    <div class="salt-social-meta">
+                                        <strong>Akosua Mensah</strong>
+                                        <span>HR Department · 35 minutes ago</span>
+                                    </div>
+                                    <button type="button" class="text-slate-400">
+                                        <i class="fas fa-ellipsis"></i>
+                                    </button>
+                                </div>
+                                <div class="salt-social-post-text">
+                                    Happy birthday to everyone celebrating this month! 🎉<br>
+                                    Your dedication and hard work make SALT a better place. Enjoy your special day! 💙
+                                </div>
+                                <div class="salt-social-actions">
+                                    <button type="button" class="salt-social-like">
+                                        <i class="far fa-heart text-lg"></i> 24
+                                    </button>
+                                    <button type="button"><i class="far fa-comment text-lg"></i> 7</button>
+                                    <button type="button"><i class="fas fa-share text-lg"></i> Share</button>
+                                </div>
+                            </article>
+
+                            <article class="salt-social-card salt-social-post">
+                                <div class="salt-social-post-head">
+                                    <div class="salt-social-user">
+                                        {{ (session.get('name','U') or 'U')[0] }}
+                                    </div>
+                                    <div class="salt-social-meta">
+                                        <strong>{{ session.get('name','User') }}</strong>
+                                        <span>Operations · 1 hour ago</span>
+                                    </div>
+                                    <button type="button" class="text-slate-400">
+                                        <i class="fas fa-ellipsis"></i>
+                                    </button>
+                                </div>
+                                <div class="salt-social-post-text">
+                                    Completed the monthly attendance report! 🎯<br>
+                                    Great teamwork from everyone involved.
+                                </div>
+                                <div class="salt-social-actions">
+                                    <button type="button" class="salt-social-like">
+                                        <i class="far fa-heart text-lg"></i> 12
+                                    </button>
+                                    <button type="button"><i class="far fa-comment text-lg"></i> 4</button>
+                                    <button type="button"><i class="fas fa-share text-lg"></i> Share</button>
+                                </div>
+                            </article>
+
+                            <article class="salt-social-card salt-social-post">
+                                <div class="salt-social-post-head">
+                                    <div class="salt-social-user">SALT</div>
+                                    <div class="salt-social-meta">
+                                        <strong>SALT Administration</strong>
+                                        <span>Official · 2 hours ago</span>
+                                    </div>
+                                    <div class="ml-auto text-blue-600 text-xs font-extrabold">
+                                        <i class="fas fa-thumbtack mr-1"></i>Pinned
+                                    </div>
+                                </div>
+                                <div class="salt-social-post-text">
+                                    Staff meeting scheduled for Friday, September 20 at 10:00 AM.<br>
+                                    We will discuss Q4 goals, upcoming projects, and team updates. Please make sure to attend.
+                                </div>
+                                <div class="salt-social-actions">
+                                    <button type="button" class="salt-social-like">
+                                        <i class="far fa-heart text-lg"></i> 18
+                                    </button>
+                                    <button type="button"><i class="far fa-comment text-lg"></i> 5</button>
+                                    <button type="button"><i class="fas fa-share text-lg"></i> Share</button>
+                                </div>
+                            </article>
+
+                            <article class="salt-social-card salt-social-post">
+                                <div class="salt-social-post-head">
+                                    <div class="salt-social-user">AS</div>
+                                    <div class="salt-social-meta">
+                                        <strong>Ama Serwaa</strong>
+                                        <span>Finance · 3 hours ago</span>
+                                    </div>
+                                    <button type="button" class="text-slate-400">
+                                        <i class="fas fa-ellipsis"></i>
+                                    </button>
+                                </div>
+                                <div class="salt-social-post-text">
+                                    Just reached a 10-day attendance streak! 🔥<br>
+                                    Consistency is key. Let's keep it going!
+                                </div>
+                                <div class="salt-social-actions">
+                                    <button type="button" class="salt-social-like liked">
+                                        <i class="fas fa-heart text-lg"></i> 32
+                                    </button>
+                                    <button type="button"><i class="far fa-comment text-lg"></i> 6</button>
+                                    <button type="button"><i class="fas fa-share text-lg"></i> Share</button>
+                                </div>
+                            </article>
+
+                        </div>
+                    </section>
+
+                    <aside class="space-y-3">
+
+                        <div class="salt-social-card salt-social-side">
+                            <div class="salt-social-side-title">🔥 Trending This Week</div>
+                            <div id="saltSocialTrending">
+                                <div class="salt-social-side-loading">Loading...</div>
+                            </div>
+                        </div>
+
+                        <div class="salt-social-card salt-social-side">
+                            <div class="salt-social-side-title">🏆 Recent Achievements</div>
+                            <div id="saltSocialAchievements">
+                                <div class="salt-social-side-loading">Loading...</div>
+                            </div>
+                        </div>
+
+                        <div class="salt-social-card salt-social-side">
+                            <div class="salt-social-side-title">
+                                🎂 Upcoming Birthdays
+                                <button type="button" id="saltSocialBirthdayViewAll" class="ml-auto text-blue-600 text-[11px] font-semibold">View All</button>
+                            </div>
+                            <div id="saltSocialBirthdays">
+                                <div class="salt-social-side-loading">Loading...</div>
+                            </div>
+                        </div>
+
+                        <div class="salt-social-quote">
+                            <b>“</b>
+                            Great things in business are never done by one person. They're done by a team.
+                            <div class="text-right font-bold text-xs mt-3">— Steve Jobs</div>
+                        </div>
+
+                    </aside>
+                </div>
+            </div>
+        </main>
+
         <!-- CHAT AREA -->
-        <main class="flex-1 min-w-0 flex flex-col bg-gradient-to-b from-gray-50 to-white">
+        <main id="saltConnectChatView" class="flex-1 min-w-0 flex flex-col bg-gradient-to-b from-gray-50 to-white">
 
             {% if receiver %}
+
+            <!-- CHAT / SOCIAL SWITCH -->
+            <div id="saltConnectModeBar"
+                 class="h-[68px] bg-white/95 border-b border-slate-200 flex items-center justify-center shrink-0">
+                <div class="salt-social-switch">
+                    <button type="button" data-salt-mode="chat" class="active">
+                        <i class="fas fa-comments mr-1"></i> Chat
+                    </button>
+                    <button type="button" data-salt-mode="social">
+                        <i class="fas fa-globe mr-1"></i> Social
+                    </button>
+                </div>
+            </div>
 
             <!-- CHAT HEADER -->
             <div class="bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 md:px-8 py-5 flex items-center justify-between shadow-sm">
@@ -994,6 +2008,19 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
             {% else %}
 
 <button id="master-menu-btn-empty" type="button" aria-label="Open navigation" aria-expanded="false" class="md:hidden w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-lg hover:bg-blue-100 transition"><i class="fas fa-bars"></i></button>
+
+            <!-- CHAT / SOCIAL SWITCH -->
+            <div id="saltConnectModeBar"
+                 class="h-[68px] bg-white/95 border-b border-slate-200 flex items-center justify-center shrink-0">
+                <div class="salt-social-switch">
+                    <button type="button" data-salt-mode="chat" class="active">
+                        <i class="fas fa-comments mr-1"></i> Chat
+                    </button>
+                    <button type="button" data-salt-mode="social">
+                        <i class="fas fa-globe mr-1"></i> Social
+                    </button>
+                </div>
+            </div>
 
             <!-- EMPTY STATE -->
             <div class="flex-1 flex flex-col items-center justify-center text-center px-6">
@@ -1266,5 +2293,1271 @@ document.addEventListener("DOMContentLoaded",function(){
  side?.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>{if(innerWidth<768)close();}));
  document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
 });
-</script></body>
+</script>
+
+<script id="salt-connect-social-controller-functional">
+document.addEventListener("DOMContentLoaded", function () {
+    const socialView = document.getElementById("saltConnectSocialView");
+    const chatView = document.getElementById("saltConnectChatView");
+    const usersList = document.getElementById("chat-users-sidebar");
+    if (!socialView) return;
+
+    const chatButtons = document.querySelectorAll('[data-salt-mode="chat"]');
+    const socialButtons = document.querySelectorAll('[data-salt-mode="social"]');
+    const feed = socialView.querySelector(".salt-social-feed");
+    const search = socialView.querySelector(".salt-social-search input");
+    const composerOpen = document.getElementById("saltSocialComposerOpen");
+    const composerText = document.getElementById("saltSocialPostText");
+    const postBtn = document.getElementById("saltSocialPostBtn");
+    const photoBtn = socialView.querySelector(".salt-social-tool");
+    const photoInput = document.getElementById("saltSocialPhotoInput");
+    const photoName = document.getElementById("saltSocialPhotoName");
+    const options = document.getElementById("saltSocialPostOptions");
+    const postType = document.getElementById("saltSocialPostType");
+    const visibility = document.getElementById("saltSocialVisibility");
+    const tabs = document.querySelectorAll(".salt-social-tab");
+
+    let currentFilter = "all";
+    let currentSearch = "";
+    let loading = false;
+
+    function esc(v) {
+        return String(v ?? "").replace(/[&<>"']/g, m => ({
+            "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+        }[m]));
+    }
+
+    function timeAgo(value) {
+        if (!value) return "";
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return "";
+        const s = Math.max(0, Math.floor((Date.now()-d.getTime())/1000));
+        if (s < 60) return "just now";
+        if (s < 3600) return Math.floor(s/60) + "m ago";
+        if (s < 86400) return Math.floor(s/3600) + "h ago";
+        if (s < 604800) return Math.floor(s/86400) + "d ago";
+        return d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+    }
+
+    function avatar(name, pic, cls="salt-social-user") {
+        const letter = esc((name || "U").trim().charAt(0).toUpperCase());
+        return `<div class="${cls}">${pic ? `<img src="${esc(pic)}" alt="">` : letter}</div>`;
+    }
+
+    function mediaHtml(media) {
+        if (!Array.isArray(media) || !media.length) return "";
+        return media.map(m => m.type === "image" && m.url
+            ? `<div class="mt-3 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
+                 <img src="${esc(m.url)}" alt="Post image" class="w-full max-h-[520px] object-cover" loading="lazy">
+               </div>` : "").join("");
+    }
+
+    window.renderSaltPoll = function(poll, postId) {
+        if (!poll) return "";
+        const viewerOption = poll.viewer_option_id != null ? Number(poll.viewer_option_id) : null;
+        const closed = !!poll.closed;
+        const total = Number(poll.total_votes || 0);
+        const optionsHtml = (poll.options || []).map(o => {
+            const pct = Number(o.percentage || 0);
+            const votes = Number(o.votes || 0);
+            const selected = viewerOption === Number(o.id);
+            return `<button type="button" class="salt-poll-choice ${selected ? "selected" : ""}"
+                        data-poll-option="${o.id}" data-poll-votes="${votes}" ${closed ? "disabled" : ""}>
+                        <span class="salt-poll-choice-label">${esc(o.text || o.label)}</span>
+                        <span class="salt-poll-choice-pct">${(viewerOption !== null || closed) ? pct + "%" : ""}</span>
+                        <span class="salt-poll-choice-bar"><span class="bar" style="width:${(viewerOption !== null || closed) ? pct : 0}%"></span></span>
+                    </button>`;
+        }).join("");
+        return `<div class="salt-poll-card" data-poll-id="${poll.id}" data-poll-total="${total}" data-poll-viewer-option="${viewerOption ?? ""}">
+            <div class="salt-poll-question">${esc(poll.question)}</div>
+            <div class="salt-poll-options">${optionsHtml}</div>
+            <div class="salt-poll-vote-status">${viewerOption !== null ? `✓ You voted · ${total} vote${total === 1 ? "" : "s"}` : (closed ? "Poll closed" : "Select an option to vote")}</div>
+        </div>`;
+    };
+
+    function renderPost(p) {
+        const liked = !!p.viewer_liked;
+        const bookmarked = !!p.viewer_bookmarked;
+        const shared = !!p.viewer_shared;
+        return `
+        <article id="social-post-${p.id}" class="salt-social-card salt-social-post" data-post-id="${p.id}">
+          <div class="salt-social-post-head">
+            ${avatar(p.author_name,p.author_profile_pic)}
+            <div class="salt-social-meta">
+              <strong>${esc(p.author_name)}</strong>
+              <span>${esc(p.post_type === "announcement" ? "Official Announcement" : p.post_type === "achievement" ? "Achievement" : "SALT Community")} · ${timeAgo(p.created_at)}</span>
+            </div>
+            <div class="salt-social-post-menu-wrap">
+              <button type="button" class="salt-social-post-menu-btn" data-post-menu aria-label="Post options" aria-expanded="false"><i class="fas fa-ellipsis"></i></button>
+              <div class="salt-social-post-menu" data-post-menu-panel>
+                ${p.is_pinned ? `<div class="px-2 py-1.5 text-[10px] font-extrabold text-blue-600"><i class="fas fa-thumbtack mr-1"></i>Pinned post</div>` : ""}
+                <button type="button" class="danger" data-post-hide><i class="fas fa-eye-slash"></i>Hide this post</button>
+              </div>
+            </div>
+          </div>
+          ${p.content ? `<div class="salt-social-post-text">${esc(p.content).replace(/\n/g,"<br>")}</div>` : ""}
+          ${mediaHtml(p.media)}
+          ${p.post_type === "poll" && p.poll ? window.renderSaltPoll(p.poll, p.id) : ""}
+          ${p.hashtags?.length ? `<div class="mt-2 text-xs text-blue-600 font-semibold">${p.hashtags.map(h=>"#"+esc(h)).join(" ")}</div>` : ""}
+          <div class="salt-social-actions">
+            <button type="button" class="salt-social-like ${liked ? "liked" : ""}" data-action="like">
+              <i class="${liked ? "fas" : "far"} fa-heart text-lg"></i> <span>${p.like_count}</span>
+            </button>
+            <button type="button" data-action="comments"><i class="far fa-comment text-lg"></i> <span>${p.comment_count}</span></button>
+            <button type="button" data-action="share" class="${shared ? "text-blue-600" : ""}"><i class="fas fa-share text-lg"></i> <span>${shared ? "Shared" : "Share"}</span></button>
+            <button type="button" data-action="bookmark" title="${bookmarked ? "Remove from Saved Posts" : "Save post"}" class="${bookmarked ? "text-blue-600" : ""}"><i class="${bookmarked ? "fas" : "far"} fa-bookmark text-lg"></i><span>${p.bookmark_count || ""}</span></button>
+          </div>
+          <div class="social-comments hidden mt-3 border-t border-slate-100 pt-3"></div>
+        </article>`;
+    }
+
+    async function loadFeed() {
+        if (loading) return;
+        loading = true;
+        feed.innerHTML = `<div class="salt-social-card p-8 text-center text-slate-400"><i class="fas fa-circle-notch fa-spin text-xl mb-2"></i><div>Loading Social...</div></div>`;
+        try {
+            const params = new URLSearchParams();
+            if (currentFilter !== "all") params.set("type", currentFilter);
+            if (currentFilter === "mine") params.set("mine","1");
+            if (currentSearch) params.set("q",currentSearch);
+            const res = await fetch("/api/social/feed?" + params.toString(), {credentials:"same-origin"});
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || "Could not load feed");
+            const hiddenPosts = new Set(JSON.parse(localStorage.getItem("saltSocialHiddenPosts") || "[]").map(String));
+            const visiblePosts = (data.posts || []).filter(p => !hiddenPosts.has(String(p.id)));
+            feed.innerHTML = visiblePosts.length
+                ? visiblePosts.map(renderPost).join("")
+                : `<div class="salt-social-card p-10 text-center"><div class="text-3xl mb-2">🌱</div><strong class="text-slate-700">Nothing here yet</strong><p class="text-xs text-slate-400 mt-1">Be the first to share an update.</p></div>`;
+        } catch (e) {
+            console.error(e);
+            feed.innerHTML = `<div class="salt-social-card p-8 text-center text-red-500"><i class="fas fa-triangle-exclamation mr-1"></i> ${esc(e.message)}</div>`;
+        } finally { loading = false; }
+    }
+
+    async function createPost() {
+        const content = composerText?.value.trim() || "";
+        const file = photoInput?.files?.[0];
+        if (!content && !file) {
+            expandComposer(true);
+            return;
+        }
+        postBtn.disabled = true;
+        postBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Posting...';
+        try {
+            const fd = new FormData();
+            fd.append("content",content);
+            fd.append("visibility",visibility?.value || "everyone");
+            fd.append("post_type",postType?.value || "post");
+            if (file) fd.append("media",file);
+            const res = await fetch("/api/social/posts",{method:"POST",body:fd,credentials:"same-origin"});
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || "Could not create post");
+            composerText.value = "";
+            if (photoInput) photoInput.value = "";
+            if (photoName) photoName.textContent = "";
+            collapseComposer();
+            await loadFeed();
+        } catch(e) {
+            alert(e.message);
+        } finally {
+            postBtn.disabled = false;
+            postBtn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i> Post';
+        }
+    }
+
+    async function postAction(postId, action) {
+        let url = `/api/social/posts/${postId}/${action}`;
+        const res = await fetch(url,{method:"POST",credentials:"same-origin"});
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || "Action failed");
+        return data;
+    }
+
+    async function loadComments(card) {
+        const box = card.querySelector(".social-comments");
+        if (!box) return;
+        if (!box.classList.contains("hidden")) { box.classList.add("hidden"); return; }
+        box.classList.remove("hidden");
+        box.innerHTML = `<div class="text-xs text-slate-400 py-2">Loading comments...</div>`;
+        try {
+            const res = await fetch(`/api/social/posts/${card.dataset.postId}/comments`,{credentials:"same-origin"});
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || "Could not load comments");
+            const comments = data.comments || [];
+            box.innerHTML = `
+              <div class="space-y-3 max-h-64 overflow-y-auto mb-3">
+                ${comments.length ? comments.map(c=>`
+                  <div class="flex gap-2">
+                    ${avatar(c.author_name,c.author_profile_pic,"w-8 h-8 rounded-full overflow-hidden flex-none bg-blue-600 text-white flex items-center justify-center text-xs font-bold")}
+                    <div class="rounded-2xl bg-slate-50 px-3 py-2 min-w-0">
+                      <strong class="block text-xs text-slate-700">${esc(c.author_name)}</strong>
+                      <span class="text-xs text-slate-600">${esc(c.content)}</span>
+                    </div>
+                  </div>`).join("") : `<div class="text-xs text-slate-400">No comments yet.</div>`}
+              </div>
+              <form class="social-comment-form flex gap-2">
+                <input class="flex-1 rounded-full border border-slate-200 px-4 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-100" placeholder="Write a comment..." maxlength="1000">
+                <button class="rounded-full bg-blue-600 text-white px-4 text-xs font-bold">Send</button>
+              </form>`;
+            box.querySelector("form")?.addEventListener("submit", async ev=>{
+                ev.preventDefault();
+                const input=box.querySelector("input");
+                if(!input.value.trim()) return;
+                const btn=box.querySelector("button"); btn.disabled=true;
+                try {
+                    const r=await fetch(`/api/social/posts/${card.dataset.postId}/comments`,{
+                        method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
+                        body:JSON.stringify({content:input.value.trim()})
+                    });
+                    const d=await r.json();
+                    if(!r.ok||!d.success) throw new Error(d.message||"Could not comment");
+                    await loadComments(card); box.classList.remove("hidden");
+                    const count=card.querySelector('[data-action="comments"] span');
+                    if(count) count.textContent=d.comment_count ?? Number(count.textContent||0)+1;
+                    // Reload the comments content without toggling it closed.
+                    box.classList.add("hidden"); await loadComments(card); box.classList.remove("hidden");
+                } catch(e){ alert(e.message); }
+                finally{ btn.disabled=false; }
+            });
+        } catch(e) { box.innerHTML=`<div class="text-xs text-red-500">${esc(e.message)}</div>`; }
+    }
+
+
+    let saltShareTarget = null;
+    let saltShareBackdrop = null;
+
+    function ensureSaltShareSheet(){
+        if (saltShareBackdrop) return saltShareBackdrop;
+
+        saltShareBackdrop = document.createElement("div");
+        saltShareBackdrop.className = "salt-share-backdrop";
+        saltShareBackdrop.innerHTML = `
+            <div class="salt-share-sheet" role="dialog" aria-modal="true" aria-labelledby="saltShareTitle">
+                <div class="salt-share-head">
+                    <h3 id="saltShareTitle">Share this post</h3>
+                    <button type="button" class="salt-share-close" data-share-close aria-label="Close">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="salt-share-preview">
+                    <div class="salt-share-preview-name" data-share-preview-name></div>
+                    <div class="salt-share-preview-text" data-share-preview-text></div>
+                </div>
+                <div class="salt-share-options">
+                    <button type="button" class="salt-share-option" data-share-to-feed>
+                        <span class="salt-share-option-icon"><i class="fas fa-retweet"></i></span>
+                        <span><strong>Share to SALT Connect</strong><small>Publish this post to your own Social feed</small></span>
+                    </button>
+                    <button type="button" class="salt-share-option" data-share-copy>
+                        <span class="salt-share-option-icon"><i class="fas fa-link"></i></span>
+                        <span><strong>Copy post link</strong><small>Copy a link you can send to someone</small></span>
+                    </button>
+                    <button type="button" class="salt-share-option" data-share-native>
+                        <span class="salt-share-option-icon"><i class="fas fa-arrow-up-from-bracket"></i></span>
+                        <span><strong>Share from your device</strong><small>Use your phone or browser's sharing options</small></span>
+                    </button>
+                </div>
+                <div class="salt-share-status" data-share-status></div>
+            </div>`;
+        document.body.appendChild(saltShareBackdrop);
+
+        const close = () => {
+            saltShareBackdrop.classList.remove("open");
+            saltShareTarget = null;
+        };
+
+        saltShareBackdrop.addEventListener("click", e => {
+            if (e.target === saltShareBackdrop || e.target.closest("[data-share-close]")) close();
+        });
+
+        saltShareBackdrop.querySelector("[data-share-to-feed]")?.addEventListener("click", async () => {
+            if (!saltShareTarget) return;
+            const id = saltShareTarget.dataset.postId;
+            const status = saltShareBackdrop.querySelector("[data-share-status]");
+            const button = saltShareBackdrop.querySelector("[data-share-to-feed]");
+            button.disabled = true;
+            status.textContent = "Sharing to SALT Connect…";
+            try {
+                const res = await fetch(`/api/social/posts/${id}/share`, {
+                    method:"POST",
+                    headers:{"Content-Type":"application/json"},
+                    credentials:"same-origin",
+                    body:JSON.stringify({mode:"feed"})
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || "Could not share post.");
+                if (data.already_shared) {
+                    status.textContent = "You have already shared this post.";
+                    return;
+                }
+                status.textContent = "Shared to SALT Connect.";
+                close();
+                await loadFeed();
+            } catch(err) {
+                status.textContent = err.message;
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        saltShareBackdrop.querySelector("[data-share-copy]")?.addEventListener("click", async () => {
+            if (!saltShareTarget) return;
+            const id = saltShareTarget.dataset.postId;
+            const link = `${window.location.origin}${window.location.pathname}#social-post-${id}`;
+            const status = saltShareBackdrop.querySelector("[data-share-status]");
+            try {
+                await navigator.clipboard.writeText(link);
+                status.textContent = "Post link copied.";
+            } catch {
+                status.textContent = link;
+            }
+        });
+
+        saltShareBackdrop.querySelector("[data-share-native]")?.addEventListener("click", async () => {
+            if (!saltShareTarget) return;
+            const id = saltShareTarget.dataset.postId;
+            const link = `${window.location.origin}${window.location.pathname}#social-post-${id}`;
+            const name = saltShareTarget.querySelector(".salt-social-meta strong")?.textContent || "SALT Connect";
+            const status = saltShareBackdrop.querySelector("[data-share-status]");
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({title:"SALT Connect", text:`${name} shared a post on SALT Connect`, url:link});
+                    status.textContent = "Share sheet opened.";
+                } catch (err) {
+                    if (err?.name !== "AbortError") status.textContent = "Could not open device sharing.";
+                }
+            } else {
+                try {
+                    await navigator.clipboard.writeText(link);
+                    status.textContent = "Your browser does not support device sharing. Link copied instead.";
+                } catch {
+                    status.textContent = link;
+                }
+            }
+        });
+
+        return saltShareBackdrop;
+    }
+
+    function openSaltShareSheet(card){
+        const sheet = ensureSaltShareSheet();
+        saltShareTarget = card;
+        const name = card.querySelector(".salt-social-meta strong")?.textContent || "SALT Connect";
+        const text = card.querySelector(".salt-social-post-text")?.textContent || "Social post";
+        sheet.querySelector("[data-share-preview-name]").textContent = name;
+        sheet.querySelector("[data-share-preview-text]").textContent = text;
+        sheet.querySelector("[data-share-status]").textContent = "";
+        sheet.querySelector("[data-share-to-feed]").disabled = false;
+        sheet.classList.add("open");
+    }
+
+    feed?.addEventListener("click", async e=>{
+        const btn=e.target.closest("[data-action]");
+        const card=e.target.closest("[data-post-id]");
+        if(!btn||!card) return;
+        try {
+            const action=btn.dataset.action;
+            if(action==="comments") return loadComments(card);
+            const d=await postAction(card.dataset.postId,action);
+            if(action==="like"){
+                btn.classList.toggle("liked",!!d.liked);
+                const i=btn.querySelector("i"); i.className=`${d.liked?"fas":"far"} fa-heart text-lg`;
+                const s=btn.querySelector("span"); if(s) s.textContent=d.like_count;
+            } else if(action==="share"){
+                // Share is handled by the Social share sheet so the user can
+                // publish a real repost instead of merely incrementing a counter.
+                return openSaltShareSheet(card);
+            } else if(action==="bookmark"){
+                btn.classList.toggle("text-blue-600",!!d.bookmarked);
+                btn.title = d.bookmarked ? "Remove from Saved Posts" : "Save post";
+                const i=btn.querySelector("i"); i.className=`${d.bookmarked?"fas":"far"} fa-bookmark text-lg`;
+                const s=btn.querySelector("span"); if(s) s.textContent=d.bookmark_count ? d.bookmark_count : "";
+            }
+        } catch(err){ alert(err.message); }
+    });
+
+    // Three-dot post menu: open/close and hide individual posts.
+    feed?.addEventListener("click", (e) => {
+        const menuBtn = e.target.closest("[data-post-menu]");
+        const hideBtn = e.target.closest("[data-post-hide]");
+        if (menuBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const wrap = menuBtn.closest(".salt-social-post-menu-wrap");
+            const panel = wrap?.querySelector("[data-post-menu-panel]");
+            document.querySelectorAll("[data-post-menu-panel].open").forEach(p => {
+                if (p !== panel) { p.classList.remove("open"); p.previousElementSibling?.setAttribute("aria-expanded","false"); }
+            });
+            panel?.classList.toggle("open");
+            menuBtn.setAttribute("aria-expanded", panel?.classList.contains("open") ? "true" : "false");
+            return;
+        }
+        if (hideBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const card = hideBtn.closest("[data-post-id]");
+            const id = card?.dataset.postId;
+            if (id) {
+                const hidden = JSON.parse(localStorage.getItem("saltSocialHiddenPosts") || "[]");
+                if (!hidden.includes(String(id))) hidden.push(String(id));
+                localStorage.setItem("saltSocialHiddenPosts", JSON.stringify(hidden));
+                card.style.transition = "opacity .18s ease, transform .18s ease, max-height .25s ease";
+                card.style.opacity = "0";
+                card.style.transform = "translateY(-5px)";
+                setTimeout(() => card.remove(), 180);
+            }
+        }
+    });
+
+    document.addEventListener("click", (e) => {
+        if (e.target.closest("[data-post-menu], [data-post-menu-panel]")) return;
+        document.querySelectorAll("[data-post-menu-panel].open").forEach(p => {
+            p.classList.remove("open");
+            p.previousElementSibling?.setAttribute("aria-expanded","false");
+        });
+    });
+
+    function expandComposer(focusText=true){
+        const card = composerOpen?.closest(".salt-social-composer");
+        card?.classList.add("is-expanded");
+
+        if(composerText){
+            composerText.classList.remove("hidden");
+            composerText.classList.add("salt-composer-visible");
+            composerText.style.display = "block";
+            composerText.removeAttribute("disabled");
+            composerText.removeAttribute("readonly");
+        }
+
+        if(options){
+            options.classList.remove("hidden");
+            options.classList.add("salt-composer-visible");
+            options.style.display = "flex";
+        }
+
+        if(focusText){
+            requestAnimationFrame(()=>{
+                composerText?.focus();
+                composerText?.setSelectionRange(
+                    composerText.value.length,
+                    composerText.value.length
+                );
+            });
+        }
+    }
+
+    function collapseComposer(){
+        const card = composerOpen?.closest(".salt-social-composer");
+        card?.classList.remove("is-expanded");
+        composerText?.classList.add("hidden");
+        composerText?.classList.remove("salt-composer-visible");
+        composerText?.style.removeProperty("display");
+        options?.classList.add("hidden");
+        options?.classList.remove("salt-composer-visible");
+        options?.style.removeProperty("display");
+    }
+
+    composerOpen?.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        expandComposer(true);
+    });
+
+    composerOpen?.closest(".salt-social-compose-row")?.addEventListener("click", function(e){
+        if(e.target.closest("#saltSocialComposerOpen")) return;
+        expandComposer(true);
+    });
+
+    photoBtn?.addEventListener("click", function(e){
+        e.preventDefault();
+        expandComposer(false);
+        photoInput?.click();
+    });
+
+    photoInput?.addEventListener("change", function(){
+        if(photoName) photoName.textContent = photoInput.files?.[0]?.name || "";
+        expandComposer(true);
+    });
+
+    postBtn?.addEventListener("click", function(e){
+        e.preventDefault();
+        expandComposer(false);
+        createPost();
+    });
+
+    composerText?.addEventListener("keydown",function(e){
+        if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){
+            e.preventDefault();
+            createPost();
+        }
+    });
+
+    // Make the feed loader available to the Poll controller and other Social controls.
+    window.loadSocialFeed = loadFeed;
+
+    tabs.forEach((tab,i)=>{
+        tab.addEventListener("click",()=>{
+            tabs.forEach(t=>t.classList.remove("active")); tab.classList.add("active");
+            currentFilter = ["all","announcement","achievement","mine"][i] || "all";
+            loadFeed();
+        });
+    });
+    let searchTimer;
+    search?.addEventListener("input",()=>{
+        clearTimeout(searchTimer);
+        searchTimer=setTimeout(()=>{currentSearch=search.value.trim();loadFeed();},300);
+    });
+
+
+    async function loadSavedPosts() {
+        if (!feed) return;
+        try {
+            feed.innerHTML = `<div class="salt-social-card p-8 text-center text-slate-400"><i class="fas fa-circle-notch fa-spin text-xl mb-2"></i><div>Loading saved posts...</div></div>`;
+            const res = await fetch("/api/social/bookmarks", {credentials:"same-origin"});
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || "Could not load saved posts.");
+
+            const posts = data.posts || [];
+            if (!posts.length) {
+                feed.innerHTML = `<div class="salt-social-card salt-social-saved-empty">
+                    <div class="icon"><i class="far fa-bookmark"></i></div>
+                    <div class="font-extrabold text-slate-700">No saved posts yet</div>
+                    <div class="text-xs text-slate-400 mt-1">Bookmark useful posts and they will appear here.</div>
+                </div>`;
+                return;
+            }
+            feed.innerHTML = posts.map(renderPost).join("");
+        } catch (e) {
+            feed.innerHTML = `<div class="salt-social-card p-8 text-center text-red-500 text-sm">${esc(e.message)}</div>`;
+        }
+    }
+
+    const profileTrigger = document.getElementById("saltSocialProfileTrigger");
+    const profileMenu = document.getElementById("saltSocialProfileMenu");
+    const profileChevron = document.getElementById("saltSocialProfileChevron");
+    const savedPostsBtn = document.getElementById("saltSocialSavedPostsBtn");
+    const myAchievementsBtn = document.getElementById("saltSocialMyAchievementsBtn");
+
+    function closeProfileMenu() {
+        profileMenu?.classList.remove("open");
+        profileTrigger?.setAttribute("aria-expanded", "false");
+        if (profileChevron) profileChevron.className = "fas fa-chevron-down text-[10px]";
+    }
+
+    profileTrigger?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const open = profileMenu?.classList.toggle("open");
+        profileTrigger.setAttribute("aria-expanded", open ? "true" : "false");
+        if (profileChevron) profileChevron.className = open
+            ? "fas fa-chevron-up text-[10px]"
+            : "fas fa-chevron-down text-[10px]";
+    });
+
+    document.addEventListener("click", (e) => {
+        if (profileMenu?.classList.contains("open") &&
+            !profileMenu.contains(e.target) && !profileTrigger?.contains(e.target)) {
+            closeProfileMenu();
+        }
+    });
+
+    savedPostsBtn?.addEventListener("click", () => {
+        closeProfileMenu();
+        // Clear active feed tabs because Saved Posts is a separate view.
+        tabs.forEach(t => t.classList.remove("active"));
+        loadSavedPosts();
+    });
+
+    myAchievementsBtn?.addEventListener("click", () => {
+        closeProfileMenu();
+        // Reuse the existing Achievements feed tab.
+        if (tabs[2]) tabs[2].click();
+    });
+
+    async function loadSocialSidebar() {
+        try {
+            const res = await fetch("/api/social/sidebar", {credentials:"same-origin"});
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || "Could not load sidebar.");
+
+            const trendBox = document.getElementById("saltSocialTrending");
+            const achBox = document.getElementById("saltSocialAchievements");
+            const birthdayBox = document.getElementById("saltSocialBirthdays");
+
+            trendBox.innerHTML = (data.trending || []).length
+                ? data.trending.map((x,i) => `<button type="button" class="salt-social-side-item salt-social-side-link" data-trend="${esc(x.tag)}">
+                    <div class="salt-social-item-icon"><i class="fas ${["fa-users","fa-star","fa-building","fa-heart","fa-arrow-trend-up"][i] || "fa-hashtag"}"></i></div>
+                    <div><strong>#${esc(x.tag)}</strong><small>${x.post_count} post${x.post_count === 1 ? "" : "s"}</small></div>
+                  </button>`).join("")
+                : `<div class="salt-social-side-empty">No trending topics yet.</div>`;
+
+            achBox.innerHTML = (data.achievements || []).length
+                ? data.achievements.map(x => `<button type="button" class="salt-social-side-item salt-social-side-link salt-social-achievement-link"
+                    data-achievement-employee="${x.employee_id}" data-achievement-id="${x.achievement_id}">
+                    ${avatar(x.name, x.profile_pic, "salt-social-user !w-10 !h-10")}
+                    <div><strong>${esc(x.name)}</strong><small>${esc(x.achievement_name)} · ${timeAgo(x.earned_at)}</small></div>
+                  </button>`).join("")
+                : `<div class="salt-social-side-empty">No achievements yet.</div>`;
+
+            birthdayBox.innerHTML = (data.birthdays || []).length
+                ? data.birthdays.map(x => `<button type="button" class="salt-social-side-item salt-social-side-link salt-social-birthday-link"
+                    data-birthday-name="${esc(x.name)}">
+                    ${avatar(x.name, x.profile_pic, "salt-social-user !w-10 !h-10")}
+                    <div><strong>${esc(x.name)}</strong><small>${new Date(x.birthday).toLocaleDateString(undefined,{month:"long",day:"numeric"})}</small></div>
+                  </button>`).join("")
+                : `<div class="salt-social-side-empty">No birthday information available.</div>`;
+
+            document.querySelectorAll("[data-trend]").forEach(btn => btn.addEventListener("click",()=>{
+                currentSearch = "#" + btn.dataset.trend;
+                if(search) search.value = currentSearch;
+                loadFeed();
+            }));
+            document.querySelectorAll(".salt-social-achievement-link").forEach(btn => btn.addEventListener("click",()=>{
+                if(tabs[2]) tabs[2].click();
+            }));
+            document.querySelectorAll(".salt-social-birthday-link").forEach(btn => btn.addEventListener("click",()=>{
+                composerOpen?.click();
+                if(composerText) {
+                    composerText.value = `Happy Birthday ${btn.dataset.birthdayName}! 🎉🎂 Wishing you a wonderful day and a blessed year ahead.`;
+                    composerText.classList.remove("hidden");
+                    options?.classList.remove("hidden");
+                    composerText.focus();
+                }
+            }));
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // Poll voting: update the UI immediately, then synchronize with PostgreSQL.
+    feed?.addEventListener("click", async (e) => {
+        const choice = e.target.closest("[data-poll-option]");
+        if (!choice) return;
+        const card = choice.closest(".salt-poll-card");
+        const post = choice.closest("[data-post-id]");
+        if (!card || !post || choice.disabled) return;
+
+        const postId = post.dataset.postId;
+        const optionId = Number(choice.dataset.pollOption);
+        const previousOptionId = card.dataset.pollViewerOption === "" ? null : Number(card.dataset.pollViewerOption);
+        if (previousOptionId === optionId) return;
+
+        const choices = [...card.querySelectorAll("[data-poll-option]")];
+        let total = Number(card.dataset.pollTotal || 0);
+        const originalVotes = choices.map(x => Number(x.dataset.pollVotes || 0));
+        const previousVotes = [...originalVotes];
+        const indexById = new Map(choices.map((x,i) => [Number(x.dataset.pollOption), i]));
+
+        // Optimistic update: change selection/counts immediately.
+        const oldIndex = previousOptionId == null ? -1 : indexById.get(previousOptionId);
+        const newIndex = indexById.get(optionId);
+        if (newIndex == null) return;
+        if (oldIndex != null && oldIndex >= 0) previousVotes[oldIndex] = Math.max(0, previousVotes[oldIndex] - 1);
+        else total += 1;
+        previousVotes[newIndex] += 1;
+
+        card.dataset.pollTotal = String(total);
+        card.dataset.pollViewerOption = String(optionId);
+        choices.forEach((x,i) => {
+            const votes = previousVotes[i];
+            const pct = total ? Math.round((votes / total) * 1000) / 10 : 0;
+            x.dataset.pollVotes = String(votes);
+            x.classList.toggle("selected", i === newIndex);
+            x.disabled = false;
+            const bar = x.querySelector(".bar");
+            const pctEl = x.querySelector(".salt-poll-choice-pct");
+            if (pctEl) pctEl.textContent = pct + "%";
+            if (bar) requestAnimationFrame(() => { bar.style.width = pct + "%"; });
+        });
+        const status = card.querySelector(".salt-poll-vote-status");
+        if (status) status.innerHTML = `<span class="text-blue-600 font-bold">✓ Vote updated</span> · ${total} vote${total === 1 ? "" : "s"}`;
+
+        // Save quietly in the background. The UI does not wait for this request.
+        try {
+            const res = await fetch(`/api/social/posts/${postId}/poll/vote`, {
+                method:"POST", credentials:"same-origin",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({option_id: optionId})
+            });
+            const data = await res.json();
+            if(!res.ok || !data.success) throw new Error(data.message || "Could not save your vote.");
+
+            // Reconcile with the authoritative database values without reloading the feed.
+            const byId = Object.fromEntries((data.options || []).map(o => [String(o.id), o]));
+            const serverTotal = Number(data.total_votes || 0);
+            card.dataset.pollTotal = String(serverTotal);
+            card.dataset.pollViewerOption = data.viewer_option_id == null ? "" : String(data.viewer_option_id);
+            choices.forEach(x => {
+                const o = byId[String(x.dataset.pollOption)];
+                if(!o) return;
+                const votes = Number(o.votes || 0);
+                const pct = Number(o.percentage || 0);
+                x.dataset.pollVotes = String(votes);
+                x.classList.toggle("selected", Number(x.dataset.pollOption) === Number(data.viewer_option_id));
+                x.disabled = false;
+                const bar = x.querySelector(".bar");
+                const pctEl = x.querySelector(".salt-poll-choice-pct");
+                if(pctEl) pctEl.textContent = pct + "%";
+                if(bar) requestAnimationFrame(() => { bar.style.width = pct + "%"; });
+            });
+            if(status) status.innerHTML = `<span class="text-blue-600 font-bold">✓ You voted</span> · ${serverTotal} vote${serverTotal === 1 ? "" : "s"}`;
+        } catch(err) {
+            // Roll back only if the server rejected the vote.
+            card.dataset.pollTotal = String(Number(card.dataset.pollTotal || 0));
+            card.dataset.pollViewerOption = previousOptionId == null ? "" : String(previousOptionId);
+            const rollbackTotal = Number(card.dataset.pollTotal || 0) - (previousOptionId == null ? 1 : 0);
+            card.dataset.pollTotal = String(Math.max(0, rollbackTotal));
+            choices.forEach((x,i) => {
+                const votes = originalVotes[i];
+                const pct = rollbackTotal > 0 ? Math.round((votes / rollbackTotal) * 1000) / 10 : 0;
+                x.dataset.pollVotes = String(votes);
+                x.classList.toggle("selected", previousOptionId != null && Number(x.dataset.pollOption) === previousOptionId);
+                const bar = x.querySelector(".bar"), pctEl = x.querySelector(".salt-poll-choice-pct");
+                if (pctEl) pctEl.textContent = previousOptionId != null ? pct + "%" : "";
+                if (bar) bar.style.width = previousOptionId != null ? pct + "%" : "0%";
+                x.disabled = false;
+            });
+            if(status) status.innerHTML = `<span class="text-red-500">${esc(err.message)}</span>`;
+            // Refresh only this poll so the card returns to the database state.
+            try {
+                const r = await fetch(`/api/social/feed?poll=${encodeURIComponent(postId)}`, {credentials:"same-origin"});
+                if(r.ok) {
+                    const d = await r.json();
+                    const fresh = (d.posts || []).find(x => String(x.id) === String(postId));
+                    if(fresh?.poll) {
+                        const holder = document.createElement("div");
+                        holder.innerHTML = window.renderSaltPoll(fresh.poll, postId);
+                        card.replaceWith(holder.firstElementChild);
+                    }
+                }
+            } catch(_) {}
+        }
+    });
+
+    // Achievement button opens a real modal instead of doing nothing.
+    const achievementBtn=document.getElementById("saltSocialAchievementBtn");
+    const achievementModal=document.getElementById("saltSocialAchievementModal");
+    const achievementClose=document.getElementById("saltAchievementClose");
+    const achievementCancel=document.getElementById("saltAchievementCancel");
+    const achievementSubmit=document.getElementById("saltAchievementSubmit");
+    const achievementEmployee=document.getElementById("saltAchievementEmployee");
+    const achievementType=document.getElementById("saltAchievementType");
+    const achievementMessage=document.getElementById("saltAchievementMessage");
+    let achievementOptions=[];
+
+    function closeAchievementModal(){
+        achievementModal?.classList.remove("open");
+        achievementModal?.setAttribute("aria-hidden","true");
+    }
+    async function openAchievementModal(){
+        achievementModal?.classList.add("open");
+        achievementModal?.setAttribute("aria-hidden","false");
+        if(!achievementOptions.length){
+            try{
+                const r=await fetch("/api/social/achievement-options",{credentials:"same-origin"});
+                const d=await r.json();
+                if(!r.ok||!d.success) throw new Error(d.message||"Could not load achievements.");
+                achievementOptions=d.options||[];
+                const employees=[...new Map(achievementOptions.map(x=>[x.employee_id,x])).values()];
+                achievementEmployee.innerHTML='<option value="">Select employee</option>'+employees.map(x=>`<option value="${x.employee_id}">${esc(x.employee_name)}</option>`).join("");
+                achievementType.innerHTML='<option value="">Select achievement</option>';
+            }catch(e){ alert(e.message); }
+        }
+    }
+    achievementEmployee?.addEventListener("change",()=>{
+        const id=Number(achievementEmployee.value);
+        const list=achievementOptions.filter(x=>Number(x.employee_id)===id);
+        achievementType.innerHTML='<option value="">Select achievement</option>'+list.map(x=>`<option value="${x.achievement_id}">${esc(x.achievement_name)}</option>`).join("");
+    });
+    achievementBtn?.addEventListener("click",openAchievementModal);
+    achievementClose?.addEventListener("click",closeAchievementModal);
+    achievementCancel?.addEventListener("click",closeAchievementModal);
+    achievementModal?.addEventListener("click",e=>{if(e.target===achievementModal)closeAchievementModal();});
+    achievementSubmit?.addEventListener("click",async()=>{
+        const employeeId=Number(achievementEmployee?.value);
+        const achievementId=Number(achievementType?.value);
+        if(!employeeId||!achievementId){alert("Select an employee and an achievement.");return;}
+        achievementSubmit.disabled=true;
+        achievementSubmit.innerHTML='<i class="fas fa-circle-notch fa-spin mr-1"></i> Posting...';
+        try{
+            const selected=achievementOptions.find(x=>Number(x.employee_id)===employeeId&&Number(x.achievement_id)===achievementId);
+            const defaultText=`Congratulations ${selected?.employee_name||""} on earning ${selected?.achievement_name||"this achievement"}! 🎉`;
+            const msg=(achievementMessage?.value||"").trim()||defaultText;
+            const r=await fetch("/api/social/posts",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({content:msg,post_type:"achievement",visibility:"staff",achievement_employee_id:employeeId,achievement_id:achievementId})});
+            const d=await r.json();
+            if(!r.ok||!d.success) throw new Error(d.message||"Could not post achievement.");
+            closeAchievementModal(); achievementMessage.value=""; achievementEmployee.value=""; achievementType.innerHTML='<option value="">Select an achievement</option>';
+            await loadFeed(); await loadSocialSidebar();
+        }catch(e){alert(e.message);}
+        finally{achievementSubmit.disabled=false;achievementSubmit.innerHTML='<i class="fas fa-paper-plane mr-1"></i>Post Achievement';}
+    });
+
+    function setMode(mode) {
+        const social=mode==="social";
+        chatButtons.forEach(b=>b.classList.toggle("active",!social));
+        socialButtons.forEach(b=>b.classList.toggle("active",social));
+        if(chatView) chatView.classList.toggle("hidden",social);
+        socialView.classList.toggle("hidden",!social);
+        document.body.classList.toggle("salt-social-mode",social);
+        if(usersList) usersList.style.display=social?"none":"";
+        try{localStorage.setItem("salt_connect_mode",mode);}catch(e){}
+        if(social) { loadFeed(); loadSocialSidebar(); }
+    }
+    chatButtons.forEach(b=>b.addEventListener("click",()=>setMode("chat")));
+    socialButtons.forEach(b=>b.addEventListener("click",()=>setMode("social")));
+
+    // Start in the user's preferred mode; default is Chat.
+    let saved="chat"; try{saved=localStorage.getItem("salt_connect_mode")||"chat";}catch(e){}
+    setMode(saved==="social"?"social":"chat");
+});
+</script>
+
+
+<!-- SALT SOCIAL ACHIEVEMENT MODAL -->
+<div id="saltSocialAchievementModal" class="salt-poll-modal" aria-hidden="true">
+  <div class="salt-poll-dialog" role="dialog" aria-modal="true" aria-labelledby="saltAchievementTitle">
+    <div class="salt-poll-head">
+      <h3 id="saltAchievementTitle"><i class="fas fa-trophy text-blue-600 mr-2"></i>Recognise an Achievement</h3>
+      <button type="button" id="saltAchievementClose" class="salt-poll-close" aria-label="Close"><i class="fas fa-times"></i></button>
+    </div>
+    <label class="salt-poll-label" for="saltAchievementEmployee">Employee</label>
+    <select id="saltAchievementEmployee" class="salt-poll-input">
+      <option value="">Loading employees...</option>
+    </select>
+    <label class="salt-poll-label" for="saltAchievementType">Achievement</label>
+    <select id="saltAchievementType" class="salt-poll-input">
+      <option value="">Select an achievement</option>
+    </select>
+    <label class="salt-poll-label" for="saltAchievementMessage">Message</label>
+    <textarea id="saltAchievementMessage" class="salt-poll-input" maxlength="1000" rows="4" placeholder="Add a congratulatory message (optional)"></textarea>
+    <div class="salt-poll-footer">
+      <button type="button" id="saltAchievementCancel" class="salt-poll-cancel">Cancel</button>
+      <button type="button" id="saltAchievementSubmit" class="salt-poll-submit"><i class="fas fa-paper-plane mr-1"></i>Post Achievement</button>
+    </div>
+  </div>
+</div>
+
+<!-- SALT SOCIAL NOTIFICATION MODAL -->
+    <div class="salt-poll-footer">
+      <button type="button" id="saltNotificationMarkAll" class="salt-poll-cancel">Mark all as read</button>
+    </div>
+  </div>
+</div>
+
+<!-- SALT SOCIAL POLL MODAL -->
+<div id="saltSocialPollModal" class="salt-poll-modal" aria-hidden="true">
+  <div class="salt-poll-dialog" role="dialog" aria-modal="true" aria-labelledby="saltPollTitle">
+    <div class="salt-poll-head">
+      <h3 id="saltPollTitle"><i class="fas fa-chart-column text-blue-600 mr-2"></i>Create a Poll</h3>
+      <button type="button" id="saltPollClose" class="salt-poll-close" aria-label="Close"><i class="fas fa-times"></i></button>
+    </div>
+    <label class="salt-poll-label" for="saltPollQuestion">Question</label>
+    <input id="saltPollQuestion" class="salt-poll-input" maxlength="300" placeholder="What would you like the team to vote on?">
+
+    <label class="salt-poll-label">Options</label>
+    <div id="saltPollOptions">
+      <div class="salt-poll-option-row">
+        <input class="salt-poll-input salt-poll-option" maxlength="150" placeholder="Option 1">
+      </div>
+      <div class="salt-poll-option-row">
+        <input class="salt-poll-input salt-poll-option" maxlength="150" placeholder="Option 2">
+      </div>
+    </div>
+    <button type="button" id="saltPollAddOption" class="salt-poll-add"><i class="fas fa-plus mr-1"></i>Add option</button>
+
+    <label class="salt-poll-label" for="saltPollDuration">Poll duration</label>
+    <select id="saltPollDuration" class="salt-poll-input">
+      <option value="1">1 day</option>
+      <option value="3" selected>3 days</option>
+      <option value="7">7 days</option>
+      <option value="14">14 days</option>
+    </select>
+
+    <div class="salt-poll-footer">
+      <button type="button" id="saltPollCancel" class="salt-poll-cancel">Cancel</button>
+      <button type="button" id="saltPollSubmit" class="salt-poll-submit"><i class="fas fa-paper-plane mr-1"></i>Create Poll</button>
+    </div>
+  </div>
+</div>
+
+
+<script id="salt-social-social-controls-fix">
+document.addEventListener("DOMContentLoaded", function(){
+    const notificationBtn = document.getElementById("saltSocialNotificationBtn_REMOVED");
+    const notificationModal = document.getElementById("saltSocialNotificationModal");
+    const notificationClose = document.getElementById("saltNotificationClose");
+    const notificationList = document.getElementById("saltSocialNotificationList");
+    const markAllBtn = document.getElementById("saltNotificationMarkAll");
+    const badge = document.getElementById("saltSocialNotificationBadge_REMOVED");
+
+    function openModal(modal){
+        if(!modal) return;
+        modal.classList.add("open");
+        modal.setAttribute("aria-hidden","false");
+    }
+    function closeModal(modal){
+        if(!modal) return;
+        modal.classList.remove("open");
+        modal.setAttribute("aria-hidden","true");
+    }
+    function escapeHtml(v){
+        return String(v ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+    }
+    function relativeTime(v){
+        const d=new Date(v); if(Number.isNaN(d.getTime())) return "";
+        const sec=Math.max(0,Math.floor((Date.now()-d.getTime())/1000));
+        if(sec<60) return "just now";
+        if(sec<3600) return Math.floor(sec/60)+"m ago";
+        if(sec<86400) return Math.floor(sec/3600)+"h ago";
+        return Math.floor(sec/86400)+"d ago";
+    }
+    function notificationText(n){
+        const actor=escapeHtml(n.actor_name || "Someone");
+        switch(n.type){
+            case "like": return `<strong>${actor}</strong> liked your post.`;
+            case "comment": return `<strong>${actor}</strong> commented on your post.`;
+            case "share": return `<strong>${actor}</strong> shared your post.`;
+            case "achievement": return `<strong>${actor}</strong> posted an achievement.`;
+            default: return `<strong>${actor}</strong> sent you a Social notification.`;
+        }
+    }
+    function avatarHtml(n){
+        if(n.actor_profile_pic) return `<img src="${escapeHtml(n.actor_profile_pic)}" alt="" class="w-9 h-9 rounded-full object-cover">`;
+        return `<div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black">${escapeHtml((n.actor_name||"U").trim().charAt(0).toUpperCase())}</div>`;
+    }
+    async function loadNotifications(openAfter=false){
+        try{
+            const r=await fetch("/api/social/notifications",{credentials:"same-origin"});
+            const d=await r.json();
+            if(!r.ok || !d.success) throw new Error(d.message||"Could not load notifications.");
+            const unread=Number(d.unread_count||0);
+            if(badge){
+                badge.textContent=unread>99?"99+":String(unread);
+                badge.classList.toggle("hidden",unread===0);
+                badge.classList.toggle("flex",unread>0);
+            }
+            if(notificationList){
+                const items=d.notifications||[];
+                notificationList.innerHTML=items.length ? items.map(n=>`<button type="button" class="salt-notification-item ${n.is_read?"read":"unread"}" data-notification-id="${n.id}" data-post-id="${n.post_id||""}">
+                    ${avatarHtml(n)}<span class="min-w-0 flex-1 text-left"><span class="block text-xs text-slate-700 leading-5">${notificationText(n)}</span><span class="block text-[10px] text-slate-400 mt-0.5">${relativeTime(n.created_at)}</span></span>
+                    ${n.is_read?"":"<span class=\"w-2 h-2 rounded-full bg-blue-600 flex-none\"></span>"}
+                </button>`).join("") : `<div class="text-sm text-slate-400 text-center py-10"><i class="far fa-bell-slash text-2xl mb-2 block"></i>No notifications yet.</div>`;
+            }
+            if(openAfter) openModal(notificationModal);
+        }catch(e){
+            console.error("Social notifications:",e);
+            if(openAfter){ openModal(notificationModal); if(notificationList) notificationList.innerHTML=`<div class="text-sm text-red-500 text-center py-8">${escapeHtml(e.message)}</div>`; }
+        }
+    }
+    notificationBtn?.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); loadNotifications(true); });
+    notificationClose?.addEventListener("click",()=>closeModal(notificationModal));
+    notificationModal?.addEventListener("click",e=>{if(e.target===notificationModal) closeModal(notificationModal);});
+    markAllBtn?.addEventListener("click",async()=>{
+        try{
+            const r=await fetch("/api/social/notifications/read",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
+            const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.message||"Could not mark notifications as read.");
+            await loadNotifications(true);
+        }catch(e){alert(e.message);}
+    });
+    notificationList?.addEventListener("click",async e=>{
+        const item=e.target.closest("[data-notification-id]"); if(!item) return;
+        const id=Number(item.dataset.notificationId);
+        try{
+            await fetch("/api/social/notifications/read",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:[id]})});
+        }catch(_){ }
+        if(item.dataset.postId){
+            closeModal(notificationModal);
+            const post=document.querySelector(`[data-post-id="${item.dataset.postId}"]`);
+            post?.scrollIntoView({behavior:"smooth",block:"center"});
+        }
+        loadNotifications(false);
+    });
+
+    // Achievement button is wired independently so it still works even if another Social controller changes.
+    const achievementBtn=document.getElementById("saltSocialAchievementBtn");
+    const achievementModal=document.getElementById("saltSocialAchievementModal");
+    if(achievementBtn && achievementModal){
+        achievementBtn.addEventListener("click",async function(e){
+            e.preventDefault(); e.stopPropagation();
+            openModal(achievementModal);
+            const employee=document.getElementById("saltAchievementEmployee");
+            const type=document.getElementById("saltAchievementType");
+            if(employee && employee.options.length<=1){
+                try{
+                    const r=await fetch("/api/social/achievement-options",{credentials:"same-origin"});
+                    const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.message||"Could not load achievements.");
+                    const opts=d.options||[];
+                    employee.innerHTML='<option value="">Select employee</option>'+
+                        [...new Map(opts.map(x=>[x.employee_id,x])).values()].map(x=>`<option value="${x.employee_id}">${escapeHtml(x.employee_name)}</option>`).join("");
+                    employee.dataset.options=JSON.stringify(opts);
+                    type.innerHTML='<option value="">Select achievement</option>';
+                }catch(err){ if(type) type.innerHTML='<option value="">Could not load achievements</option>'; alert(err.message); }
+            }
+        });
+    }
+    document.getElementById("saltAchievementClose")?.addEventListener("click",()=>closeModal(achievementModal));
+    document.getElementById("saltAchievementCancel")?.addEventListener("click",()=>closeModal(achievementModal));
+    achievementModal?.addEventListener("click",e=>{if(e.target===achievementModal) closeModal(achievementModal);});
+    loadNotifications(false);
+});
+</script>
+
+<script id="salt-social-poll-controller">
+document.addEventListener("DOMContentLoaded", function(){
+    const pollBtn = document.getElementById("saltSocialPollBtn");
+    const modal = document.getElementById("saltSocialPollModal");
+    const closeBtn = document.getElementById("saltPollClose");
+    const cancelBtn = document.getElementById("saltPollCancel");
+    const addBtn = document.getElementById("saltPollAddOption");
+    const submitBtn = document.getElementById("saltPollSubmit");
+    const optionsBox = document.getElementById("saltPollOptions");
+    const question = document.getElementById("saltPollQuestion");
+
+    function closePoll(){
+        modal?.classList.remove("open");
+        modal?.setAttribute("aria-hidden","true");
+    }
+    function openPoll(){
+        modal?.classList.add("open");
+        modal?.setAttribute("aria-hidden","false");
+        setTimeout(()=>question?.focus(),50);
+    }
+    pollBtn?.addEventListener("click", openPoll);
+    closeBtn?.addEventListener("click", closePoll);
+    cancelBtn?.addEventListener("click", closePoll);
+    modal?.addEventListener("click", e => { if(e.target === modal) closePoll(); });
+    document.addEventListener("keydown", e => { if(e.key === "Escape" && modal?.classList.contains("open")) closePoll(); });
+
+    addBtn?.addEventListener("click", ()=>{
+        const count = optionsBox.querySelectorAll(".salt-poll-option").length;
+        if(count >= 5) return;
+        const row = document.createElement("div");
+        row.className = "salt-poll-option-row";
+        row.innerHTML = `<input class="salt-poll-input salt-poll-option" maxlength="150" placeholder="Option ${count+1}">
+                         <button type="button" class="salt-poll-remove" title="Remove option"><i class="fas fa-trash"></i></button>`;
+        optionsBox.appendChild(row);
+        row.querySelector(".salt-poll-remove").addEventListener("click",()=>row.remove());
+        row.querySelector("input").focus();
+    });
+
+    submitBtn?.addEventListener("click", async ()=>{
+        const q = question?.value.trim();
+        const opts = [...optionsBox.querySelectorAll(".salt-poll-option")].map(x=>x.value.trim()).filter(Boolean);
+        const duration = parseInt(document.getElementById("saltPollDuration")?.value || "3",10);
+
+        if(!q){ question?.focus(); return; }
+        if(opts.length < 2){ alert("A poll needs at least 2 options."); return; }
+        if(new Set(opts.map(x=>x.toLowerCase())).size !== opts.length){ alert("Poll options must be different."); return; }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Creating...';
+        try{
+            const res = await fetch("/api/social/posts", {
+                method:"POST",
+                credentials:"same-origin",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    content:q,
+                    post_type:"poll",
+                    visibility:"staff",
+                    poll_options:opts,
+                    poll_duration_days:duration
+                })
+            });
+            const data = await res.json();
+            if(!res.ok || !data.success) throw new Error(data.message || "Could not create poll.");
+            closePoll();
+            question.value="";
+            optionsBox.innerHTML = `
+              <div class="salt-poll-option-row"><input class="salt-poll-input salt-poll-option" maxlength="150" placeholder="Option 1"></div>
+              <div class="salt-poll-option-row"><input class="salt-poll-input salt-poll-option" maxlength="150" placeholder="Option 2"></div>`;
+            if (typeof window.loadSocialFeed === "function") {
+                window.loadSocialFeed();
+            } else {
+                const feedEl = document.querySelector(".salt-social-feed");
+                if (feedEl) {
+                    window.scrollTo({top:0, behavior:"smooth"});
+                    // The main Social controller uses loadFeed internally.
+                    setTimeout(() => location.reload(), 50);
+                } else {
+                    location.reload();
+                }
+            }
+        }catch(err){
+            alert(err.message);
+        }finally{
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Create Poll';
+        }
+    });
+});
+</script>
+
+
+<style id="salt-social-composer-rebuilt-css">
+.salt-social-composer { position: relative; }
+.salt-composer-editor { position: relative; z-index: 20; width: 100%; }
+.salt-composer-editor[hidden] { display: none !important; }
+.salt-composer-editor textarea {
+    display: block !important;
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    pointer-events: auto !important;
+    user-select: text !important;
+    cursor: text !important;
+    color: #173760 !important;
+    background: #fff !important;
+    caret-color: #1677ed !important;
+}
+.salt-composer-editor textarea:focus {
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 3px rgba(96,165,250,.16) !important;
+}
+.salt-social-composer.is-expanded .salt-social-compose-row {
+    margin-bottom: 8px;
+}
+.salt-social-cancel-btn {
+    border: 1px solid #dbe4ef;
+    background: #fff;
+    color: #64748b;
+    border-radius: 12px;
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.salt-social-cancel-btn:hover { background: #f8fafc; }
+</style>
+<script id="salt-social-composer-final-controller">
+document.addEventListener("DOMContentLoaded", function () {
+    const card = document.getElementById("saltSocialComposer");
+    const prompt = document.getElementById("saltSocialComposerPrompt");
+    const openBtn = document.getElementById("saltSocialComposerOpen");
+    const editor = document.getElementById("saltSocialComposerEditor");
+    const textarea = document.getElementById("saltSocialPostText");
+    const cancelBtn = document.getElementById("saltSocialComposerCancel");
+    const photoBtn = document.getElementById("saltSocialPhotoBtn");
+    const photoInput = document.getElementById("saltSocialPhotoInput");
+
+    if (!card || !openBtn || !editor || !textarea) return;
+
+    function openComposer(focusText = true) {
+        card.classList.add("is-expanded");
+        prompt.hidden = true;
+        editor.hidden = false;
+        textarea.disabled = false;
+        textarea.readOnly = false;
+        if (focusText) {
+            requestAnimationFrame(() => {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            });
+        }
+    }
+
+    function closeComposer() {
+        card.classList.remove("is-expanded");
+        editor.hidden = true;
+        prompt.hidden = false;
+        textarea.blur();
+    }
+
+    window.openSaltSocialComposer = openComposer;
+    window.closeSaltSocialComposer = closeComposer;
+
+    openBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openComposer(true);
+    });
+
+    prompt.addEventListener("click", function (e) {
+        if (e.target.closest("#saltSocialComposerOpen")) return;
+        e.preventDefault();
+        openComposer(true);
+    });
+
+    cancelBtn?.addEventListener("click", function (e) {
+        e.preventDefault();
+        closeComposer();
+    });
+
+    photoBtn?.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        photoInput?.click();
+    });
+
+    photoInput?.addEventListener("change", function () {
+        const name = document.getElementById("saltSocialPhotoName");
+        if (name) name.textContent = this.files?.[0]?.name || "";
+    });
+});
+</script>
+
+<script id="salt-social-video-js">
+(function(){
+  const MAX_VIDEO = 90 * 1024 * 1024;
+  const MAX_IMAGE = 10 * 1024 * 1024;
+  const videoExt = ["mp4","mov","webm"];
+  const imageExt = ["jpg","jpeg","png","gif","webp"];
+
+  function findInput(){
+    const inputs = [...document.querySelectorAll('input[type="file"]')];
+    return inputs.find(i => {
+      const formText = (i.closest("form")?.innerText || "").toLowerCase();
+      return (i.id || "").toLowerCase().includes("social") ||
+             (i.name || "").toLowerCase().includes("social") ||
+             (formText.includes("post") && formText.includes("photo"));
+    }) || inputs.find(i => (i.accept || "").includes("video"));
+  }
+
+  function setup(){
+    const input = findInput();
+    if (!input || input.dataset.videoSupportReady) return;
+    input.dataset.videoSupportReady = "1";
+    input.accept = "image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm";
+
+    input.addEventListener("change", function(){
+      const box = document.getElementById("saltSocialVideoPreview");
+      const player = document.getElementById("saltSocialVideoPreviewPlayer");
+      if (box) box.style.display = "none";
+      if (player) { player.pause(); player.removeAttribute("src"); player.load(); }
+
+      const file = this.files && this.files[0];
+      if (!file) return;
+
+      const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+      const isVideo = videoExt.includes(ext) || file.type.startsWith("video/");
+      const isImage = imageExt.includes(ext) || file.type.startsWith("image/");
+
+      if (!isVideo && !isImage) {
+        alert("Unsupported file. Choose an image or MP4, MOV or WEBM video.");
+        this.value = "";
+        return;
+      }
+
+      const max = isVideo ? MAX_VIDEO : MAX_IMAGE;
+      if (file.size > max) {
+        alert(isVideo
+          ? "This video is larger than 90 MB. Please choose a video up to 90 MB."
+          : "This image is larger than 10 MB. Please choose an image up to 10 MB.");
+        this.value = "";
+        return;
+      }
+
+      if (isVideo && box && player) {
+        player.src = URL.createObjectURL(file);
+        box.style.display = "block";
+      }
+    });
+  }
+
+  setup();
+  new MutationObserver(setup).observe(document.body, {childList:true, subtree:true});
+})();
+</script>
+</body>
 </html>
