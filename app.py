@@ -21,6 +21,8 @@ from routes.chat import (
     chat_bp,
     register_chat_socketio
 )
+from routes.social import social_bp
+
 from request_workflow import register_request_workflow
 from cloudinary import uploader
 from cloudinary import api as cloudinary_api
@@ -33,6 +35,7 @@ app = Flask(__name__)
 
 
 app.register_blueprint(chat_bp)
+app.register_blueprint(social_bp)
 
 app.secret_key = os.environ.get(
     "SECRET_KEY",
@@ -98,334 +101,896 @@ def build_comment_tree(comments):
 # Initialize database
 # -------------------------
 def init_db():
+    """
+    Initialize and migrate the PostgreSQL database safely.
+
+    IMPORTANT:
+    PostgreSQL marks the current transaction as aborted after a failed SQL
+    statement. The previous version used `try/except: pass` around ALTER TABLE
+    statements, which left the transaction aborted and caused:
+
+        current transaction is aborted, commands ignored until end of transaction block
+
+    All migrations below therefore use PostgreSQL's IF NOT EXISTS where
+    possible, and each logical migration is committed independently.
+    """
     conn = get_db()
     c = conn.cursor()
 
-    # -------------------------
-    # CREATE TABLES
-    # -------------------------
-    c.execute('''CREATE TABLE IF NOT EXISTS employees (
-        id SERIAL PRIMARY KEY,
-        name TEXT,
-        email TEXT,
-        password TEXT,
-        role TEXT,
-        phone TEXT,
-        department TEXT,
-        profile_pic TEXT,
-        theme TEXT DEFAULT 'light'
-    )''')
-
-    c.execute('''CREATE TABLE IF NOT EXISTS attendance (
-        id SERIAL PRIMARY KEY,
-        employee_id INTEGER,
-        clock_in TEXT,
-        clock_out TEXT,
-        latitude TEXT,
-        longitude TEXT
-    )''')
-
-    c.execute('''CREATE TABLE IF NOT EXISTS tasks (
-        id SERIAL PRIMARY KEY,
-        title TEXT,
-        description TEXT,
-        assigned_to INTEGER,
-        deadline TEXT,
-        status TEXT
-    )''')
-
-    c.execute('''CREATE TABLE IF NOT EXISTS notifications (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER,
-        message TEXT,
-        is_read INTEGER DEFAULT 0,
-        created_at TEXT
-    )''')
-
-    # -------------------------
-    # WEB PUSH SUBSCRIPTIONS
-    # -------------------------
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS push_subscriptions (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL
-            REFERENCES employees(id)
-            ON DELETE CASCADE,
-        endpoint TEXT NOT NULL UNIQUE,
-        subscription JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-    """)
-
-    # -------------------------
-    # ANNOUNCEMENTS TABLE
-    # -------------------------
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS announcements (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        message TEXT NOT NULL,
-        created_by INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        audience TEXT DEFAULT 'everyone',
-        file_name TEXT,
-        file_path TEXT
-    )
-    ''')
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS user_presence (
-
-        user_id INTEGER PRIMARY KEY
-            REFERENCES employees(id)
-            ON DELETE CASCADE,
-
-        online BOOLEAN DEFAULT FALSE,
-
-        last_seen TIMESTAMP
-
-    )
-    """)
-
-    # -------------------------
-    # TASK COMMENTS TABLE
-    # -------------------------
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS task_comments (
-        id SERIAL PRIMARY KEY,
-        task_id INTEGER,
-        sender_id INTEGER,
-        sender_role TEXT,
-        message TEXT,
-        parent_comment_id INTEGER,
-        created_at TEXT
-    )''')
-
-    # -------------------------
-    # AUTO-FIX MISSING COLUMNS
-    # -------------------------
     try:
-        c.execute("ALTER TABLE employees ADD COLUMN phone TEXT")
-    except:
-        pass
+        # ============================================================
+        # CORE TABLES
+        # ============================================================
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS employees (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                email TEXT,
+                password TEXT,
+                role TEXT,
+                phone TEXT,
+                department TEXT,
+                profile_pic TEXT,
+                theme TEXT DEFAULT 'light'
+            )
+        """)
 
-    try:
-        c.execute("ALTER TABLE employees ADD COLUMN department TEXT")
-    except:
-        pass
+        c.execute("""
+            ALTER TABLE employees
+            ADD COLUMN IF NOT EXISTS birthday DATE
+        """)
 
-    try:
-        c.execute("ALTER TABLE employees ADD COLUMN profile_pic TEXT")
-    except:
-        pass
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS attendance (
+                id SERIAL PRIMARY KEY,
+                employee_id INTEGER,
+                clock_in TEXT,
+                clock_out TEXT,
+                latitude TEXT,
+                longitude TEXT
+            )
+        """)
 
-    try:
-        c.execute("ALTER TABLE employees ADD COLUMN theme TEXT DEFAULT 'light'")
-    except:
-        pass
-    
-    # -------------------------
-    # ANNOUNCEMENT MIGRATIONS
-    # -------------------------
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                title TEXT,
+                description TEXT,
+                assigned_to INTEGER,
+                deadline TEXT,
+                status TEXT
+            )
+        """)
 
-    # Make sure PostgreSQL is not inside
-    # an aborted transaction from an earlier
-    # migration attempt.
-    conn.rollback()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                message TEXT,
+                is_read BOOLEAN DEFAULT FALSE,
+                created_at TEXT
+            )
+        """)
 
-    # Add attachment path to existing databases
-    c.execute("""
-        ALTER TABLE announcements
-        ADD COLUMN IF NOT EXISTS file_path TEXT
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL
+                    REFERENCES employees(id)
+                    ON DELETE CASCADE,
+                endpoint TEXT NOT NULL UNIQUE,
+                subscription JSONB NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
 
-    # Add original attachment filename
-    c.execute("""
-        ALTER TABLE announcements
-        ADD COLUMN IF NOT EXISTS file_name TEXT
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS announcements (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                audience TEXT DEFAULT 'everyone',
+                file_name TEXT,
+                file_path TEXT
+            )
+        """)
 
-    # Cloudinary asset identifiers for direct browser uploads.
-    c.execute("""
-        ALTER TABLE announcements
-        ADD COLUMN IF NOT EXISTS cloudinary_public_id TEXT
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS user_presence (
+                user_id INTEGER PRIMARY KEY
+                    REFERENCES employees(id)
+                    ON DELETE CASCADE,
+                online BOOLEAN DEFAULT FALSE,
+                last_seen TIMESTAMP
+            )
+        """)
 
-    c.execute("""
-        ALTER TABLE announcements
-        ADD COLUMN IF NOT EXISTS cloudinary_resource_type TEXT
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS task_comments (
+                id SERIAL PRIMARY KEY,
+                task_id INTEGER,
+                sender_id INTEGER,
+                sender_role TEXT,
+                message TEXT,
+                parent_comment_id INTEGER,
+                created_at TEXT
+            )
+        """)
 
-    c.execute("""
-        ALTER TABLE announcements
-        ADD COLUMN IF NOT EXISTS cloudinary_asset_id TEXT
-    """)
+        # ============================================================
+        # SALT CONNECT SOCIAL
+        # ============================================================
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_posts (
+                id SERIAL PRIMARY KEY,
+                author_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                content TEXT NOT NULL,
+                visibility TEXT NOT NULL DEFAULT 'everyone',
+                post_type TEXT NOT NULL DEFAULT 'post',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+                is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+            )
+        """)
 
-    # Add announcement audience
-    c.execute("""
-        ALTER TABLE announcements
-        ADD COLUMN IF NOT EXISTS audience TEXT
-        DEFAULT 'everyone'
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_post_media (
+                id SERIAL PRIMARY KEY,
+                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+                media_url TEXT NOT NULL,
+                media_type TEXT NOT NULL DEFAULT 'image',
+                original_name TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
 
-    # Add last-updated timestamp
-    c.execute("""
-        ALTER TABLE announcements
-        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_reactions (
+                id SERIAL PRIMARY KEY,
+                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                reaction_type TEXT NOT NULL DEFAULT 'like',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (post_id, user_id)
+            )
+        """)
 
-    # -------------------------
-    # FIX EXISTING RECORDS
-    # -------------------------
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_comments (
+                id SERIAL PRIMARY KEY,
+                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                parent_comment_id INTEGER REFERENCES social_comments(id) ON DELETE CASCADE,
+                content TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+            )
+        """)
 
-    # Existing announcements should be
-    # visible to everyone by default.
-    c.execute("""
-        UPDATE announcements
-        SET audience = 'everyone'
-        WHERE audience IS NULL
-        OR audience = ''
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_shares (
+                id SERIAL PRIMARY KEY,
+                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (post_id, user_id)
+            )
+        """)
 
-    # Existing announcements were not edited,
-    # so use created_at as their updated_at.
-    c.execute("""
-        UPDATE announcements
-        SET updated_at = created_at::timestamp
-        WHERE updated_at IS NULL
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_bookmarks (
+                id SERIAL PRIMARY KEY,
+                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (post_id, user_id)
+            )
+        """)
 
-    try:
-        c.execute("ALTER TABLE tasks ADD COLUMN created_by INTEGER")
-    except:
-        pass
-    try:
-        c.execute("UPDATE tasks SET status='Pending' WHERE status IS NULL")
-    except:
-        pass
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_notifications (
+                id SERIAL PRIMARY KEY,
+                recipient_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                actor_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                post_id INTEGER REFERENCES social_posts(id) ON DELETE CASCADE,
+                comment_id INTEGER REFERENCES social_comments(id) ON DELETE CASCADE,
+                type TEXT NOT NULL,
+                is_read BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
 
-    try:
-        c. execute("ALTER TABLE tasks ADD COLUMN created_at TEXT;")
-    except:
-        pass
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_hashtags (
+                id SERIAL PRIMARY KEY,
+                tag TEXT NOT NULL UNIQUE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
 
-    try:
-        c.execute("ALTER TABLE tasks ADD COLUMN completed_at TIMESTAMP;")
-    except:
-        pass
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_post_hashtags (
+                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+                hashtag_id INTEGER NOT NULL REFERENCES social_hashtags(id) ON DELETE CASCADE,
+                PRIMARY KEY (post_id, hashtag_id)
+            )
+        """)
 
-    try:
-        c.execute("ALTER TABLE tasks ADD COLUMN carried_forward INTEGER DEFAULT 0;")
-    except:
-        pass
-    try:
-        c. execute("ALTER TABLE tasks ADD COLUMN original_deadline TEXT;")
-    except:
-        pass
-    # Add note and reply columns safely
-    try:
-        c.execute("ALTER TABLE tasks ADD COLUMN note TEXT")
-    except:
-        pass
+        # ============================================================
+        # SOCIAL POLLS / ACHIEVEMENT POSTS
+        # ============================================================
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_polls (
+                id SERIAL PRIMARY KEY,
+                post_id INTEGER NOT NULL UNIQUE REFERENCES social_posts(id) ON DELETE CASCADE,
+                question TEXT NOT NULL,
+                expires_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_poll_options (
+                id SERIAL PRIMARY KEY,
+                poll_id INTEGER NOT NULL REFERENCES social_polls(id) ON DELETE CASCADE,
+                label TEXT NOT NULL,
+                position INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE(poll_id, position)
+            )
+        """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_poll_votes (
+                id SERIAL PRIMARY KEY,
+                poll_id INTEGER NOT NULL REFERENCES social_polls(id) ON DELETE CASCADE,
+                option_id INTEGER NOT NULL REFERENCES social_poll_options(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE(poll_id, user_id)
+            )
+        """)
+        c.execute("CREATE INDEX IF NOT EXISTS idx_social_polls_post ON social_polls(post_id)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_social_poll_options_poll ON social_poll_options(poll_id, position)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_social_poll_votes_poll ON social_poll_votes(poll_id)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_social_poll_votes_user ON social_poll_votes(user_id)")
 
-    try:
-        c.execute("ALTER TABLE tasks ADD COLUMN reply TEXT")
-    except:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE tasks ADD COLUMN admin_reply TEXT")
-    except:
-        pass
-    
-    try:
-        c.execute("ALTER TABLE tasks ADD COLUMN task_scope TEXT DEFAULT 'personal'")
-    except:
-        pass
+        # Helpful indexes for the feed.
+        c.execute("""
+            CREATE INDEX IF NOT EXISTS idx_social_posts_created_at
+            ON social_posts (created_at DESC)
+        """)
+        c.execute("""
+            CREATE INDEX IF NOT EXISTS idx_social_posts_author
+            ON social_posts (author_id)
+        """)
+        c.execute("""
+            CREATE INDEX IF NOT EXISTS idx_social_comments_post
+            ON social_comments (post_id, created_at)
+        """)
+        c.execute("""
+            CREATE INDEX IF NOT EXISTS idx_social_notifications_recipient
+            ON social_notifications (recipient_id, created_at DESC)
+        """)
 
-    try:
-        c.execute("ALTER TABLE employees ADD COLUMN position TEXT")
-    except:
-        pass
+        conn.commit()
 
-    try:
-        c.execute("ALTER TABLE employees ADD COLUMN can_approve_requests BOOLEAN DEFAULT FALSE")
-    except:
-        pass
+        # ============================================================
+        # EMPLOYEE MIGRATIONS
+        # ============================================================
+        c.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS phone TEXT")
+        c.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS department TEXT")
+        c.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS profile_pic TEXT")
+        c.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS theme TEXT DEFAULT 'light'")
+        c.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS position TEXT")
+        c.execute("""
+            ALTER TABLE employees
+            ADD COLUMN IF NOT EXISTS can_approve_requests BOOLEAN DEFAULT FALSE
+        """)
+        c.execute("""
+            ALTER TABLE employees
+            ADD COLUMN IF NOT EXISTS immediate_supervisor_id INTEGER
+        """)
+        c.execute("""
+            ALTER TABLE employees
+            ADD COLUMN IF NOT EXISTS signature_path TEXT
+        """)
+        c.execute("""
+            ALTER TABLE employees
+            ADD COLUMN IF NOT EXISTS profile_pic_public_id TEXT
+        """)
+        conn.commit()
 
-    try:
-        c.execute("ALTER TABLE employees ADD COLUMN immediate_supervisor_id INTEGER")
-    except:
-        pass
+        # ============================================================
+        # ANNOUNCEMENT MIGRATIONS
+        # ============================================================
+        c.execute("""
+            ALTER TABLE announcements
+            ADD COLUMN IF NOT EXISTS file_path TEXT
+        """)
+        c.execute("""
+            ALTER TABLE announcements
+            ADD COLUMN IF NOT EXISTS file_name TEXT
+        """)
+        c.execute("""
+            ALTER TABLE announcements
+            ADD COLUMN IF NOT EXISTS cloudinary_public_id TEXT
+        """)
+        c.execute("""
+            ALTER TABLE announcements
+            ADD COLUMN IF NOT EXISTS cloudinary_resource_type TEXT
+        """)
+        c.execute("""
+            ALTER TABLE announcements
+            ADD COLUMN IF NOT EXISTS cloudinary_asset_id TEXT
+        """)
+        c.execute("""
+            ALTER TABLE announcements
+            ADD COLUMN IF NOT EXISTS audience TEXT DEFAULT 'everyone'
+        """)
+        c.execute("""
+            ALTER TABLE announcements
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP
+        """)
 
-    try:
-        c.execute("ALTER TABLE employees ADD COLUMN signature_path TEXT")
-    except:
-        pass
+        c.execute("""
+            UPDATE announcements
+            SET audience = 'everyone'
+            WHERE audience IS NULL OR audience = ''
+        """)
 
-    try:
-        c.execute("ALTER TABLE employees ADD COLUMN profile_pic_public_id TEXT")
-    except:
-        pass
-    # -------------------------
-    # TASK VIEW VISIBILITY
-    # -------------------------
+        c.execute("""
+            UPDATE announcements
+            SET updated_at = created_at::timestamp
+            WHERE updated_at IS NULL
+        """)
 
-    try:
+        conn.commit()
+
+        # ============================================================
+        # TASK MIGRATIONS
+        # ============================================================
         c.execute("""
             ALTER TABLE tasks
-            ADD COLUMN admin_deleted BOOLEAN DEFAULT FALSE
+            ADD COLUMN IF NOT EXISTS created_by INTEGER
         """)
-    except:
-        pass
-
-    try:
         c.execute("""
             ALTER TABLE tasks
-            ADD COLUMN employee_deleted BOOLEAN DEFAULT FALSE
+            ADD COLUMN IF NOT EXISTS created_at TEXT
         """)
-    except:
-        pass
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP
+        """)
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS carried_forward BOOLEAN DEFAULT FALSE
+        """)
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS original_deadline TEXT
+        """)
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS note TEXT
+        """)
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS reply TEXT
+        """)
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS admin_reply TEXT
+        """)
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS task_scope TEXT DEFAULT 'personal'
+        """)
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS admin_deleted BOOLEAN DEFAULT FALSE
+        """)
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS employee_deleted BOOLEAN DEFAULT FALSE
+        """)
 
-    # Make sure existing tasks are visible
-    try:
+        c.execute("""
+            UPDATE tasks
+            SET status = 'Pending'
+            WHERE status IS NULL OR status = ''
+        """)
+
         c.execute("""
             UPDATE tasks
             SET admin_deleted = FALSE
             WHERE admin_deleted IS NULL
         """)
-    except:
-        pass
 
-    try:
         c.execute("""
             UPDATE tasks
             SET employee_deleted = FALSE
             WHERE employee_deleted IS NULL
         """)
-    except:
-        pass
+
+        conn.commit()
+
+        # ============================================================
+        # TASK COMMENT MIGRATIONS
+        # ============================================================
+        c.execute("""
+            ALTER TABLE task_comments
+            ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'public'
+        """)
+        c.execute("""
+            ALTER TABLE task_comments
+            ADD COLUMN IF NOT EXISTS comment_type TEXT DEFAULT 'reply'
+        """)
+
+        conn.commit()
+
+        # ============================================================
+        # GAMIFICATION / REWARDS
+        # ============================================================
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS employee_gamification (
+                employee_id INTEGER PRIMARY KEY
+                    REFERENCES employees(id)
+                    ON DELETE CASCADE,
+                xp INTEGER NOT NULL DEFAULT 0,
+                level INTEGER NOT NULL DEFAULT 1,
+                current_streak INTEGER NOT NULL DEFAULT 0,
+                longest_streak INTEGER NOT NULL DEFAULT 0,
+                last_attendance_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS xp_transactions (
+                id SERIAL PRIMARY KEY,
+                employee_id INTEGER NOT NULL
+                    REFERENCES employees(id)
+                    ON DELETE CASCADE,
+                xp INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                reference_type TEXT,
+                reference_key TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(employee_id, reference_type, reference_key)
+            )
+        """)
+
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS achievements (
+                id SERIAL PRIMARY KEY,
+                code TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                icon TEXT DEFAULT 'fa-trophy',
+                xp_reward INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS employee_achievements (
+                employee_id INTEGER NOT NULL
+                    REFERENCES employees(id)
+                    ON DELETE CASCADE,
+                achievement_id INTEGER NOT NULL
+                    REFERENCES achievements(id)
+                    ON DELETE CASCADE,
+                earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY(employee_id, achievement_id)
+            )
+        """)
+
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS social_post_achievements (
+                post_id INTEGER PRIMARY KEY REFERENCES social_posts(id) ON DELETE CASCADE,
+                employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                achievement_id INTEGER NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        c.execute("CREATE INDEX IF NOT EXISTS idx_social_post_achievements_employee ON social_post_achievements(employee_id)")
+
+        achievements_seed = [
+            ('first_step', 'First Step',
+             'Complete your first attendance check-in.',
+             'fa-shoe-prints', 25),
+
+            ('task_finisher', 'Task Finisher',
+             'Complete your first task.',
+             'fa-check-circle', 25),
+
+            ('five_day_streak', '5-Day Streak',
+             'Maintain attendance for five consecutive days.',
+             'fa-fire', 50),
+
+            ('ten_day_streak', '10-Day Streak',
+             'Maintain attendance for ten consecutive days.',
+             'fa-fire-flame-curved', 100),
+
+            ('thirty_day_streak', '30-Day Streak',
+             'Maintain attendance for thirty consecutive days.',
+             'fa-medal', 300),
+
+            ('ten_tasks', 'Task Champion',
+             'Complete ten tasks.',
+             'fa-list-check', 100),
+
+            ('early_bird', 'Early Bird',
+             'Check in before 9:00 AM.',
+             'fa-sun', 15)
+        ]
+
+        for code, name, description, icon, reward in achievements_seed:
+            c.execute("""
+                INSERT INTO achievements
+                    (code, name, description, icon, xp_reward)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (code) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    description = EXCLUDED.description,
+                    icon = EXCLUDED.icon,
+                    xp_reward = EXCLUDED.xp_reward
+            """, (code, name, description, icon, reward))
+
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        print("DATABASE INITIALIZATION ERROR:", repr(e))
+        raise
+
+    finally:
+        c.close()
+        conn.close()
+
+# -------------------------
+# GAMIFICATION HELPERS
+# -------------------------
+def _ensure_gamification_profile(c, employee_id):
+    c.execute("""
+        INSERT INTO employee_gamification (employee_id)
+        VALUES (%s)
+        ON CONFLICT (employee_id) DO NOTHING
+    """, (employee_id,))
+
+
+def _calculate_level(xp):
+    # Every 100 XP advances the employee by one level.
+    return max(1, int(xp) // 100 + 1)
+
+
+def award_xp(employee_id, xp, reason, reference_type=None, reference_key=None):
+    """Award XP once for a specific reference, then return the new profile."""
+    if not employee_id or not xp:
+        return None
+
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        _ensure_gamification_profile(c, employee_id)
+
+        # Reference-based awards are idempotent, preventing duplicate XP when a
+        # route is refreshed or the same completion event is submitted twice.
+        if reference_type is not None and reference_key is not None:
+            c.execute("""
+                SELECT id
+                FROM xp_transactions
+                WHERE employee_id=%s
+                  AND reference_type=%s
+                  AND reference_key=%s
+                LIMIT 1
+            """, (employee_id, reference_type, str(reference_key)))
+            if c.fetchone():
+                c.execute("""
+                    SELECT * FROM employee_gamification
+                    WHERE employee_id=%s
+                """, (employee_id,))
+                profile = c.fetchone()
+                conn.close()
+                return profile
+
+        c.execute("""
+            INSERT INTO xp_transactions
+                (employee_id, xp, reason, reference_type, reference_key)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (employee_id, xp, reason, reference_type,
+              str(reference_key) if reference_key is not None else None))
+
+        c.execute("""
+            UPDATE employee_gamification
+            SET xp = xp + %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE employee_id=%s
+        """, (xp, employee_id))
+
+        c.execute("""
+            UPDATE employee_gamification
+            SET level = GREATEST(1, (xp / 100) + 1)
+            WHERE employee_id=%s
+        """, (employee_id,))
+
+        conn.commit()
+
+        c.execute("""
+            SELECT * FROM employee_gamification
+            WHERE employee_id=%s
+        """, (employee_id,))
+        profile = c.fetchone()
+        return profile
+
+    except Exception as e:
+        conn.rollback()
+        print('AWARD XP ERROR:', repr(e))
+        return None
+    finally:
+        conn.close()
+
+
+def update_attendance_streak(employee_id, attendance_date):
+    """Update consecutive attendance days and return current/longest streak."""
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        _ensure_gamification_profile(c, employee_id)
+
+        c.execute("""
+            SELECT last_attendance_date, current_streak, longest_streak
+            FROM employee_gamification
+            WHERE employee_id=%s
+            FOR UPDATE
+        """, (employee_id,))
+        profile = c.fetchone()
+
+        last_date = profile['last_attendance_date'] if profile else None
+        current = int(profile['current_streak'] or 0) if profile else 0
+        longest = int(profile['longest_streak'] or 0) if profile else 0
+
+        if last_date == attendance_date:
+            return current, longest
+
+        if last_date == attendance_date - timedelta(days=1):
+            current += 1
+        else:
+            current = 1
+
+        longest = max(longest, current)
+
+        c.execute("""
+            UPDATE employee_gamification
+            SET current_streak=%s,
+                longest_streak=%s,
+                last_attendance_date=%s,
+                updated_at=CURRENT_TIMESTAMP
+            WHERE employee_id=%s
+        """, (current, longest, attendance_date, employee_id))
+
+        conn.commit()
+        return current, longest
+
+    except Exception as e:
+        conn.rollback()
+        print('UPDATE ATTENDANCE STREAK ERROR:', repr(e))
+        return 0, 0
+    finally:
+        conn.close()
+
+
+def award_achievement(employee_id, code):
+    """Award an achievement once and grant its XP reward."""
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
         c.execute("""
-            ALTER TABLE task_comments
-            ADD COLUMN visibility TEXT DEFAULT 'public'
-        """)
-    except:
-        pass
-    
+            SELECT id, name, description, icon, xp_reward
+            FROM achievements
+            WHERE code=%s
+        """, (code,))
+        achievement = c.fetchone()
+        if not achievement:
+            conn.close()
+            return False
+
+        c.execute("""
+            INSERT INTO employee_achievements
+                (employee_id, achievement_id)
+            VALUES (%s, %s)
+            ON CONFLICT (employee_id, achievement_id) DO NOTHING
+            RETURNING achievement_id
+        """, (employee_id, achievement['id']))
+        inserted = c.fetchone()
+
+        if not inserted:
+            conn.rollback()
+            return False
+
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        print('AWARD ACHIEVEMENT ERROR:', repr(e))
+        return False
+    finally:
+        conn.close()
+
+    if achievement['xp_reward']:
+        award_xp(
+            employee_id,
+            achievement['xp_reward'],
+            f"Achievement unlocked: {achievement['name']}",
+            'achievement',
+            code
+        )
+
+    try:
+        create_notification(
+            employee_id,
+            f"🏆 Achievement unlocked: {achievement['name']} (+{achievement['xp_reward']} XP)"
+        )
+    except Exception as e:
+        print('ACHIEVEMENT NOTIFICATION ERROR:', repr(e))
+
+    return True
+
+
+def process_attendance_rewards(employee_id, attendance_dt):
+    """Apply attendance XP, streaks and one-time attendance achievements."""
+    attendance_date = attendance_dt.date() if isinstance(attendance_dt, datetime) else attendance_dt
+
+    # Daily attendance XP is keyed by date, so repeated check-ins cannot farm XP.
+    award_xp(
+        employee_id,
+        10,
+        'Daily attendance check-in',
+        'attendance_day',
+        attendance_date.isoformat()
+    )
+
+    current_streak, longest_streak = update_attendance_streak(
+        employee_id, attendance_date
+    )
+
+    award_achievement(employee_id, 'first_step')
+
+    if isinstance(attendance_dt, datetime) and attendance_dt.hour < 9:
+        award_xp(
+            employee_id,
+            15,
+            'Early Bird check-in',
+            'early_bird_day',
+            attendance_date.isoformat()
+        )
+        award_achievement(employee_id, 'early_bird')
+
+    if current_streak >= 5:
+        award_achievement(employee_id, 'five_day_streak')
+    if current_streak >= 10:
+        award_achievement(employee_id, 'ten_day_streak')
+    if current_streak >= 30:
+        award_achievement(employee_id, 'thirty_day_streak')
+
+    return current_streak, longest_streak
+
+
+def process_task_completion_rewards(employee_id, task_id, deadline=None, completed_at=None):
+    """Award task completion XP and an on-time bonus."""
+    award_xp(
+        employee_id,
+        20,
+        'Task completed',
+        'task_completion',
+        task_id
+    )
+
+    if completed_at is None:
+        completed_at = datetime.now()
+
+    deadline_date = None
+    if isinstance(deadline, datetime):
+        deadline_date = deadline.date()
+    elif isinstance(deadline, date):
+        deadline_date = deadline
+    elif isinstance(deadline, str) and deadline:
+        try:
+            deadline_date = datetime.strptime(deadline[:10], '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            deadline_date = None
+
+    if deadline_date and completed_at.date() <= deadline_date:
+        award_xp(
+            employee_id,
+            10,
+            'Task completed before deadline',
+            'task_on_time',
+            task_id
+        )
+
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     try:
         c.execute("""
-            ALTER TABLE task_comments
-            ADD COLUMN comment_type TEXT DEFAULT 'reply'
-        """)
-    except:
-        pass
+            SELECT COUNT(*) AS count
+            FROM tasks
+            WHERE assigned_to=%s
+              AND status='Completed'
+        """, (employee_id,))
+        completed_count = c.fetchone()['count']
+    finally:
+        conn.close()
+
+    award_achievement(employee_id, 'task_finisher')
+    if completed_count >= 10:
+        award_achievement(employee_id, 'ten_tasks')
 
 
-    conn.commit()
-    conn.close()
+def get_gamification_data(employee_id):
+    """Return dashboard-ready XP, level, streak and achievement data."""
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        _ensure_gamification_profile(c, employee_id)
+        conn.commit()
+
+        c.execute("""
+            SELECT xp, level, current_streak, longest_streak, last_attendance_date
+            FROM employee_gamification
+            WHERE employee_id=%s
+        """, (employee_id,))
+        profile = c.fetchone() or {
+            'xp': 0, 'level': 1, 'current_streak': 0,
+            'longest_streak': 0, 'last_attendance_date': None
+        }
+
+        xp = int(profile['xp'] or 0)
+        level = _calculate_level(xp)
+        xp_into_level = xp % 100
+        xp_to_next = 100 - xp_into_level
+
+        c.execute("""
+            SELECT
+                a.code, a.name, a.description, a.icon, a.xp_reward,
+                ea.earned_at
+            FROM employee_achievements ea
+            JOIN achievements a ON a.id=ea.achievement_id
+            WHERE ea.employee_id=%s
+            ORDER BY ea.earned_at DESC
+        """, (employee_id,))
+        achievements = c.fetchall()
+
+        c.execute("""
+            SELECT xp, reason, created_at
+            FROM xp_transactions
+            WHERE employee_id=%s
+            ORDER BY created_at DESC
+            LIMIT 5
+        """, (employee_id,))
+        recent_rewards = c.fetchall()
+
+        return {
+            'xp': xp,
+            'level': level,
+            'xp_into_level': xp_into_level,
+            'xp_to_next': xp_to_next,
+            'level_progress': xp_into_level,
+            'current_streak': int(profile['current_streak'] or 0),
+            'longest_streak': int(profile['longest_streak'] or 0),
+            'last_attendance_date': profile['last_attendance_date'],
+            'achievements': achievements,
+            'recent_rewards': recent_rewards
+        }
+    finally:
+        conn.close()
 
 # -------------------------
 # Create admin if not exists
@@ -1407,6 +1972,61 @@ def dashboard():
 
     latest_announcements = c.fetchall()
 
+    # -------------------------
+    # Gamification / rewards
+    # -------------------------
+    gamification = get_gamification_data(
+        session['user_id']
+    )
+
+    # -------------------------
+    # Daily welcome / progress card
+    # -------------------------
+    welcome_tasks = []
+    welcome_tasks_remaining = 0
+    welcome_xp_today = 0
+    welcome_clock_in = None
+    welcome_now = datetime.now()
+
+    try:
+        c.execute("""
+            SELECT clock_in
+            FROM attendance
+            WHERE employee_id=%s
+              AND DATE(clock_in)=%s
+            ORDER BY clock_in DESC
+            LIMIT 1
+        """, (session['user_id'], today_str))
+        welcome_attendance = c.fetchone()
+
+        if welcome_attendance and welcome_attendance.get('clock_in'):
+            welcome_clock_in = welcome_attendance['clock_in']
+
+        c.execute("""
+            SELECT id, title, status, deadline
+            FROM tasks
+            WHERE assigned_to=%s
+              AND status!='Completed'
+            ORDER BY
+                CASE WHEN deadline IS NULL THEN 1 ELSE 0 END,
+                deadline ASC NULLS LAST,
+                id DESC
+            LIMIT 5
+        """, (session['user_id'],))
+        welcome_tasks = c.fetchall()
+        welcome_tasks_remaining = len(welcome_tasks)
+
+        c.execute("""
+            SELECT COALESCE(SUM(xp), 0) AS xp
+            FROM xp_transactions
+            WHERE employee_id=%s
+              AND DATE(created_at)=%s
+        """, (session['user_id'], today_str))
+        welcome_xp_today = int((c.fetchone() or {}).get('xp') or 0)
+    except Exception as e:
+        print('DAILY WELCOME DATA ERROR:', repr(e))
+
+    show_daily_welcome = bool(session.pop('show_daily_welcome', False))
 
     c.close()
     conn.close()
@@ -1473,7 +2093,15 @@ def dashboard():
 
         latest_announcements=latest_announcements,
 
-        employee_locations=employee_locations
+        employee_locations=employee_locations,
+
+        gamification=gamification,
+        show_daily_welcome=show_daily_welcome,
+        welcome_tasks=welcome_tasks,
+        welcome_tasks_remaining=welcome_tasks_remaining,
+        welcome_xp_today=welcome_xp_today,
+        welcome_clock_in=welcome_clock_in,
+        welcome_now=welcome_now
     )
 # -------------------------
 # Clock-in
@@ -1505,6 +2133,7 @@ def clockin():
             longitude
         )
         VALUES (%s, %s, %s, %s)
+        RETURNING id
     """,
     (
         session['user_id'],
@@ -1513,10 +2142,19 @@ def clockin():
         lon
     ))
 
+    attendance_row = c.fetchone()
 
     conn.commit()
     conn.close()
 
+    # Gamification is processed after the attendance record is safely saved.
+    process_attendance_rewards(
+        session['user_id'],
+        now
+    )
+
+    # Show the personalized daily welcome card after a successful clock-in.
+    session['show_daily_welcome'] = True
 
     return redirect('/dashboard')
 # -------------------------
@@ -4037,6 +4675,36 @@ def delete_employee(id):
 
 
         c.execute("""
+            DELETE FROM social_notifications
+            WHERE recipient_id=%s OR actor_id=%s
+        """, (id, id))
+
+        c.execute("""
+            DELETE FROM social_posts
+            WHERE author_id=%s
+        """, (id,))
+
+        c.execute("""
+            DELETE FROM social_reactions
+            WHERE user_id=%s
+        """, (id,))
+
+        c.execute("""
+            DELETE FROM social_comments
+            WHERE user_id=%s
+        """, (id,))
+
+        c.execute("""
+            DELETE FROM social_shares
+            WHERE user_id=%s
+        """, (id,))
+
+        c.execute("""
+            DELETE FROM social_bookmarks
+            WHERE user_id=%s
+        """, (id,))
+
+        c.execute("""
             DELETE FROM messages
             WHERE sender_id=%s
         """, (id,))
@@ -5686,7 +6354,8 @@ def complete_task(id):
                 title,
                 created_by,
                 assigned_to,
-                status
+                status,
+                deadline
             FROM tasks
             WHERE id = %s
         """, (id,))
@@ -5784,6 +6453,16 @@ def complete_task(id):
 
         conn.commit()
 
+
+        # ==========================================
+        # GAMIFICATION / REWARDS
+        # ==========================================
+        process_task_completion_rewards(
+            user_id,
+            id,
+            task.get('deadline'),
+            datetime.now()
+        )
 
         # ==========================================
         # NOTIFY CREATOR

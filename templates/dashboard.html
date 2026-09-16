@@ -3417,9 +3417,522 @@
 }
 </style>
 
+
+
+<style id="salt-gamification-dashboard">
+/* =========================================================
+   SALT WORKFORCE — MY PERFORMANCE
+   Clean, compact, collapsible dashboard module
+   ========================================================= */
+.salt-performance{
+    margin:0 0 22px;
+    border:1px solid #d8e7f5;
+    border-radius:20px;
+    background:
+      radial-gradient(circle at 100% 0%,rgba(23,105,194,.09),transparent 32%),
+      linear-gradient(145deg,#fff,#f7fbff);
+    box-shadow:0 12px 34px rgba(15,76,151,.08);
+    overflow:hidden;
+}
+.salt-performance-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding:17px 19px;
+    margin:0;
+    border-bottom:1px solid #e8eff6;
+}
+.salt-performance-title{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    min-width:0;
+}
+.salt-performance-icon{
+    width:40px;height:40px;flex:0 0 40px;
+    display:grid;place-items:center;
+    border-radius:12px;
+    background:#eaf4ff;color:#1769c2;
+}
+.salt-performance-title h2{
+    margin:0;color:#17365f;font-size:16px;font-weight:900;
+}
+.salt-performance-title p{
+    margin:3px 0 0;color:#8192a4;font-size:9px;
+}
+.salt-performance-actions{
+    display:flex;align-items:center;gap:7px;flex:0 0 auto;
+}
+.salt-performance-level{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:7px 10px;border-radius:999px;
+    background:#eef6ff;color:#1769c2;
+    font-size:9px;font-weight:900;white-space:nowrap;
+}
+.salt-performance-toggle{
+    width:34px;height:34px;
+    border:1px solid #d9e7f3;border-radius:10px;
+    background:#fff;color:#58708d;cursor:pointer;
+    display:grid;place-items:center;
+    transition:.2s ease;
+}
+.salt-performance-toggle:hover{
+    background:#eef6ff;color:#1769c2;transform:translateY(-1px);
+}
+.salt-performance-body{
+    padding:16px 19px 19px;
+}
+.salt-performance.is-collapsed .salt-performance-body{
+    display:none;
+}
+.salt-performance-grid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+}
+.salt-performance-stat{
+    min-width:0;padding:13px;
+    border:1px solid #e1ebf5;border-radius:14px;
+    background:rgba(255,255,255,.9);
+}
+.salt-performance-stat .stat-top{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.salt-performance-stat .stat-label{
+    color:#7d91a6;font-size:8px;font-weight:850;
+    text-transform:uppercase;letter-spacing:.05em;
+}
+.salt-performance-stat .stat-icon{
+    width:27px;height:27px;border-radius:8px;
+    display:grid;place-items:center;
+    background:#f0f6fc;color:#1769c2;font-size:10px;
+}
+.salt-performance-stat .stat-value{
+    margin-top:8px;color:#17365f;font-size:21px;
+    line-height:1;font-weight:950;
+}
+.salt-performance-stat .stat-sub{
+    margin-top:5px;color:#8a9bad;font-size:8px;
+}
+.salt-xp-area{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 105px;
+    gap:14px;align-items:center;
+    margin-top:10px;padding:13px 14px;
+    border:1px solid #dfeaf5;border-radius:14px;
+    background:#f9fcff;
+}
+.salt-xp-copy strong{display:block;color:#17365f;font-size:10px;font-weight:900}
+.salt-xp-copy span{display:block;margin-top:3px;color:#8192a4;font-size:8px}
+.salt-xp-track{
+    height:8px;margin-top:8px;overflow:hidden;
+    border-radius:999px;background:#e4edf6;
+}
+.salt-xp-fill{
+    height:100%;
+    width:{{ gamification.level_progress|default(0)|int }}%;
+    max-width:100%;border-radius:inherit;
+    background:linear-gradient(90deg,#1769c2,#35a1ff);
+    transition:width .6s ease;
+}
+.salt-xp-percent{text-align:right;color:#1769c2;font-size:9px;font-weight:900}
+.salt-performance-lower{
+    display:grid;
+    grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
+    gap:10px;margin-top:10px;
+}
+.salt-reward-panel{
+    min-width:0;padding:13px;
+    border:1px solid #e1ebf5;border-radius:14px;background:#fff;
+}
+.salt-reward-panel h3{
+    margin:0 0 9px;color:#17365f;font-size:10px;font-weight:900;
+}
+.salt-achievements{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;
+}
+.salt-achievement{
+    display:flex;align-items:center;gap:8px;min-width:0;
+    padding:8px;border-radius:11px;
+    background:#f7fbff;border:1px solid #e5eef6;
+}
+.salt-achievement-icon{
+    width:29px;height:29px;flex:0 0 29px;border-radius:9px;
+    display:grid;place-items:center;background:#eaf4ff;color:#1769c2;font-size:11px;
+}
+.salt-achievement-copy{min-width:0}
+.salt-achievement-copy strong{
+    display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    color:#274767;font-size:8px;font-weight:900;
+}
+.salt-achievement-copy span{display:block;margin-top:2px;color:#8a9bad;font-size:7px}
+.salt-empty-rewards{padding:13px 6px;text-align:center;color:#91a0af;font-size:8px}
+.salt-recent-reward{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:8px 0;border-bottom:1px solid #edf2f7;
+}
+.salt-recent-reward:last-child{border-bottom:0;padding-bottom:0}
+.salt-reward-reason{
+    min-width:0;color:#46627d;font-size:8px;font-weight:700;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.salt-reward-xp{flex:0 0 auto;color:#1769c2;font-size:9px;font-weight:950}
+
+/* When collapsed, show a compact restore strip instead of disappearing entirely. */
+.salt-performance.is-collapsed .salt-performance-head{
+    border-bottom:0;
+}
+.salt-performance.is-collapsed .salt-performance-toggle i{
+    transform:rotate(180deg);
+}
+.salt-performance-restore{
+    display:none;
+    width:100%;
+    border:0;
+    border-top:1px solid #e8eff6;
+    background:#f9fcff;
+    color:#1769c2;
+    padding:9px 12px;
+    font-size:9px;font-weight:900;cursor:pointer;
+}
+.salt-performance.is-collapsed .salt-performance-restore{
+    display:block;
+}
+.salt-performance.is-collapsed .salt-performance-restore:hover{
+    background:#eef6ff;
+}
+
+@media(max-width:900px){
+    .salt-performance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .salt-performance-lower{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+    .salt-performance{margin-bottom:14px;border-radius:17px}
+    .salt-performance-head{padding:13px 14px}
+    .salt-performance-body{padding:12px 14px 14px}
+    .salt-performance-title h2{font-size:14px}
+    .salt-performance-title p{font-size:8px}
+    .salt-performance-icon{width:35px;height:35px;flex-basis:35px}
+    .salt-performance-level{padding:6px 8px;font-size:8px}
+    .salt-performance-toggle{width:32px;height:32px}
+    .salt-performance-grid{gap:7px}
+    .salt-performance-stat{padding:10px;border-radius:12px}
+    .salt-performance-stat .stat-value{font-size:18px}
+    .salt-xp-area{grid-template-columns:1fr;gap:6px;padding:11px 12px}
+    .salt-xp-percent{text-align:left}
+    .salt-achievements{grid-template-columns:1fr}
+}
+@media(max-width:390px){
+    .salt-performance-title p{display:none}
+    .salt-performance-level{display:none}
+}
+</style>
+
+
+<style>
+/* =========================================================
+   SALT DAILY WELCOME — shown after successful clock-in
+   ========================================================= */
+.salt-welcome-backdrop{
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(7,18,38,.62);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    animation:saltWelcomeFade .28s ease both;
+}
+.salt-welcome-card{
+    width:min(560px,100%);
+    max-height:min(88vh,760px);
+    overflow:auto;
+    border-radius:28px;
+    background:linear-gradient(145deg,#ffffff 0%,#f7fbff 100%);
+    box-shadow:0 30px 90px rgba(0,20,60,.32);
+    border:1px solid rgba(255,255,255,.72);
+    transform:translateY(18px) scale(.97);
+    animation:saltWelcomeIn .42s cubic-bezier(.2,.8,.2,1) .05s forwards;
+}
+.salt-welcome-top{
+    position:relative;
+    padding:26px 28px 20px;
+    background:linear-gradient(135deg,#062b67,#0d63d8);
+    color:#fff;
+    overflow:hidden;
+}
+.salt-welcome-top:after{
+    content:"";
+    position:absolute;
+    width:190px;height:190px;
+    right:-70px;top:-90px;
+    border-radius:50%;
+    background:rgba(255,255,255,.10);
+}
+.salt-welcome-close{
+    position:absolute;
+    right:16px;top:16px;
+    z-index:2;
+    width:38px;height:38px;
+    border:1px solid rgba(255,255,255,.28);
+    border-radius:50%;
+    background:rgba(255,255,255,.12);
+    color:#fff;
+    cursor:pointer;
+    font-size:16px;
+}
+.salt-welcome-greeting{
+    position:relative;
+    z-index:1;
+    font-size:28px;
+    font-weight:800;
+    letter-spacing:-.5px;
+    margin:0 48px 6px 0;
+}
+.salt-welcome-date{
+    position:relative;
+    z-index:1;
+    font-size:14px;
+    opacity:.9;
+}
+.salt-welcome-streak{
+    position:relative;
+    z-index:1;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin-top:16px;
+    padding:8px 12px;
+    border-radius:999px;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.18);
+    font-weight:700;
+    font-size:13px;
+}
+.salt-welcome-body{padding:22px 28px 26px}
+.salt-welcome-heading{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:1.1px;
+    color:#718096;
+    font-weight:800;
+    margin:0 0 12px;
+}
+.salt-welcome-progress{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:20px;
+}
+.salt-welcome-stat{
+    padding:14px 12px;
+    border-radius:16px;
+    background:#f3f7fc;
+    border:1px solid #e4ebf4;
+}
+.salt-welcome-stat-icon{font-size:18px;margin-bottom:7px}
+.salt-welcome-stat-label{font-size:11px;color:#718096;font-weight:700}
+.salt-welcome-stat-value{font-size:14px;color:#102a43;font-weight:800;margin-top:3px}
+.salt-welcome-tasks{
+    display:grid;
+    gap:8px;
+    margin-bottom:20px;
+}
+.salt-welcome-task{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:11px 12px;
+    border-radius:13px;
+    background:#fff;
+    border:1px solid #e6edf5;
+}
+.salt-welcome-task-dot{
+    width:9px;height:9px;border-radius:50%;
+    flex:0 0 auto;
+}
+.salt-welcome-task-dot.blue{background:#1683ff}
+.salt-welcome-task-dot.yellow{background:#f2b01e}
+.salt-welcome-task-title{
+    min-width:0;
+    flex:1;
+    font-size:13px;
+    font-weight:700;
+    color:#243b53;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.salt-welcome-empty{
+    padding:14px;
+    border-radius:13px;
+    background:#f3faf5;
+    color:#28734b;
+    font-size:13px;
+    font-weight:700;
+}
+.salt-welcome-goal{
+    padding:15px;
+    border-radius:17px;
+    background:#f7f9fc;
+    border:1px solid #e6edf5;
+}
+.salt-welcome-goal-row{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:center;
+    margin-bottom:9px;
+}
+.salt-welcome-goal-row strong{font-size:13px;color:#243b53}
+.salt-welcome-goal-percent{font-size:13px;font-weight:800;color:#0d63d8}
+.salt-welcome-bar{
+    height:9px;
+    background:#e3eaf3;
+    border-radius:999px;
+    overflow:hidden;
+}
+.salt-welcome-bar > span{
+    display:block;
+    height:100%;
+    width:var(--welcome-progress,0%);
+    border-radius:999px;
+    background:linear-gradient(90deg,#0d63d8,#22a6f2);
+    transition:width .8s ease .3s;
+}
+.salt-welcome-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:20px;
+}
+.salt-welcome-continue{
+    border:0;
+    border-radius:13px;
+    padding:12px 18px;
+    background:#0d63d8;
+    color:#fff;
+    font-weight:800;
+    cursor:pointer;
+    box-shadow:0 8px 20px rgba(13,99,216,.22);
+}
+@keyframes saltWelcomeFade{from{opacity:0}to{opacity:1}}
+@keyframes saltWelcomeIn{to{transform:translateY(0) scale(1)}}
+@media (max-width:600px){
+    .salt-welcome-backdrop{padding:12px;align-items:flex-end}
+    .salt-welcome-card{border-radius:24px 24px 18px 18px;max-height:91vh}
+    .salt-welcome-top{padding:22px 20px 18px}
+    .salt-welcome-body{padding:18px 20px 22px}
+    .salt-welcome-greeting{font-size:24px}
+    .salt-welcome-progress{grid-template-columns:1fr;gap:8px}
+    .salt-welcome-stat{display:flex;align-items:center;gap:10px}
+    .salt-welcome-stat-icon{margin:0}
+    .salt-welcome-stat-label{margin-left:auto}
+    .salt-welcome-stat-value{margin:0}
+    .salt-welcome-actions{margin-top:16px}
+    .salt-welcome-continue{width:100%}
+}
+</style>
+
 </head>
 
 <body>
+
+{% if show_daily_welcome %}
+<div class="salt-welcome-backdrop" id="saltDailyWelcome" role="dialog" aria-modal="true" aria-labelledby="saltWelcomeGreeting">
+    <div class="salt-welcome-card">
+        <div class="salt-welcome-top">
+            <button class="salt-welcome-close" type="button" id="saltWelcomeClose" aria-label="Close welcome card">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="salt-welcome-greeting" id="saltWelcomeGreeting">
+                Good {{ 'morning' if welcome_now.hour < 12 else ('afternoon' if welcome_now.hour < 17 else 'evening') }}, {{ session.get('name', 'there') }} 👋
+            </h2>
+            <div class="salt-welcome-date">
+                ☀️ {{ welcome_now.strftime('%A, %B') }} {{ welcome_now.day }}
+            </div>
+            <div class="salt-welcome-streak">
+                🔥 {{ gamification.current_streak|default(0) }}-day attendance streak
+            </div>
+        </div>
+
+        <div class="salt-welcome-body">
+            <div class="salt-welcome-heading">Today's Progress</div>
+            <div class="salt-welcome-progress">
+                <div class="salt-welcome-stat">
+                    <div class="salt-welcome-stat-icon">🕘</div>
+                    <div>
+                        <div class="salt-welcome-stat-label">Clocked in</div>
+                        <div class="salt-welcome-stat-value">
+                            {% if welcome_clock_in %}
+                                {{ welcome_clock_in.strftime('%-I:%M %p') if false else welcome_clock_in.strftime('%I:%M %p').lstrip('0') }}
+                            {% else %}
+                                Just now
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="salt-welcome-stat">
+                    <div class="salt-welcome-stat-icon">📋</div>
+                    <div>
+                        <div class="salt-welcome-stat-label">Tasks remaining</div>
+                        <div class="salt-welcome-stat-value">{{ welcome_tasks_remaining }}</div>
+                    </div>
+                </div>
+                <div class="salt-welcome-stat">
+                    <div class="salt-welcome-stat-icon">🎯</div>
+                    <div>
+                        <div class="salt-welcome-stat-label">XP earned today</div>
+                        <div class="salt-welcome-stat-value">{{ welcome_xp_today }} XP</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="salt-welcome-heading">Today's Tasks</div>
+            <div class="salt-welcome-tasks">
+                {% if welcome_tasks %}
+                    {% for task in welcome_tasks[:3] %}
+                    <div class="salt-welcome-task">
+                        <span class="salt-welcome-task-dot {{ 'blue' if loop.index == 1 else 'yellow' }}"></span>
+                        <span class="salt-welcome-task-title">{{ task.title }}</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="salt-welcome-empty">🎉 No outstanding tasks. Great work!</div>
+                {% endif %}
+            </div>
+
+            {% set goal_target = 2 %}
+            {% set completed_today = goal_target - welcome_tasks_remaining %}
+            {% if completed_today < 0 %}{% set completed_today = 0 %}{% endif %}
+            {% if completed_today > goal_target %}{% set completed_today = goal_target %}{% endif %}
+            {% set goal_percent = ((completed_today / goal_target) * 100)|int %}
+
+            <div class="salt-welcome-heading">Your Goal</div>
+            <div class="salt-welcome-goal">
+                <div class="salt-welcome-goal-row">
+                    <strong>Complete {{ goal_target }} tasks today</strong>
+                    <span class="salt-welcome-goal-percent">{{ goal_percent }}%</span>
+                </div>
+                <div class="salt-welcome-bar" style="--welcome-progress: {{ goal_percent }}%;">
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="salt-welcome-actions">
+                <button type="button" class="salt-welcome-continue" id="saltWelcomeContinue">
+                    Continue to Dashboard <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 
 <!-- =========================================================
      SALT PWA INSTALL / UPDATE CONTROLS
@@ -4082,6 +4595,199 @@
                 </div>
 
             </section>
+
+
+<!-- =========================================================
+     SALT MY PERFORMANCE / GAMIFICATION
+     ========================================================= -->
+<section class="salt-performance" id="saltPerformance" aria-label="My Performance">
+
+    <div class="salt-performance-head">
+        <div class="salt-performance-title">
+            <div class="salt-performance-icon">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <div>
+                <h2>My Performance</h2>
+                <p>Build your streak, earn XP and unlock achievements.</p>
+            </div>
+        </div>
+
+        <div class="salt-performance-actions">
+            <div class="salt-performance-level">
+                <i class="fas fa-layer-group"></i>
+                Level {{ gamification.level|default(1) }}
+            </div>
+
+            <button
+                type="button"
+                class="salt-performance-toggle"
+                id="saltPerformanceToggle"
+                aria-label="Hide My Performance"
+                aria-expanded="true"
+                title="Hide My Performance">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="salt-performance-body" id="saltPerformanceBody">
+
+        <div class="salt-performance-grid">
+
+            <div class="salt-performance-stat">
+                <div class="stat-top">
+                    <span class="stat-label">XP Points</span>
+                    <span class="stat-icon"><i class="fas fa-bolt"></i></span>
+                </div>
+                <div class="stat-value">{{ gamification.xp|default(0) }}</div>
+                <div class="stat-sub">Total experience points</div>
+            </div>
+
+            <div class="salt-performance-stat">
+                <div class="stat-top">
+                    <span class="stat-label">Current Level</span>
+                    <span class="stat-icon"><i class="fas fa-chart-line"></i></span>
+                </div>
+                <div class="stat-value">{{ gamification.level|default(1) }}</div>
+                <div class="stat-sub">{{ gamification.xp_to_next|default(100) }} XP to next level</div>
+            </div>
+
+            <div class="salt-performance-stat">
+                <div class="stat-top">
+                    <span class="stat-label">Attendance Streak</span>
+                    <span class="stat-icon"><i class="fas fa-fire"></i></span>
+                </div>
+                <div class="stat-value">{{ gamification.current_streak|default(0) }}</div>
+                <div class="stat-sub">Longest: {{ gamification.longest_streak|default(0) }} days</div>
+            </div>
+
+            <div class="salt-performance-stat">
+                <div class="stat-top">
+                    <span class="stat-label">Achievements</span>
+                    <span class="stat-icon"><i class="fas fa-medal"></i></span>
+                </div>
+                <div class="stat-value">{{ gamification.achievements|default([])|length }}</div>
+                <div class="stat-sub">Badges unlocked</div>
+            </div>
+
+        </div>
+
+        <div class="salt-xp-area">
+            <div class="salt-xp-copy">
+                <strong>Progress to Level {{ gamification.level|default(1) + 1 }}</strong>
+                <span>{{ gamification.xp_into_level|default(0) }} / 100 XP in this level</span>
+                <div class="salt-xp-track" aria-label="Level progress">
+                    <div class="salt-xp-fill"></div>
+                </div>
+            </div>
+
+            <div class="salt-xp-percent">
+                {{ gamification.level_progress|default(0) }}% complete
+            </div>
+        </div>
+
+        <div class="salt-performance-lower">
+
+            <div class="salt-reward-panel">
+                <h3><i class="fas fa-award"></i> Latest Achievements</h3>
+
+                {% if gamification.achievements %}
+                    <div class="salt-achievements">
+                        {% for achievement in gamification.achievements[:4] %}
+                        <div class="salt-achievement" title="{{ achievement.description }}">
+                            <div class="salt-achievement-icon">
+                                <i class="fas {{ achievement.icon|default('fa-trophy') }}"></i>
+                            </div>
+                            <div class="salt-achievement-copy">
+                                <strong>{{ achievement.name }}</strong>
+                                <span>+{{ achievement.xp_reward }} XP</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="salt-empty-rewards">
+                        <i class="fas fa-lock"></i>
+                        <div>No achievements yet. Keep going!</div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="salt-reward-panel">
+                <h3><i class="fas fa-history"></i> Recent Rewards</h3>
+
+                {% if gamification.recent_rewards %}
+                    {% for reward in gamification.recent_rewards[:5] %}
+                    <div class="salt-recent-reward">
+                        <span class="salt-reward-reason" title="{{ reward.reason }}">
+                            {{ reward.reason }}
+                        </span>
+                        <span class="salt-reward-xp">+{{ reward.xp }} XP</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="salt-empty-rewards">No rewards earned yet.</div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+
+    <button
+        type="button"
+        class="salt-performance-restore"
+        id="saltPerformanceRestore"
+        aria-label="Show My Performance">
+        <i class="fas fa-chevron-down"></i>
+        &nbsp; Show My Performance
+    </button>
+
+</section>
+
+<script>
+/* =========================================================
+   SALT MY PERFORMANCE — HIDE / SHOW
+   Remembers the user's choice on this device.
+   ========================================================= */
+document.addEventListener("DOMContentLoaded", function () {
+    const panel = document.getElementById("saltPerformance");
+    const toggle = document.getElementById("saltPerformanceToggle");
+    const restore = document.getElementById("saltPerformanceRestore");
+
+    if (!panel || !toggle || !restore) return;
+
+    const storageKey = "salt_performance_collapsed";
+
+    function setCollapsed(collapsed, save = true) {
+        panel.classList.toggle("is-collapsed", collapsed);
+
+        toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        toggle.setAttribute("aria-label", collapsed ? "Show My Performance" : "Hide My Performance");
+        toggle.title = collapsed ? "Show My Performance" : "Hide My Performance";
+
+        if (save) {
+            try {
+                localStorage.setItem(storageKey, collapsed ? "1" : "0");
+            } catch (e) {}
+        }
+    }
+
+    try {
+        setCollapsed(localStorage.getItem(storageKey) === "1", false);
+    } catch (e) {
+        setCollapsed(false, false);
+    }
+
+    toggle.addEventListener("click", function () {
+        setCollapsed(!panel.classList.contains("is-collapsed"));
+    });
+
+    restore.addEventListener("click", function () {
+        setCollapsed(false);
+    });
+});
+</script>
 
         <!-- =====================================================
              ANNOUNCEMENTS CAROUSEL
@@ -6443,6 +7149,37 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 
+
+
+<script>
+(function(){
+    const modal = document.getElementById('saltDailyWelcome');
+    if (!modal) return;
+
+    const closeBtn = document.getElementById('saltWelcomeClose');
+    const continueBtn = document.getElementById('saltWelcomeContinue');
+
+    function closeWelcome(){
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
+        setTimeout(() => modal.remove(), 220);
+    }
+
+    closeBtn?.addEventListener('click', closeWelcome);
+    continueBtn?.addEventListener('click', closeWelcome);
+
+    modal.addEventListener('click', function(e){
+        if (e.target === modal) closeWelcome();
+    });
+
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape') closeWelcome();
+    });
+
+    // Keep it welcoming, not intrusive.
+    setTimeout(closeWelcome, 20000);
+})();
+</script>
 
 </body>
 </html>
