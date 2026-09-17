@@ -1376,6 +1376,61 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 }
 </style>
 
+
+<style id="salt-share-clickable-link">
+</style>
+
+
+<style id="salt-chat-social-link-style">
+.salt-chat-social-link{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    margin:6px 0;
+    padding:10px 12px;
+    border:1px solid #dbe7f5;
+    border-radius:12px;
+    background:#f8fbff;
+    color:#1769d1;
+    text-decoration:none !important;
+    font-size:12px;
+    font-weight:800;
+    max-width:100%;
+    cursor:pointer;
+    transition:background .18s ease,transform .18s ease,box-shadow .18s ease;
+}
+.salt-chat-social-link:hover{
+    background:#eef6ff;
+    transform:translateY(-1px);
+    box-shadow:0 4px 12px rgba(23,105,209,.10);
+}
+.salt-chat-social-link i{
+    width:30px;
+    height:30px;
+    border-radius:9px;
+    display:grid;
+    place-items:center;
+    background:#e8f2ff;
+    color:#1769d1;
+    flex:none;
+}
+.salt-chat-social-link span{
+    display:block;
+    min-width:0;
+}
+.salt-chat-social-link strong{
+    display:block;
+    color:#1769d1;
+    font-weight:800;
+}
+.salt-chat-social-link small{
+    display:block;
+    color:#718198;
+    font-weight:600;
+    margin-top:2px;
+}
+</style>
+
 </head>
 
 <body class="bg-[#f4f7fb]">
@@ -1599,8 +1654,8 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 
                         <button type="button" id="saltSocialProfileTrigger" class="salt-social-profile-trigger" aria-expanded="false">
                             <div class="salt-social-mini-avatar">
-                                {% if receiver and receiver.profile_pic %}
-                                    <img src="{{ receiver.profile_pic }}" alt="{{ session.get('name','User') }}">
+                                {% if user and user.profile_pic %}
+                                    <img src="{{ user.profile_pic }}" alt="{{ session.get('name','User') }}">
                                 {% else %}
                                     {{ (session.get('name','U') or 'U')[0] }}
                                 {% endif %}
@@ -2698,7 +2753,7 @@ document.addEventListener("DOMContentLoaded", function () {
         saltShareBackdrop.querySelector("[data-share-copy]")?.addEventListener("click", async () => {
             if (!saltShareTarget) return;
             const id = saltShareTarget.dataset.postId;
-            const link = `${window.location.origin}${window.location.pathname}#social-post-${id}`;
+            const link = `${window.location.origin}/messages#social-post-${encodeURIComponent(id)}`;
             const status = saltShareBackdrop.querySelector("[data-share-status]");
             try {
                 await navigator.clipboard.writeText(link);
@@ -2711,7 +2766,7 @@ document.addEventListener("DOMContentLoaded", function () {
         saltShareBackdrop.querySelector("[data-share-native]")?.addEventListener("click", async () => {
             if (!saltShareTarget) return;
             const id = saltShareTarget.dataset.postId;
-            const link = `${window.location.origin}${window.location.pathname}#social-post-${id}`;
+            const link = `${window.location.origin}/messages#social-post-${encodeURIComponent(id)}`;
             const name = saltShareTarget.querySelector(".salt-social-meta strong")?.textContent || "SALT Connect";
             const status = saltShareBackdrop.querySelector("[data-share-status]");
 
@@ -3697,17 +3752,8 @@ document.addEventListener("DOMContentLoaded", function () {
   setup();
   new MutationObserver(setup).observe(document.body, {childList:true, subtree:true});
 })();
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", openSocialPostFromHash, {once:true});
-    } else {
-        openSocialPostFromHash();
-    }
-
-
-    // SALT Connect deep links:
-    // /messages#social-post-123 automatically switches to Social,
-    // loads the feed, then scrolls to the requested post.
+// SALT Connect deep links:
+    // /messages#social-post-123 opens Social and jumps to post 123.
     async function openSocialPostFromHash() {
         const match = window.location.hash.match(/^#social-post-(\d+)$/);
         if (!match) return;
@@ -3715,33 +3761,42 @@ document.addEventListener("DOMContentLoaded", function () {
         const postId = match[1];
 
         try {
-            // Switch to Social mode using the existing Social control.
-            const socialControl =
-                document.querySelector('[data-mode="social"]') ||
-                document.querySelector('[data-social-mode]') ||
-                document.getElementById('saltSocialModeBtn');
-
-            if (socialControl) socialControl.click();
-
-            // Give the existing mode switch a moment to render/load the feed.
-            await new Promise(resolve => setTimeout(resolve, 150));
-
-            // Explicitly load the feed when the function exists.
-            if (typeof loadFeed === "function") {
-                await loadFeed();
+            // Use the actual Social mode button in this template.
+            const socialButton = document.querySelector('[data-salt-mode="social"]');
+            if (socialButton) {
+                socialButton.click();
+            } else {
+                document.body.classList.add("salt-social-mode");
+                document.getElementById("saltConnectChatView")?.classList.add("hidden");
+                document.getElementById("saltConnectSocialView")?.classList.remove("hidden");
             }
 
-            // The feed may render asynchronously, so retry for a few seconds.
+            // The Social controller may be loading the feed at the same time.
+            // Wait until the requested post has actually been rendered.
             const started = Date.now();
             let post = null;
 
-            while (Date.now() - started < 6000) {
+            while (Date.now() - started < 10000) {
                 post = document.getElementById(`social-post-${postId}`);
                 if (post) break;
+
+                // If the controller exposes the feed loader, use it once.
+                if (typeof window.loadSocialFeed === "function" &&
+                    !window.__saltDeepLinkFeedRequested) {
+                    window.__saltDeepLinkFeedRequested = true;
+                    await window.loadSocialFeed();
+                }
+
                 await new Promise(resolve => setTimeout(resolve, 250));
             }
 
-            if (!post) return;
+            if (!post) {
+                console.warn("SALT Social post not found:", postId);
+                return;
+            }
+
+            // Give the browser one paint cycle after rendering.
+            await new Promise(resolve => requestAnimationFrame(resolve));
 
             post.scrollIntoView({
                 behavior: "smooth",
@@ -3749,7 +3804,11 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             post.classList.add("salt-deep-link-highlight");
-            setTimeout(() => post.classList.remove("salt-deep-link-highlight"), 3500);
+
+            setTimeout(() => {
+                post.classList.remove("salt-deep-link-highlight");
+            }, 3500);
+
         } catch (err) {
             console.warn("Could not open SALT Social deep link:", err);
         }
@@ -3757,6 +3816,149 @@ document.addEventListener("DOMContentLoaded", function () {
 
     window.addEventListener("hashchange", openSocialPostFromHash);
 
+
+    // Process a shared-post hash after the Social controller is initialized.
+    if (window.location.hash.match(/^#social-post-(\d+)$/)) {
+        setTimeout(() => openSocialPostFromHash(), 120);
+    }
+
 </script>
+
+<script id="salt-chat-social-link-handler">
+(function () {
+    /*
+     * SALT Connect links are ordinary chat messages when sent.
+     * After the message is rendered in #chat-box, this turns the URL
+     * into a clickable "View this post on SALT Connect" card.
+     *
+     * IMPORTANT:
+     * - Nothing is inserted into the composer while typing/pasting.
+     * - The message is sent normally.
+     * - Only the SENT message is converted into a clickable card.
+     */
+
+    const SALT_POST_RE =
+        /https?:\/\/[^\s<>"']+\/messages#social-post-(\d+)(?:[^\s<>"']*)/gi;
+
+    function cleanUrl(raw) {
+        return String(raw).replace(/[),.;!?]+$/g, "");
+    }
+
+    function createSocialLinkCard(url) {
+        const a = document.createElement("a");
+        a.href = cleanUrl(url);
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.className = "salt-chat-social-link";
+        a.setAttribute("aria-label", "View this post on SALT Connect");
+
+        a.innerHTML =
+            '<i class="fas fa-link"></i>' +
+            '<span>' +
+                '<strong>View this post on SALT Connect</strong>' +
+                '<small>Open the shared Social post</small>' +
+            '</span>';
+
+        return a;
+    }
+
+    function linkifySaltPosts() {
+        const chatBox = document.getElementById("chat-box");
+        if (!chatBox) return;
+
+        const walker = document.createTreeWalker(
+            chatBox,
+            NodeFilter.SHOW_TEXT
+        );
+
+        const nodes = [];
+        let node;
+
+        while ((node = walker.nextNode())) {
+            if (!node.nodeValue || !node.nodeValue.trim()) continue;
+
+            const parent = node.parentElement;
+            if (!parent) continue;
+
+            // Never process text that is already inside a link/card.
+            if (parent.closest("a, script, style, textarea, input, button")) {
+                continue;
+            }
+
+            SALT_POST_RE.lastIndex = 0;
+            if (SALT_POST_RE.test(node.nodeValue)) {
+                nodes.push(node);
+            }
+        }
+
+        nodes.forEach(textNode => {
+            const text = textNode.nodeValue;
+            const fragment = document.createDocumentFragment();
+
+            let lastIndex = 0;
+            let match;
+
+            SALT_POST_RE.lastIndex = 0;
+
+            while ((match = SALT_POST_RE.exec(text)) !== null) {
+                const rawUrl = match[0];
+                const url = cleanUrl(rawUrl);
+                const index = match.index;
+
+                if (index > lastIndex) {
+                    fragment.appendChild(
+                        document.createTextNode(
+                            text.slice(lastIndex, index)
+                        )
+                    );
+                }
+
+                fragment.appendChild(createSocialLinkCard(url));
+
+                lastIndex = index + rawUrl.length;
+            }
+
+            if (lastIndex < text.length) {
+                fragment.appendChild(
+                    document.createTextNode(text.slice(lastIndex))
+                );
+            }
+
+            if (lastIndex > 0) {
+                textNode.replaceWith(fragment);
+            }
+
+            SALT_POST_RE.lastIndex = 0;
+        });
+    }
+
+    function initSaltChatLinkHandling() {
+        linkifySaltPosts();
+
+        const chatBox = document.getElementById("chat-box");
+        if (!chatBox) return;
+
+        const observer = new MutationObserver(function () {
+            linkifySaltPosts();
+        });
+
+        observer.observe(chatBox, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            initSaltChatLinkHandling,
+            { once: true }
+        );
+    } else {
+        initSaltChatLinkHandling();
+    }
+})();
+</script>
+
 </body>
 </html>
