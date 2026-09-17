@@ -1034,7 +1034,7 @@ class ChatApp {
                         href="${cleanUrl}"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-blue-600 underline break-all hover:text-blue-800"
+                        class="text-green-600 underline break-all hover:text-green-800"
                     >${cleanUrl}</a>
                 `;
 
@@ -3302,7 +3302,7 @@ class ChatApp {
             border: 1px solid #dbe7f5;
             border-radius: 12px;
             background: #f8fbff;
-            color: #1769d1 !important;
+            color: #16834a !important;
             text-decoration: none !important;
             font-size: 12px;
             font-weight: 800;
@@ -3314,9 +3314,9 @@ class ChatApp {
         }
 
         .salt-chat-social-link:hover {
-            background: #eef6ff;
+            background: #eefaf3;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(23,105,209,.10);
+            box-shadow: 0 4px 12px rgba(22,131,74,.12);
         }
 
         .salt-chat-social-link i {
@@ -3325,8 +3325,8 @@ class ChatApp {
             border-radius: 9px;
             display: grid;
             place-items: center;
-            background: #e8f2ff;
-            color: #1769d1;
+            background: #e8f7ef;
+            color: #16834a;
             flex: none;
         }
 
@@ -3337,7 +3337,7 @@ class ChatApp {
 
         .salt-chat-social-link strong {
             display: block;
-            color: #1769d1;
+            color: #16834a;
             font-weight: 800;
         }
 

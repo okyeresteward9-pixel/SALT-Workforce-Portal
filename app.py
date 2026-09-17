@@ -2002,6 +2002,22 @@ def dashboard():
         if welcome_attendance and welcome_attendance.get('clock_in'):
             welcome_clock_in = welcome_attendance['clock_in']
 
+            # PostgreSQL may return TEXT values as strings. Convert
+            # them to datetime before the Jinja template calls strftime().
+            if isinstance(welcome_clock_in, str):
+                try:
+                    welcome_clock_in = datetime.fromisoformat(
+                        welcome_clock_in.replace("Z", "+00:00")
+                    )
+                except (ValueError, TypeError):
+                    try:
+                        welcome_clock_in = datetime.strptime(
+                            welcome_clock_in,
+                            "%Y-%m-%d %H:%M:%S"
+                        )
+                    except (ValueError, TypeError):
+                        welcome_clock_in = None
+
         c.execute("""
             SELECT id, title, status, deadline
             FROM tasks
