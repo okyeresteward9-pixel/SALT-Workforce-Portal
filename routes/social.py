@@ -88,7 +88,7 @@ def _get_poll_for_post(c, post_id, user_id):
     }
 
 
-def _serialize_post(row, poll=None):
+def _serialize_post(row, poll=None, achievement=None):
     if not row:
         return None
     return {
@@ -111,6 +111,49 @@ def _serialize_post(row, poll=None):
         "media": row.get("media") or [],
         "hashtags": row.get("hashtags") or [],
         "poll": poll,
+        "achievement": achievement,
+    }
+
+
+def _get_achievement_for_post(c, post_id):
+    """Return the full achievement card data linked to a Social achievement post."""
+    c.execute("""
+        SELECT
+            spa.employee_id,
+            spa.achievement_id,
+            e.name AS employee_name,
+            e.profile_pic AS employee_profile_pic,
+            a.code,
+            a.name AS achievement_name,
+            a.description AS achievement_description,
+            a.icon AS achievement_icon,
+            a.xp_reward AS achievement_xp,
+            a.category AS achievement_category,
+            ea.earned_at
+        FROM social_post_achievements spa
+        JOIN employees e ON e.id = spa.employee_id
+        JOIN achievements a ON a.id = spa.achievement_id
+        LEFT JOIN employee_achievements ea
+          ON ea.employee_id = spa.employee_id
+         AND ea.achievement_id = spa.achievement_id
+        WHERE spa.post_id = %s
+        LIMIT 1
+    """, (post_id,))
+    r = c.fetchone()
+    if not r:
+        return None
+    return {
+        "employee_id": r["employee_id"],
+        "employee_name": r["employee_name"],
+        "employee_profile_pic": r["employee_profile_pic"],
+        "achievement_id": r["achievement_id"],
+        "code": r["code"],
+        "name": r["achievement_name"],
+        "description": r["achievement_description"] or "",
+        "icon": r["achievement_icon"] or "fa-award",
+        "xp": int(r["achievement_xp"] or 0),
+        "category": r["achievement_category"] or "",
+        "earned_at": _serialize_dt(r["earned_at"]) if r["earned_at"] else None,
     }
 
 
@@ -207,7 +250,8 @@ def social_feed():
         posts = []
         for r in rows:
             poll = _get_poll_for_post(c, r["id"], user_id) if r.get("post_type") == "poll" else None
-            posts.append(_serialize_post(r, poll))
+            achievement = _get_achievement_for_post(c, r["id"]) if r.get("post_type") == "achievement" else None
+            posts.append(_serialize_post(r, poll, achievement))
         return jsonify({"success": True, "posts": posts})
     except Exception as e:
         conn.rollback()
@@ -377,7 +421,8 @@ def create_social_post():
                          if upload_result else [])
         post["hashtags"] = re.findall(r"(?<!\w)#([\w-]{1,50})", content, flags=re.UNICODE)
         poll_data = _get_poll_for_post(c, post["id"], user_id) if post_type == "poll" else None
-        return jsonify({"success": True, "post": _serialize_post(post, poll_data)}), 201
+        achievement_data = _get_achievement_for_post(c, post["id"]) if post_type == "achievement" else None
+        return jsonify({"success": True, "post": _serialize_post(post, poll_data, achievement_data)}), 201
     except Exception as e:
         conn.rollback()
         print("CREATE SOCIAL POST ERROR:", repr(e))

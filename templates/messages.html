@@ -1431,6 +1431,74 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 }
 </style>
 
+
+<style id="salt-achievement-card-v1">
+.salt-social-achievement-card{
+    margin:14px 0 4px;
+    border:1px solid #dbeafe;
+    border-radius:18px;
+    overflow:hidden;
+    background:linear-gradient(145deg,#f8fbff 0%,#ffffff 62%,#f1f7ff 100%);
+    box-shadow:0 10px 30px rgba(15,23,42,.07);
+}
+.salt-social-achievement-top{
+    display:flex;align-items:center;gap:11px;
+    padding:14px 16px 10px;
+}
+.salt-social-achievement-avatar{
+    width:42px;height:42px;border-radius:50%;overflow:hidden;flex:none;
+    background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:14px;
+}
+.salt-social-achievement-avatar img{width:100%;height:100%;object-fit:cover}
+.salt-social-achievement-kicker{
+    font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;
+    color:#2563eb;
+}
+.salt-social-achievement-name{
+    font-size:14px;font-weight:900;color:#0f172a;line-height:1.25;
+}
+.salt-social-achievement-body{
+    margin:0 12px 12px;padding:17px 16px;
+    border-radius:15px;background:#fff;border:1px solid #e2e8f0;
+    display:flex;align-items:center;gap:14px;
+}
+.salt-social-achievement-icon{
+    width:58px;height:58px;border-radius:16px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:#eff6ff;color:#2563eb;font-size:25px;
+    border:1px solid #bfdbfe;
+}
+.salt-social-achievement-info{min-width:0;flex:1}
+.salt-social-achievement-title{
+    font-size:16px;font-weight:900;color:#0f172a;margin-bottom:3px;
+}
+.salt-social-achievement-desc{
+    font-size:12px;line-height:1.5;color:#64748b;
+}
+.salt-social-achievement-meta{
+    display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px;
+}
+.salt-social-achievement-pill{
+    display:inline-flex;align-items:center;gap:5px;padding:5px 8px;
+    border-radius:999px;background:#eff6ff;color:#1d4ed8;
+    font-size:10px;font-weight:900;
+}
+.salt-social-achievement-xp{
+    display:inline-flex;align-items:center;gap:5px;padding:5px 9px;
+    border-radius:999px;background:#fef3c7;color:#92400e;
+    font-size:10px;font-weight:900;
+}
+.salt-social-achievement-message{
+    padding:0 16px 15px;font-size:12px;line-height:1.55;color:#475569;
+}
+@media(max-width:640px){
+    .salt-social-achievement-body{padding:14px;gap:11px}
+    .salt-social-achievement-icon{width:50px;height:50px;font-size:21px;border-radius:14px}
+    .salt-social-achievement-title{font-size:14px}
+}
+</style>
+
 </head>
 
 <body class="bg-[#f4f7fb]">
@@ -2522,6 +2590,53 @@ document.addEventListener("DOMContentLoaded", function () {
         </div>`;
     };
 
+    function renderAchievementCard(achievement) {
+        if (!achievement) return "";
+        const employeeName = achievement.employee_name || "A SALT team member";
+        const profilePic = achievement.employee_profile_pic || "";
+        const icon = achievement.icon || "fa-award";
+        const category = achievement.category || "Achievement";
+        const xp = Number(achievement.xp || 0);
+
+        return `
+          <div class="salt-social-achievement-card" role="group" aria-label="Achievement earned by ${esc(employeeName)}">
+            <div class="salt-social-achievement-top">
+              <div class="salt-social-achievement-avatar">
+                ${profilePic
+                    ? `<img src="${esc(profilePic)}" alt="${esc(employeeName)}">`
+                    : `<span>${esc((employeeName || "?").trim().charAt(0).toUpperCase())}</span>`}
+              </div>
+              <div class="min-w-0">
+                <div class="salt-social-achievement-kicker"><i class="fas fa-trophy mr-1"></i> Achievement Unlocked</div>
+                <div class="salt-social-achievement-name">${esc(employeeName)}</div>
+              </div>
+            </div>
+
+            <div class="salt-social-achievement-body">
+              <div class="salt-social-achievement-icon">
+                <i class="fas ${esc(icon)}"></i>
+              </div>
+              <div class="salt-social-achievement-info">
+                <div class="salt-social-achievement-title">${esc(achievement.name || "Achievement")}</div>
+                <div class="salt-social-achievement-desc">${esc(achievement.description || "A new achievement has been earned.")}</div>
+                <div class="salt-social-achievement-meta">
+                  <span class="salt-social-achievement-pill">
+                    <i class="fas fa-layer-group"></i>${esc(category)}
+                  </span>
+                  <span class="salt-social-achievement-xp">
+                    <i class="fas fa-star"></i>+${xp} XP
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            ${achievement.earned_at ? `
+              <div class="px-4 pb-3 text-[10px] font-semibold text-slate-400">
+                Earned ${timeAgo(achievement.earned_at)}
+              </div>` : ""}
+          </div>`;
+    }
+
     function renderPost(p) {
         const liked = !!p.viewer_liked;
         const bookmarked = !!p.viewer_bookmarked;
@@ -2543,6 +2658,7 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
           </div>
           ${p.content ? `<div class="salt-social-post-text">${esc(p.content).replace(/\n/g,"<br>")}</div>` : ""}
+          ${p.post_type === "achievement" && p.achievement ? renderAchievementCard(p.achievement) : ""}
           ${mediaHtml(p.media)}
           ${p.post_type === "poll" && p.poll ? window.renderSaltPoll(p.poll, p.id) : ""}
           ${p.hashtags?.length ? `<div class="mt-2 text-xs text-blue-600 font-semibold">${p.hashtags.map(h=>"#"+esc(h)).join(" ")}</div>` : ""}
