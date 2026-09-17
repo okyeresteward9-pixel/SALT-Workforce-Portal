@@ -222,7 +222,7 @@ def social_feed():
     post_type = (request.args.get("type") or "all").strip().lower()
     search = (request.args.get("q") or "").strip()
     author_only = request.args.get("mine") == "1"
-    allowed_types = {"all", "post", "announcement", "achievement", "poll"}
+    allowed_types = {"all", "post", "announcement", "achievement", "poll", "birthday"}
     if post_type not in allowed_types:
         post_type = "all"
 
@@ -304,7 +304,7 @@ def create_social_post():
         return jsonify({"success": False, "message": "Post is too long. Maximum is 5,000 characters."}), 400
     if visibility not in {"everyone", "staff"}:
         visibility = "everyone"
-    if post_type not in {"post", "achievement", "poll", "announcement"}:
+    if post_type not in {"post", "achievement", "poll", "announcement", "birthday"}:
         post_type = "post"
 
     upload_result = None
@@ -895,6 +895,16 @@ def vote_social_poll(post_id):
         conn.close()
 
 
+def make_birthday_display(value):
+    """Return month/day only; never expose the birth year."""
+    if not value:
+        return None
+    try:
+        return value.strftime("%B %-d")
+    except ValueError:
+        return value.strftime("%B %d").replace(" 0", " ")
+
+
 @social_bp.get("/api/social/sidebar")
 def social_sidebar():
     user_id = _auth()
@@ -936,40 +946,38 @@ def social_sidebar():
             "earned_at": _serialize_dt(r["earned_at"])
         } for r in c.fetchall()]
 
-        # Birthday support: use the birthday column when present. Older databases
-        # may not have it yet, so return an empty list rather than breaking Social.
-        c.execute("""
-            SELECT column_name FROM information_schema.columns
-            WHERE table_name='employees' AND column_name='birthday'
-        """)
-        has_birthday = bool(c.fetchone())
+        # Upcoming birthdays: only employees who have opted in are shown.
         birthdays = []
-        if has_birthday:
-            c.execute("""
-                SELECT id, name, profile_pic, birthday
-                FROM employees
-                WHERE birthday IS NOT NULL
-                  AND (EXTRACT(MONTH FROM birthday), EXTRACT(DAY FROM birthday)) >=
-                      (EXTRACT(MONTH FROM CURRENT_DATE), EXTRACT(DAY FROM CURRENT_DATE))
-                ORDER BY EXTRACT(MONTH FROM birthday), EXTRACT(DAY FROM birthday)
-                LIMIT 5
-            """)
-            birthdays = [{
-                "employee_id": r["id"], "name": r["name"], "profile_pic": r["profile_pic"],
-                "birthday": r["birthday"].isoformat() if r["birthday"] else None
-            } for r in c.fetchall()]
-            if not birthdays:
-                c.execute("""
-                    SELECT id, name, profile_pic, birthday
-                    FROM employees
-                    WHERE birthday IS NOT NULL
-                    ORDER BY EXTRACT(MONTH FROM birthday), EXTRACT(DAY FROM birthday)
-                    LIMIT 5
-                """)
-                birthdays = [{
-                    "employee_id": r["id"], "name": r["name"], "profile_pic": r["profile_pic"],
-                    "birthday": r["birthday"].isoformat() if r["birthday"] else None
-                } for r in c.fetchall()]
+        c.execute("""
+            SELECT id, name, profile_pic, birthday
+            FROM employees
+            WHERE birthday IS NOT NULL
+              AND COALESCE(birthday_visible, TRUE)=TRUE
+            ORDER BY
+              CASE
+                WHEN make_date(2000, EXTRACT(MONTH FROM birthday)::int,
+                               EXTRACT(DAY FROM birthday)::int)
+                     >= make_date(2000, EXTRACT(MONTH FROM CURRENT_DATE)::int,
+                                  EXTRACT(DAY FROM CURRENT_DATE)::int)
+                THEN make_date(2000, EXTRACT(MONTH FROM birthday)::int,
+                                EXTRACT(DAY FROM birthday)::int)
+                     - make_date(2000, EXTRACT(MONTH FROM CURRENT_DATE)::int,
+                                 EXTRACT(DAY FROM CURRENT_DATE)::int)
+                ELSE make_date(2000, EXTRACT(MONTH FROM birthday)::int,
+                                EXTRACT(DAY FROM birthday)::int)
+                     - make_date(2000, EXTRACT(MONTH FROM CURRENT_DATE)::int,
+                                 EXTRACT(DAY FROM CURRENT_DATE)::int) + 366
+              END,
+              EXTRACT(MONTH FROM birthday), EXTRACT(DAY FROM birthday)
+            LIMIT 5
+        """)
+        for r in c.fetchall():
+            birthdays.append({
+                "employee_id": r["id"], "name": r["name"],
+                "profile_pic": r["profile_pic"],
+                "birthday": r["birthday"].isoformat() if r["birthday"] else None,
+                "month_day": make_birthday_display(r["birthday"])
+            })
 
         return jsonify({"success": True, "trending": trending,
                         "achievements": achievements, "birthdays": birthdays})
@@ -977,6 +985,129 @@ def social_sidebar():
         conn.rollback()
         print("SOCIAL SIDEBAR ERROR:", repr(e))
         return jsonify({"success": False, "message": "Could not load Social sidebar data."}), 500
+    finally:
+        conn.close()
+
+
+@social_bp.get("/api/social/birthdays")
+def social_birthdays():
+    """Return visible employee birthdays in upcoming-date order."""
+    user_id = _auth()
+    if not user_id:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+    conn = get_db()
+    try:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        c.execute("""
+            SELECT id, name, profile_pic, birthday
+            FROM employees
+            WHERE birthday IS NOT NULL
+              AND COALESCE(birthday_visible, TRUE)=TRUE
+            ORDER BY
+              CASE
+                WHEN make_date(2000, EXTRACT(MONTH FROM birthday)::int,
+                               EXTRACT(DAY FROM birthday)::int)
+                     >= make_date(2000, EXTRACT(MONTH FROM CURRENT_DATE)::int,
+                                  EXTRACT(DAY FROM CURRENT_DATE)::int)
+                THEN make_date(2000, EXTRACT(MONTH FROM birthday)::int,
+                                EXTRACT(DAY FROM birthday)::int)
+                     - make_date(2000, EXTRACT(MONTH FROM CURRENT_DATE)::int,
+                                 EXTRACT(DAY FROM CURRENT_DATE)::int)
+                ELSE make_date(2000, EXTRACT(MONTH FROM birthday)::int,
+                                EXTRACT(DAY FROM birthday)::int)
+                     - make_date(2000, EXTRACT(MONTH FROM CURRENT_DATE)::int,
+                                 EXTRACT(DAY FROM CURRENT_DATE)::int) + 366
+              END,
+              EXTRACT(MONTH FROM birthday), EXTRACT(DAY FROM birthday)
+            LIMIT 50
+        """)
+        birthdays = [{
+            "employee_id": r["id"], "name": r["name"],
+            "profile_pic": r["profile_pic"],
+            "birthday": r["birthday"].isoformat(),
+            "month_day": make_birthday_display(r["birthday"])
+        } for r in c.fetchall()]
+        return jsonify({"success": True, "birthdays": birthdays})
+    except Exception as e:
+        conn.rollback()
+        print("SOCIAL BIRTHDAYS ERROR:", repr(e))
+        return jsonify({"success": False, "message": "Could not load birthdays."}), 500
+    finally:
+        conn.close()
+
+
+@social_bp.post("/api/social/birthdays/<int:employee_id>/celebrate")
+def celebrate_birthday(employee_id):
+    """Create a public birthday post and notify the birthday celebrant."""
+    user_id = _auth()
+    if not user_id:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    if len(message) > 2000:
+        return jsonify({"success": False, "message": "Birthday message is too long."}), 400
+
+    conn = get_db()
+    try:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        c.execute("""
+            SELECT id, name, profile_pic, birthday
+            FROM employees
+            WHERE id=%s AND birthday IS NOT NULL
+              AND COALESCE(birthday_visible, TRUE)=TRUE
+        """, (employee_id,))
+        celebrant = c.fetchone()
+        if not celebrant:
+            return jsonify({"success": False,
+                            "message": "This birthday is not available for celebration."}), 404
+
+        c.execute("SELECT name FROM employees WHERE id=%s", (user_id,))
+        sender = c.fetchone()
+        sender_name = sender["name"] if sender else "Someone"
+        content = (f"🎂 Happy Birthday, {celebrant['name']}! 🎉\n\n{message}"
+                   if message else
+                   f"🎂 Happy Birthday, {celebrant['name']}! 🎉\n\n"
+                   "Wishing you a wonderful birthday and a blessed year ahead!")
+
+        c.execute("""
+            INSERT INTO social_posts(author_id, content, visibility, post_type)
+            VALUES(%s,%s,'everyone','birthday')
+            RETURNING id, author_id, content, visibility, post_type, created_at, is_pinned
+        """, (user_id, content))
+        post = c.fetchone()
+        _save_hashtags(c, post["id"], content)
+
+        if employee_id != user_id:
+            _create_main_notification(
+                c, employee_id,
+                f"{sender_name} sent you a birthday message on SALT Connect. 🎂"
+            )
+
+        c.execute("SELECT name, profile_pic FROM employees WHERE id=%s", (user_id,))
+        author = c.fetchone()
+        post.update({
+            "author_name": author["name"] if author else "User",
+            "profile_pic": author["profile_pic"] if author else None,
+            "like_count": 0, "comment_count": 0, "share_count": 0,
+            "bookmark_count": 0, "viewer_liked": False,
+            "viewer_shared": False, "viewer_bookmarked": False,
+            "media": [], "hashtags": []
+        })
+        conn.commit()
+        return jsonify({
+            "success": True,
+            "message": f"Birthday message sent to {celebrant['name']}.",
+            "birthday": {
+                "employee_id": celebrant["id"], "name": celebrant["name"],
+                "profile_pic": celebrant["profile_pic"],
+                "month_day": make_birthday_display(celebrant["birthday"])
+            },
+            "post": _serialize_post(post)
+        }), 201
+    except Exception as e:
+        conn.rollback()
+        print("CELEBRATE BIRTHDAY ERROR:", repr(e))
+        return jsonify({"success": False, "message": "Could not send birthday message."}), 500
     finally:
         conn.close()
 
