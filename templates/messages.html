@@ -1364,6 +1364,18 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 .salt-social-media-video{display:block;width:100%;height:360px;object-fit:contain;background:#020617}
 .salt-social-upload-note{font-size:10px;color:#94a3b8;margin-top:5px}
 </style>
+
+<style id="salt-social-deep-link-style">
+.salt-deep-link-highlight{
+    animation:saltDeepLinkPulse 3.5s ease;
+    scroll-margin-top:90px;
+}
+@keyframes saltDeepLinkPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,0);}
+    15%,55%{box-shadow:0 0 0 5px rgba(37,99,235,.22),0 18px 50px rgba(37,99,235,.12);}
+}
+</style>
+
 </head>
 
 <body class="bg-[#f4f7fb]">
@@ -2742,15 +2754,12 @@ document.addEventListener("DOMContentLoaded", function () {
         try {
             const action=btn.dataset.action;
             if(action==="comments") return loadComments(card);
+            if(action==="share") return openSaltShareSheet(card);
             const d=await postAction(card.dataset.postId,action);
             if(action==="like"){
                 btn.classList.toggle("liked",!!d.liked);
                 const i=btn.querySelector("i"); i.className=`${d.liked?"fas":"far"} fa-heart text-lg`;
                 const s=btn.querySelector("span"); if(s) s.textContent=d.like_count;
-            } else if(action==="share"){
-                // Share is handled by the Social share sheet so the user can
-                // publish a real repost instead of merely incrementing a counter.
-                return openSaltShareSheet(card);
             } else if(action==="bookmark"){
                 btn.classList.toggle("text-blue-600",!!d.bookmarked);
                 btn.title = d.bookmarked ? "Remove from Saved Posts" : "Save post";
@@ -3688,6 +3697,66 @@ document.addEventListener("DOMContentLoaded", function () {
   setup();
   new MutationObserver(setup).observe(document.body, {childList:true, subtree:true});
 })();
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", openSocialPostFromHash, {once:true});
+    } else {
+        openSocialPostFromHash();
+    }
+
+
+    // SALT Connect deep links:
+    // /messages#social-post-123 automatically switches to Social,
+    // loads the feed, then scrolls to the requested post.
+    async function openSocialPostFromHash() {
+        const match = window.location.hash.match(/^#social-post-(\d+)$/);
+        if (!match) return;
+
+        const postId = match[1];
+
+        try {
+            // Switch to Social mode using the existing Social control.
+            const socialControl =
+                document.querySelector('[data-mode="social"]') ||
+                document.querySelector('[data-social-mode]') ||
+                document.getElementById('saltSocialModeBtn');
+
+            if (socialControl) socialControl.click();
+
+            // Give the existing mode switch a moment to render/load the feed.
+            await new Promise(resolve => setTimeout(resolve, 150));
+
+            // Explicitly load the feed when the function exists.
+            if (typeof loadFeed === "function") {
+                await loadFeed();
+            }
+
+            // The feed may render asynchronously, so retry for a few seconds.
+            const started = Date.now();
+            let post = null;
+
+            while (Date.now() - started < 6000) {
+                post = document.getElementById(`social-post-${postId}`);
+                if (post) break;
+                await new Promise(resolve => setTimeout(resolve, 250));
+            }
+
+            if (!post) return;
+
+            post.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+            post.classList.add("salt-deep-link-highlight");
+            setTimeout(() => post.classList.remove("salt-deep-link-highlight"), 3500);
+        } catch (err) {
+            console.warn("Could not open SALT Social deep link:", err);
+        }
+    }
+
+    window.addEventListener("hashchange", openSocialPostFromHash);
+
 </script>
 </body>
 </html>
