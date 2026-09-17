@@ -930,6 +930,174 @@ class ChatApp {
 
 
     // =====================================================
+    // CHAT LINK / SALT CONNECT LINK RENDERING
+    // =====================================================
+
+    renderMessageText(value) {
+
+        const text = String(value ?? "");
+
+        /*
+         * First escape the complete message so user text can never inject
+         * HTML. URLs are then safely converted into real anchors.
+         */
+        const escaped = this.escapeHTML(text);
+
+        /*
+         * Recognise SALT Connect deep links such as:
+         * https://portal.example.com/messages#social-post-2
+         *
+         * Also works with the local development URL:
+         * http://127.0.0.1:5000/messages#social-post-2
+         */
+        const saltPostPattern =
+            /(https?:\/\/[^\s<>"']+\/messages#social-post-(\d+)(?:[^\s<>"']*))/gi;
+
+        let output = "";
+        let lastIndex = 0;
+        let match;
+
+        saltPostPattern.lastIndex = 0;
+
+        while ((match = saltPostPattern.exec(escaped)) !== null) {
+
+            const fullUrl = match[1];
+            const postId = match[2];
+
+            const cleanUrl =
+                fullUrl.replace(/[),.;!?]+$/g, "");
+
+            const safeUrl =
+                cleanUrl;
+
+            const textBefore =
+                escaped.slice(lastIndex, match.index);
+
+            output += textBefore.replace(/\n/g, "<br>");
+
+            output += `
+                <a
+                    href="${safeUrl}"
+                    class="salt-chat-social-link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-social-post-link="${this.escapeHTML(postId)}"
+                    title="View this post on SALT Connect"
+                >
+                    <i class="fas fa-link"></i>
+                    <span>
+                        <strong>View this post on SALT Connect</strong>
+                        <small>Open the shared Social post</small>
+                    </span>
+                </a>
+            `;
+
+            lastIndex =
+                match.index + fullUrl.length;
+        }
+
+        /*
+         * If no SALT Connect links were found, linkify ordinary URLs too.
+         */
+        if (lastIndex === 0) {
+
+            const normalUrlPattern =
+                /(https?:\/\/[^\s<>"']+)/gi;
+
+            let normalOutput = "";
+            let normalLastIndex = 0;
+            let normalMatch;
+
+            normalUrlPattern.lastIndex = 0;
+
+            while (
+                (normalMatch =
+                    normalUrlPattern.exec(escaped)) !== null
+            ) {
+
+                const rawUrl =
+                    normalMatch[1];
+
+                const cleanUrl =
+                    rawUrl.replace(/[),.;!?]+$/g, "");
+
+                normalOutput +=
+                    escaped
+                        .slice(
+                            normalLastIndex,
+                            normalMatch.index
+                        )
+                        .replace(/\n/g, "<br>");
+
+                normalOutput += `
+                    <a
+                        href="${cleanUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-blue-600 underline break-all hover:text-blue-800"
+                    >${cleanUrl}</a>
+                `;
+
+                normalLastIndex =
+                    normalMatch.index + rawUrl.length;
+            }
+
+            if (normalLastIndex === 0) {
+                return escaped.replace(/\n/g, "<br>");
+            }
+
+            normalOutput +=
+                escaped
+                    .slice(normalLastIndex)
+                    .replace(/\n/g, "<br>");
+
+            return normalOutput;
+        }
+
+        output +=
+            escaped
+                .slice(lastIndex)
+                .replace(/\n/g, "<br>");
+
+        return output;
+    }
+
+
+    // =====================================================
+    // OPEN SALT CONNECT POST
+    // =====================================================
+
+    openSaltConnectPost(postId, event) {
+
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        const id =
+            String(postId || "").trim();
+
+        if (!id) {
+            return;
+        }
+
+        /*
+         * Use the actual application's current origin. This means local
+         * development produces 127.0.0.1:5000, while production produces
+         * the deployed SALT Workforce domain automatically.
+         */
+        const url =
+            `${window.location.origin}/messages#social-post-${encodeURIComponent(id)}`;
+
+        window.open(
+            url,
+            "_blank",
+            "noopener,noreferrer"
+        );
+    }
+
+
+    // =====================================================
     // RENDER MESSAGE
     // =====================================================
 
@@ -1019,11 +1187,8 @@ class ChatApp {
 
                 ? "<i class='opacity-70'>This message was deleted</i>"
 
-                : this.escapeHTML(
+                : this.renderMessageText(
                     chat.message || ""
-                ).replace(
-                    /\n/g,
-                    "<br>"
                 );
 
 
@@ -3113,6 +3278,80 @@ class ChatApp {
     }
 
 }
+
+// =========================================================
+// SALT CHAT LINK CARD STYLE
+// =========================================================
+
+(function injectSaltChatLinkStyle() {
+
+    if (document.getElementById("salt-chat-social-link-style-js")) {
+        return;
+    }
+
+    const style = document.createElement("style");
+    style.id = "salt-chat-social-link-style-js";
+
+    style.textContent = `
+        .salt-chat-social-link {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            margin: 7px 0;
+            padding: 10px 12px;
+            border: 1px solid #dbe7f5;
+            border-radius: 12px;
+            background: #f8fbff;
+            color: #1769d1 !important;
+            text-decoration: none !important;
+            font-size: 12px;
+            font-weight: 800;
+            max-width: 100%;
+            cursor: pointer;
+            transition: background .18s ease,
+                        transform .18s ease,
+                        box-shadow .18s ease;
+        }
+
+        .salt-chat-social-link:hover {
+            background: #eef6ff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(23,105,209,.10);
+        }
+
+        .salt-chat-social-link i {
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            display: grid;
+            place-items: center;
+            background: #e8f2ff;
+            color: #1769d1;
+            flex: none;
+        }
+
+        .salt-chat-social-link span {
+            display: block;
+            min-width: 0;
+        }
+
+        .salt-chat-social-link strong {
+            display: block;
+            color: #1769d1;
+            font-weight: 800;
+        }
+
+        .salt-chat-social-link small {
+            display: block;
+            color: #718198;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+    `;
+
+    document.head.appendChild(style);
+
+})();
 
 
 // =========================================================
