@@ -745,6 +745,132 @@
                 padding: 16px;
             }
         }
+
+        /* ==========================================
+           BIRTHDAY SETTINGS
+           ========================================== */
+
+        .birthday-box {
+            padding: 15px;
+            border: 1px solid #dbe7f3;
+            border-radius: 13px;
+            background: linear-gradient(135deg, #f8fbff, #eef6ff);
+        }
+
+        .birthday-row {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+        }
+
+        .birthday-icon {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 auto;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            color: var(--salt-blue);
+            background: white;
+            box-shadow: 0 5px 14px rgba(7,87,168,.10);
+        }
+
+        .birthday-copy {
+            min-width: 0;
+        }
+
+        .birthday-copy strong {
+            display: block;
+            font-size: 13px;
+            color: #172033;
+        }
+
+        .birthday-copy span {
+            display: block;
+            margin-top: 3px;
+            color: var(--salt-muted);
+            font-size: 10px;
+            line-height: 1.45;
+        }
+
+        .birthday-input-wrap {
+            margin-top: 13px;
+        }
+
+        .birthday-input-wrap input {
+            width: 100%;
+            height: 44px;
+            padding: 0 13px;
+            border: 1px solid #d5e0eb;
+            border-radius: 10px;
+            outline: none;
+            color: var(--salt-text);
+            background: white;
+        }
+
+        .birthday-input-wrap input:focus {
+            border-color: #5d9bd8;
+            box-shadow: 0 0 0 3px rgba(7,87,168,.10);
+        }
+
+        .birthday-privacy {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 11px 12px;
+            border-radius: 10px;
+            background: rgba(255,255,255,.75);
+            border: 1px solid rgba(219,231,243,.9);
+        }
+
+        .birthday-privacy input {
+            width: 17px;
+            height: 17px;
+            margin: 1px 0 0;
+            accent-color: var(--salt-blue);
+        }
+
+        .birthday-privacy strong {
+            display: block;
+            font-size: 11px;
+        }
+
+        .birthday-privacy span {
+            display: block;
+            margin-top: 2px;
+            color: var(--salt-muted);
+            font-size: 10px;
+            line-height: 1.4;
+        }
+
+        body.preview-dark .birthday-box {
+            background: #0f1b2d;
+            border-color: #263a52;
+        }
+
+        body.preview-dark .birthday-icon {
+            background: #132033;
+        }
+
+        body.preview-dark .birthday-copy strong,
+        body.preview-dark .birthday-privacy strong {
+            color: #edf4ff;
+        }
+
+        body.preview-dark .birthday-input-wrap input,
+        body.preview-dark .birthday-privacy {
+            background: #132033;
+            color: #edf4ff;
+            border-color: #263a52;
+        }
+
+        @media (max-width: 600px) {
+            .birthday-row {
+                align-items: flex-start;
+            }
+        }
+
     </style>
 
     <!-- SALT Workforce PWA -->
@@ -1013,6 +1139,62 @@
 
                         </div>
 
+
+
+                        <div class="field full">
+
+                            <label>
+                                <i class="fas fa-cake-candles"></i>
+                                Birthday
+                            </label>
+
+                            <div class="birthday-box">
+
+                                <div class="birthday-row">
+
+                                    <div class="birthday-icon">
+                                        <i class="fas fa-cake-candles"></i>
+                                    </div>
+
+                                    <div class="birthday-copy">
+                                        <strong>Let SALT celebrate you 🎂</strong>
+                                        <span>
+                                            Add your date of birth so your birthday can appear in Upcoming Birthdays on SALT Connect.
+                                            Other employees will see only your birthday month and day.
+                                        </span>
+                                    </div>
+
+                                </div>
+
+                                <div class="birthday-input-wrap">
+                                    <input
+                                        type="date"
+                                        name="birthday"
+                                        id="birthday"
+                                        value="{{ user.birthday.strftime('%Y-%m-%d') if user.birthday else '' }}"
+                                        autocomplete="bday"
+                                        aria-label="Date of birth"
+                                    >
+                                </div>
+
+                                <label class="birthday-privacy">
+                                    <input
+                                        type="checkbox"
+                                        name="birthday_visible"
+                                        value="1"
+                                        {% if user.birthday_visible is not defined or user.birthday_visible %}checked{% endif %}
+                                    >
+                                    <span>
+                                        <strong>Show my birthday to SALT staff</strong>
+                                        <span>
+                                            When enabled, your birthday can appear in Upcoming Birthdays and colleagues can celebrate you on SALT Connect.
+                                        </span>
+                                    </span>
+                                </label>
+
+                            </div>
+
+                        </div>
 
                         {% if role == 'admin' %}
 

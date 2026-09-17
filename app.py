@@ -140,6 +140,25 @@ def init_db():
             ADD COLUMN IF NOT EXISTS birthday DATE
         """)
 
+        # Birthday visibility controls whether a staff member appears in
+        # SALT Connect's Upcoming Birthdays section. Existing employees
+        # remain visible by default so this migration does not hide birthdays.
+        c.execute("""
+            ALTER TABLE employees
+            ADD COLUMN IF NOT EXISTS birthday_visible BOOLEAN DEFAULT TRUE
+        """)
+
+        c.execute("""
+            UPDATE employees
+            SET birthday_visible=TRUE
+            WHERE birthday_visible IS NULL
+        """)
+
+        c.execute("""
+            CREATE INDEX IF NOT EXISTS idx_employees_birthday
+            ON employees (birthday)
+        """)
+
         c.execute("""
             CREATE TABLE IF NOT EXISTS attendance (
                 id SERIAL PRIMARY KEY,
@@ -1118,6 +1137,34 @@ def profile_settings():
         theme = request.form.get('theme', 'light')
         position = request.form.get('position', '').strip()
 
+        # Birthday is stored as a DATE. Keep the full date private in the
+        # database; SALT Connect can display only month/day.
+        birthday_raw = request.form.get('birthday', '').strip()
+        birthday_visible = request.form.get('birthday_visible') == '1'
+        birthday = None
+
+        if birthday_raw:
+            try:
+                birthday = datetime.strptime(
+                    birthday_raw,
+                    '%Y-%m-%d'
+                ).date()
+            except ValueError:
+                conn.close()
+                flash(
+                    "Please enter a valid birthday.",
+                    "error"
+                )
+                return redirect('/settings/profile')
+
+            if birthday > datetime.now().date():
+                conn.close()
+                flash(
+                    "Birthday cannot be a future date.",
+                    "error"
+                )
+                return redirect('/settings/profile')
+
         new_password = request.form.get(
             'new_password',
             ''
@@ -1346,7 +1393,9 @@ def profile_settings():
                 phone=%s,
                 position=%s,
                 department=%s,
-                theme=%s
+                theme=%s,
+                birthday=%s,
+                birthday_visible=%s
         """
 
         params = [
@@ -1354,7 +1403,9 @@ def profile_settings():
             phone,
             position,
             department,
-            theme
+            theme,
+            birthday,
+            birthday_visible
         ]
 
 

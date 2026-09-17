@@ -878,6 +878,44 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
     gap:12px;
     margin-top:14px;
 }
+
+/* SALT Connect — keep the main page fixed while the posts area scrolls. */
+@media (min-width:768px) {
+    .salt-social-grid > section {
+        min-width:0;
+        min-height:0;
+    }
+
+    .salt-social-feed {
+        height:calc(100dvh - 395px);
+        min-height:300px;
+        max-height:560px;
+        overflow-y:auto;
+        overflow-x:hidden;
+        padding-right:8px;
+        padding-bottom:8px;
+        overscroll-behavior:contain;
+        scrollbar-gutter:stable;
+        scroll-behavior:smooth;
+    }
+
+    .salt-social-feed::-webkit-scrollbar {
+        width:8px;
+    }
+
+    .salt-social-feed::-webkit-scrollbar-track {
+        background:transparent;
+    }
+
+    .salt-social-feed::-webkit-scrollbar-thumb {
+        background:#cbd5e1;
+        border-radius:999px;
+    }
+
+    .salt-social-feed::-webkit-scrollbar-thumb:hover {
+        background:#94a3b8;
+    }
+}
 .salt-social-post {
     padding:15px 17px;
     max-width:820px;
@@ -1080,6 +1118,14 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
         font-size:10px;
     }
     .salt-social-grid { display:block; margin-top:12px; }
+    .salt-social-feed {
+        height:auto;
+        min-height:0;
+        max-height:none;
+        overflow:visible;
+        padding-right:0;
+        padding-bottom:0;
+    }
     .salt-social-grid > aside { display:none; }
     .salt-social-tools { padding-left:0; }
     .salt-social-tabs {
@@ -1496,6 +1542,88 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
     .salt-social-achievement-body{padding:14px;gap:11px}
     .salt-social-achievement-icon{width:50px;height:50px;font-size:21px;border-radius:14px}
     .salt-social-achievement-title{font-size:14px}
+}
+</style>
+
+
+<style id="salt-social-right-sidebar-scroll">
+/* SALT Connect — keep the right sidebar independently scrollable on desktop. */
+@media (min-width:768px) {
+    .salt-social-grid > aside {
+        min-width:0;
+        min-height:0;
+        height:calc(100dvh - 115px);
+        max-height:calc(100dvh - 115px);
+        overflow-y:auto;
+        overflow-x:hidden;
+        padding-right:8px;
+        padding-bottom:10px;
+        position:sticky;
+        top:82px;
+        align-self:start;
+        overscroll-behavior:contain;
+        scrollbar-gutter:stable;
+        scroll-behavior:smooth;
+    }
+
+    .salt-social-grid > aside::-webkit-scrollbar {
+        width:8px;
+    }
+
+    .salt-social-grid > aside::-webkit-scrollbar-track {
+        background:transparent;
+    }
+
+    .salt-social-grid > aside::-webkit-scrollbar-thumb {
+        background:#cbd5e1;
+        border-radius:999px;
+    }
+
+    .salt-social-grid > aside::-webkit-scrollbar-thumb:hover {
+        background:#94a3b8;
+    }
+
+    /* Firefox */
+    .salt-social-grid > aside {
+        scrollbar-width:thin;
+        scrollbar-color:#cbd5e1 transparent;
+    }
+}
+
+/* On phones, let the whole Social page scroll naturally. */
+@media (max-width:767px) {
+    .salt-social-grid > aside {
+        height:auto;
+        max-height:none;
+        overflow:visible;
+        position:static;
+        padding-right:0;
+    }
+}
+</style>
+
+
+<style id="salt-remove-main-feed-scrollbar">
+@media (min-width:768px) {
+    /* Remove the independent scrollbar from the main/initial Social feed area. */
+    .salt-social-grid > main,
+    .salt-social-grid > section,
+    .salt-social-main,
+    .salt-social-feed,
+    #socialFeed {
+        height:auto !important;
+        max-height:none !important;
+        overflow-y:visible !important;
+        overflow-x:visible !important;
+    }
+
+    /* Keep the right sidebar as the only independently scrolling area. */
+    .salt-social-grid > aside {
+        height:calc(100dvh - 115px) !important;
+        max-height:calc(100dvh - 115px) !important;
+        overflow-y:auto !important;
+        overflow-x:hidden !important;
+    }
 }
 </style>
 
@@ -2704,9 +2832,39 @@ document.addEventListener("DOMContentLoaded", function () {
             expandComposer(true);
             return;
         }
+
         postBtn.disabled = true;
-        postBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Posting...';
+        const originalButtonHtml = postBtn.innerHTML;
+        postBtn.innerHTML = birthdayTarget
+            ? '<i class="fas fa-cake-candles fa-bounce mr-1"></i> Sending...'
+            : '<i class="fas fa-circle-notch fa-spin mr-1"></i> Posting...';
+
         try {
+            // Birthday posts use the dedicated backend endpoint. This creates
+            // a public birthday post and notifies the birthday celebrant.
+            if (birthdayTarget) {
+                const res = await fetch(
+                    `/api/social/birthdays/${birthdayTarget.employeeId}/celebrate`,
+                    {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({message: content}),
+                        credentials: "same-origin"
+                    }
+                );
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || "Could not send birthday message");
+                }
+
+                alert(data.message || `Birthday message sent to ${birthdayTarget.name}.`);
+                birthdayTarget = null;
+                composerText.value = "";
+                collapseComposer();
+                await loadFeed();
+                return;
+            }
+
             const fd = new FormData();
             fd.append("content",content);
             fd.append("visibility",visibility?.value || "everyone");
@@ -2727,7 +2885,9 @@ document.addEventListener("DOMContentLoaded", function () {
             alert(e.message);
         } finally {
             postBtn.disabled = false;
-            postBtn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i> Post';
+            postBtn.innerHTML = birthdayTarget
+                ? '<i class="fas fa-cake-candles mr-1"></i> Send Birthday'
+                : originalButtonHtml;
         }
     }
 
@@ -3137,6 +3297,11 @@ document.addEventListener("DOMContentLoaded", function () {
         if (tabs[2]) tabs[2].click();
     });
 
+    // Birthday celebration state. When a birthday is selected, the normal
+    // Social composer sends through the dedicated birthday endpoint so the
+    // celebrant receives a main SALT Portal notification.
+    let birthdayTarget = null;
+
     async function loadSocialSidebar() {
         try {
             const res = await fetch("/api/social/sidebar", {credentials:"same-origin"});
@@ -3164,7 +3329,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             birthdayBox.innerHTML = (data.birthdays || []).length
                 ? data.birthdays.map(x => `<button type="button" class="salt-social-side-item salt-social-side-link salt-social-birthday-link"
-                    data-birthday-name="${esc(x.name)}">
+                    data-birthday-name="${esc(x.name)}" data-birthday-employee-id="${x.employee_id}">
                     ${avatar(x.name, x.profile_pic, "salt-social-user !w-10 !h-10")}
                     <div><strong>${esc(x.name)}</strong><small>${new Date(x.birthday).toLocaleDateString(undefined,{month:"long",day:"numeric"})}</small></div>
                   </button>`).join("")
@@ -3179,12 +3344,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 if(tabs[2]) tabs[2].click();
             }));
             document.querySelectorAll(".salt-social-birthday-link").forEach(btn => btn.addEventListener("click",()=>{
+                const employeeId = Number(btn.dataset.birthdayEmployeeId);
+                if (!employeeId) return;
+
+                birthdayTarget = {
+                    employeeId,
+                    name: btn.dataset.birthdayName || "your colleague"
+                };
+
                 composerOpen?.click();
                 if(composerText) {
-                    composerText.value = `Happy Birthday ${btn.dataset.birthdayName}! 🎉🎂 Wishing you a wonderful day and a blessed year ahead.`;
+                    composerText.value = `Wishing you a very Happy Birthday, ${birthdayTarget.name}! 🎉🎂 May you have a wonderful day and a blessed year ahead.`;
                     composerText.classList.remove("hidden");
                     options?.classList.remove("hidden");
                     composerText.focus();
+                }
+                if (postBtn) {
+                    postBtn.innerHTML = '<i class="fas fa-cake-candles mr-1"></i> Send Birthday';
                 }
             }));
         } catch (e) {
@@ -3347,7 +3523,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const defaultText=`Congratulations ${selected?.employee_name||""} on earning ${selected?.achievement_name||"this achievement"}! 🎉`;
             const msg=(achievementMessage?.value||"").trim()||defaultText;
             const r=await fetch("/api/social/posts",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({content:msg,post_type:"achievement",visibility:"staff",achievement_employee_id:employeeId,achievement_id:achievementId})});
+                body:JSON.stringify({content:msg,post_type:"achievement",visibility:"everyone",achievement_employee_id:employeeId,achievement_id:achievementId})});
             const d=await r.json();
             if(!r.ok||!d.success) throw new Error(d.message||"Could not post achievement.");
             closeAchievementModal(); achievementMessage.value=""; achievementEmployee.value=""; achievementType.innerHTML='<option value="">Select an achievement</option>';
