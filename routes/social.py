@@ -255,8 +255,23 @@ def social_feed():
         return jsonify({"success": True, "posts": posts})
     except Exception as e:
         conn.rollback()
-        print("SOCIAL FEED ERROR:", repr(e))
-        return jsonify({"success": False, "message": "Could not load Social feed."}), 500
+
+        # TEMPORARY DIAGNOSTIC:
+        # Return the real PostgreSQL/Flask exception so Render/browser
+        # diagnostics can identify the exact cause of the feed failure.
+        import traceback
+        error_text = repr(e)
+
+        print("========== SOCIAL FEED ERROR ==========")
+        print(error_text)
+        traceback.print_exc()
+        print("=======================================")
+
+        return jsonify({
+            "success": False,
+            "message": "SOCIAL FEED ERROR",
+            "error": error_text
+        }), 500
     finally:
         conn.close()
 
