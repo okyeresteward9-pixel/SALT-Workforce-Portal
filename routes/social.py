@@ -3,8 +3,15 @@ from psycopg2.extras import RealDictCursor
 from database import get_db
 from werkzeug.utils import secure_filename
 from cloudinary import uploader
+from cloudinary.utils import cloudinary_url
 import cloudinary_config  # noqa: F401 - ensures Cloudinary is configured
 import re
+
+# Delivery-side limits for optimized Cloudinary URLs. These only affect what
+# gets *delivered* to the browser - the original uploaded asset in Cloudinary
+# is never modified or re-compressed.
+IMAGE_DELIVERY_MAX_WIDTH = 1200
+VIDEO_DELIVERY_MAX_WIDTH = 1280
 
 social_bp = Blueprint("social", __name__)
 
@@ -24,6 +31,44 @@ def _serialize_dt(value):
 
 def _profile_path(row):
     return row.get("profile_pic") if row else None
+
+
+def _optimized_media_url(cloudinary_public_id, media_type):
+    """Build an optimized Cloudinary delivery URL for a stored asset.
+
+    Returns None when there's no public_id to build from (e.g. media
+    uploaded before this feature existed), so callers can fall back to the
+    original stored media_url without breaking anything.
+    """
+    if not cloudinary_public_id:
+        return None
+    is_video = media_type == "video"
+    try:
+        url, _options = cloudinary_url(
+            cloudinary_public_id,
+            resource_type="video" if is_video else "image",
+            quality="auto",
+            fetch_format="auto",
+            width=VIDEO_DELIVERY_MAX_WIDTH if is_video else IMAGE_DELIVERY_MAX_WIDTH,
+            crop="limit",
+        )
+        return url
+    except Exception as e:
+        print("SOCIAL CLOUDINARY URL OPTIMIZATION ERROR:", repr(e))
+        return None
+
+
+def _resolve_media_url(media_url, media_type, cloudinary_public_id):
+    """Prefer an optimized Cloudinary URL; fall back to the stored original."""
+    return _optimized_media_url(cloudinary_public_id, media_type) or media_url
+
+
+def _media_entry(media_url, media_type, original_name, cloudinary_public_id=None):
+    return {
+        "url": _resolve_media_url(media_url, media_type, cloudinary_public_id),
+        "type": media_type,
+        "name": original_name,
+    }
 
 
 def _create_main_notification(c, recipient_id, message):
@@ -108,7 +153,10 @@ def _serialize_post(row, poll=None, achievement=None):
         "viewer_liked": bool(row.get("viewer_liked")),
         "viewer_shared": bool(row.get("viewer_shared")),
         "viewer_bookmarked": bool(row.get("viewer_bookmarked")),
-        "media": row.get("media") or [],
+        "media": [
+            _media_entry(m.get("url"), m.get("type"), m.get("name"), m.get("cloudinary_public_id"))
+            for m in (row.get("media") or [])
+        ],
         "hashtags": row.get("hashtags") or [],
         "poll": poll,
         "achievement": achievement,
@@ -174,7 +222,8 @@ def _post_select_sql():
             EXISTS (SELECT 1 FROM social_bookmarks b
                     WHERE b.post_id=p.id AND b.user_id=%s) AS viewer_bookmarked,
             COALESCE((SELECT json_agg(json_build_object(
-                'url', m.media_url, 'type', m.media_type, 'name', m.original_name
+                'url', m.media_url, 'type', m.media_type, 'name', m.original_name,
+                'cloudinary_public_id', m.cloudinary_public_id
             ) ORDER BY m.id) FROM social_post_media m WHERE m.post_id=p.id), '[]'::json) AS media,
             COALESCE((SELECT json_agg(h.tag ORDER BY h.tag)
                 FROM social_post_hashtags ph JOIN social_hashtags h ON h.id=ph.hashtag_id
@@ -367,9 +416,15 @@ def create_social_post():
 
         if upload_result:
             c.execute("""
-                INSERT INTO social_post_media(post_id, media_url, media_type, original_name)
-                VALUES(%s,%s,%s,%s)
-            """, (post["id"], upload_result.get("secure_url"), upload_kind, original_filename))
+                INSERT INTO social_post_media(post_id, media_url, media_type, original_name, cloudinary_public_id)
+                VALUES(%s,%s,%s,%s,%s)
+            """, (
+                post["id"],
+                upload_result.get("secure_url"),
+                upload_kind,
+                original_filename,
+                upload_result.get("public_id"),
+            ))
 
         _save_hashtags(c, post["id"], content)
 
@@ -432,7 +487,12 @@ def create_social_post():
         post["profile_pic"] = author["profile_pic"] if author else None
         post["like_count"] = post["comment_count"] = post["share_count"] = post["bookmark_count"] = 0
         post["viewer_liked"] = post["viewer_shared"] = post["viewer_bookmarked"] = False
-        post["media"] = ([{"url": upload_result.get("secure_url"), "type": upload_kind, "name": original_filename}]
+        post["media"] = ([_media_entry(
+                             upload_result.get("secure_url"),
+                             upload_kind,
+                             original_filename,
+                             upload_result.get("public_id"),
+                         )]
                          if upload_result else [])
         post["hashtags"] = re.findall(r"(?<!\w)#([\w-]{1,50})", content, flags=re.UNICODE)
         poll_data = _get_poll_for_post(c, post["id"], user_id) if post_type == "poll" else None
@@ -624,20 +684,21 @@ def share_social_post(post_id):
 
         # Copy original media onto the newly-created shared post.
         c.execute("""
-            SELECT media_url, media_type, original_name
+            SELECT media_url, media_type, original_name, cloudinary_public_id
             FROM social_post_media
             WHERE post_id=%s
             ORDER BY id
         """, (post_id,))
         for media in c.fetchall():
             c.execute("""
-                INSERT INTO social_post_media(post_id, media_url, media_type, original_name)
-                VALUES(%s,%s,%s,%s)
+                INSERT INTO social_post_media(post_id, media_url, media_type, original_name, cloudinary_public_id)
+                VALUES(%s,%s,%s,%s,%s)
             """, (
                 shared_post["id"],
                 media["media_url"],
                 media["media_type"],
-                media["original_name"]
+                media["original_name"],
+                media["cloudinary_public_id"]
             ))
 
         # Copy hashtags so the shared post remains discoverable.
@@ -696,12 +757,12 @@ def share_social_post(post_id):
         shared_post["viewer_bookmarked"] = False
 
         c.execute("""
-            SELECT media_url, media_type, original_name
+            SELECT media_url, media_type, original_name, cloudinary_public_id
             FROM social_post_media
             WHERE post_id=%s ORDER BY id
         """, (shared_post["id"],))
         shared_post["media"] = [
-            {"url": r["media_url"], "type": r["media_type"], "name": r["original_name"]}
+            _media_entry(r["media_url"], r["media_type"], r["original_name"], r["cloudinary_public_id"])
             for r in c.fetchall()
         ]
 
