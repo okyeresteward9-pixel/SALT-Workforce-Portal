@@ -940,6 +940,39 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 .salt-social-post-media video {
     background:#020617;
 }
+.salt-social-video-wrap {
+    position:relative;
+    width:100%;
+    height:360px;
+    background:#020617;
+}
+.salt-social-video-wrap video {
+    height:100%;
+}
+.salt-social-video-play-btn {
+    position:absolute;
+    inset:0;
+    margin:auto;
+    width:62px;
+    height:62px;
+    border-radius:50%;
+    border:none;
+    background:rgba(15,23,42,.55);
+    color:#fff;
+    font-size:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:background .15s ease, transform .15s ease;
+}
+.salt-social-video-play-btn:hover {
+    background:rgba(15,23,42,.75);
+    transform:scale(1.05);
+}
+.salt-social-video-wrap.playing .salt-social-video-play-btn {
+    display:none;
+}
 
 .salt-social-post-head {
     display:flex;
@@ -2679,16 +2712,22 @@ document.addEventListener("DOMContentLoaded", function () {
         return media.map(m => {
             if (!m || !m.url) return "";
             if (m.type === "video") {
+                // The <source> is intentionally left out of the markup: nothing is
+                // fetched from Cloudinary until the viewer taps play (see the
+                // delegated [data-video-play] handler below). preload="none"
+                // stops the browser from speculatively fetching anything either.
                 return `<div class="salt-social-post-media">
-                    <video class="salt-social-media-video" controls playsinline preload="metadata">
-                        <source src="${esc(m.url)}" type="${esc(m.mime_type || "video/mp4")}">
-                        Your browser does not support video playback.
-                    </video>
+                    <div class="salt-social-video-wrap" data-video-src="${esc(m.url)}" data-video-mime="${esc(m.mime_type || "video/mp4")}">
+                        <video class="salt-social-media-video" playsinline preload="none"></video>
+                        <button type="button" class="salt-social-video-play-btn" data-video-play aria-label="Play video">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
                 </div>`;
             }
             if (m.type === "image") {
                 return `<div class="salt-social-post-media">
-                    <img src="${esc(m.url)}" alt="Post image" loading="lazy">
+                    <img src="${esc(m.url)}" alt="Post image" loading="lazy" decoding="async">
                 </div>`;
             }
             return "";
@@ -3098,6 +3137,28 @@ document.addEventListener("DOMContentLoaded", function () {
                 const s=btn.querySelector("span"); if(s) s.textContent=d.bookmark_count ? d.bookmark_count : "";
             }
         } catch(err){ alert(err.message); }
+    });
+
+    // SALT Connect videos: no source is attached until the viewer taps play,
+    // so scrolling past a video post never triggers a Cloudinary download.
+    feed?.addEventListener("click", (e) => {
+        const playBtn = e.target.closest("[data-video-play]");
+        if (!playBtn) return;
+        const wrap = playBtn.closest(".salt-social-video-wrap");
+        const video = wrap?.querySelector("video");
+        const src = wrap?.dataset.videoSrc;
+        if (!wrap || !video || !src) return;
+        if (wrap.dataset.loaded !== "1") {
+            const source = document.createElement("source");
+            source.src = src;
+            source.type = wrap.dataset.videoMime || "video/mp4";
+            video.appendChild(source);
+            video.setAttribute("controls", "");
+            video.load();
+            wrap.dataset.loaded = "1";
+        }
+        wrap.classList.add("playing");
+        video.play().catch(() => {});
     });
 
     // Three-dot post menu: open/close and hide individual posts.
