@@ -1,4 +1,3 @@
-
 <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 {% extends "request_base.html" %}
 {% block title %}SALT — New Request{% endblock %}
@@ -52,7 +51,11 @@
 {% endblock %}
 {% block scripts %}<script>
 let currentStep=1;const panels=[...document.querySelectorAll('.rq-panel')];
-function showStep(n){currentStep=n;panels.forEach(p=>p.classList.toggle('rq-hidden',+p.dataset.panel!==n));document.querySelectorAll('.rq-stepper-item').forEach((x,i)=>{x.classList.toggle('active',i+1===n);x.classList.toggle('done',i+1<n)});document.getElementById('backBtn').style.visibility=n===1?'hidden':'visible';document.getElementById('nextBtn').classList.toggle('rq-hidden',n===5);document.getElementById('submitBtn').classList.toggle('rq-hidden',n!==5);document.getElementById('saveDraftBtn').classList.toggle('rq-hidden',n!==5);if(n===5)buildReview();window.scrollTo({top:0,behavior:'smooth'})}
+function showStep(n){currentStep=n;panels.forEach(p=>p.classList.toggle('rq-hidden',+p.dataset.panel!==n));document.querySelectorAll('.rq-stepper-item').forEach((x,i)=>{x.classList.toggle('active',i+1===n);x.classList.toggle('done',i+1<n)});document.getElementById('backBtn').style.visibility=n===1?'hidden':'visible';document.getElementById('nextBtn').classList.toggle('rq-hidden',n===5);const submitBtn=document.getElementById('submitBtn'),draftBtn=document.getElementById('saveDraftBtn');submitBtn.classList.toggle('rq-hidden',n!==5);draftBtn.classList.toggle('rq-hidden',n!==5);
+// Disabled (not just hidden) so a hidden submit button can never become the
+// form's implicit "default button" and fire on Enter from an earlier step.
+submitBtn.disabled=(n!==5);draftBtn.disabled=(n!==5);
+if(n===5)buildReview();window.scrollTo({top:0,behavior:'smooth'})}
 function validateStep(n){if(n===1){let t=document.getElementById('title'),b=document.getElementById('memo_body');if(!t.value.trim()){t.reportValidity();return false}if(!b.value.trim()){b.reportValidity();return false}}if(n===3){let r=document.querySelector('[name=registrar_id]'),p=document.querySelector('[name=president_id]');if(!r.value){r.reportValidity();return false}if(!p.value){p.reportValidity();return false}if(document.querySelector('[name=finance_related]:checked').value==='yes'){let a=document.querySelector('[name=auditor_id]'),ac=document.querySelector('[name=accountant_id]');}}return true}
 function changeStep(d){if(d>0&&!validateStep(currentStep))return;showStep(Math.min(5,Math.max(1,currentStep+d)))}
 function addItem(){let row=document.createElement('div');row.className='rq-item-row';row.innerHTML='<input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button>';document.getElementById('items').appendChild(row);bindTotals()}
@@ -140,26 +143,35 @@ function prepareRequestSubmit(event){
     const nextBtn = document.getElementById('nextBtn');
     const backBtn = document.getElementById('backBtn');
 
-    if(isDraft){
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = '⏳ Saving draft...';
-        saveBtn.style.opacity = '0.75';
+    // IMPORTANT: don't disable the clicked submit button synchronously here.
+    // Browsers build the submitted form data (including the clicked button's
+    // name/value pair, e.g. request_action=draft) at the point the form is
+    // actually sent, right after this handler returns. Disabling the button
+    // now removes it from that payload before it goes out, so the server
+    // never sees request_action at all. Deferring with setTimeout(...,0)
+    // lets the browser finish submitting first.
+    setTimeout(function(){
+        if(isDraft){
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '⏳ Saving draft...';
+            saveBtn.style.opacity = '0.75';
 
-        // Keep Submit hidden on step 5, but lock it just in case.
-        if(submitBtn) submitBtn.disabled = true;
-    }
+            // Keep Submit hidden on step 5, but lock it just in case.
+            if(submitBtn) submitBtn.disabled = true;
+        }
 
-    if(isFinalSubmit){
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '⏳ Submitting...';
-        submitBtn.style.opacity = '0.75';
+        if(isFinalSubmit){
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '⏳ Submitting...';
+            submitBtn.style.opacity = '0.75';
 
-        if(saveBtn) saveBtn.disabled = true;
-    }
+            if(saveBtn) saveBtn.disabled = true;
+        }
 
-    // Lock navigation while the POST is being processed.
-    if(nextBtn) nextBtn.disabled = true;
-    if(backBtn) backBtn.disabled = true;
+        // Lock navigation while the POST is being processed.
+        if(nextBtn) nextBtn.disabled = true;
+        if(backBtn) backBtn.disabled = true;
+    }, 0);
 
     return true;
 }

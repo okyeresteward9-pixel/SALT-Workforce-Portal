@@ -957,38 +957,54 @@ def edit_request(request_id):
         memo_body = request.form.get("memo_body", "").strip()
         currency = normalize_currency(request.form.get("currency", req.get("currency", "GHS")))
 
+        action = request.form.get("request_action", "").strip().lower()
+        # request_action is the authoritative action from the form, same
+        # convention as new_request(). Only "draft" keeps the request out
+        # of the approval workflow; anything else (including no value, for
+        # older cached pages) resubmits, matching the previous behavior.
+        is_draft = action == "draft"
+
         if not title or not memo_body:
             flash("Please complete the request title and memo body.", "error")
             conn.close()
             return redirect(url_for("requests_bp.edit_request", request_id=request_id))
 
-        try:
-            selected, finance, _ = _parse_edit_route(conn)
-        except ValueError as exc:
-            flash(str(exc), "error")
-            conn.close()
-            return redirect(url_for("requests_bp.edit_request", request_id=request_id))
+        selected = []
+        finance = request.form.get("finance_related") == "yes"
+
+        # Only require/validate a full approval route when actually
+        # resubmitting. A draft can be saved with an incomplete route and
+        # finished later through Edit & Submit.
+        if not is_draft:
+            try:
+                selected, finance, _ = _parse_edit_route(conn)
+            except ValueError as exc:
+                flash(str(exc), "error")
+                conn.close()
+                return redirect(url_for("requests_bp.edit_request", request_id=request_id))
 
         now_value = now()
 
-        # Replace the old approval route with the newly selected route.
-        c.execute(
-            "DELETE FROM request_steps WHERE request_id=%s",
-            (request_id,)
-        )
+        # Only replace the approval route when actually resubmitting. A
+        # draft save must not touch request_steps at all.
+        if not is_draft:
+            c.execute(
+                "DELETE FROM request_steps WHERE request_id=%s",
+                (request_id,)
+            )
 
-        for order, (approver_id, position_key) in enumerate(selected, start=1):
-            c.execute("""
-                INSERT INTO request_steps
-                (request_id, step_order, approver_id, position, status)
-                VALUES (%s,%s,%s,%s,%s)
-            """, (
-                request_id,
-                order,
-                approver_id,
-                APPROVER_POSITIONS[position_key],
-                "pending" if order == 1 else "waiting"
-            ))
+            for order, (approver_id, position_key) in enumerate(selected, start=1):
+                c.execute("""
+                    INSERT INTO request_steps
+                    (request_id, step_order, approver_id, position, status)
+                    VALUES (%s,%s,%s,%s,%s)
+                """, (
+                    request_id,
+                    order,
+                    approver_id,
+                    APPROVER_POSITIONS[position_key],
+                    "pending" if order == 1 else "waiting"
+                ))
 
         # Replace requisition items.
         c.execute(
@@ -1059,6 +1075,57 @@ def edit_request(request_id):
             request_id,
             request.files.getlist("attachments")
         )
+
+        if is_draft:
+            # Keep the request as an editable draft. Do not touch
+            # request_steps, current_step, or completed_at.
+            c.execute("""
+                UPDATE requests
+                SET request_type=%s,
+                    title=%s,
+                    memo_to=%s,
+                    memo_from=%s,
+                    memo_cc=%s,
+                    memo_date=%s,
+                    memo_subject=%s,
+                    memo_body=%s,
+                    is_finance_related=%s,
+                    currency=%s,
+                    total_amount=%s,
+                    status='draft',
+                    updated_at=%s
+                WHERE id=%s
+            """, (
+                request_type,
+                title,
+                memo_to,
+                memo_from,
+                memo_cc,
+                memo_date,
+                memo_subject,
+                memo_body,
+                finance,
+                currency,
+                total,
+                now_value,
+                request_id
+            ))
+
+            add_history(
+                conn,
+                request_id,
+                session["user_id"],
+                "Draft Updated",
+                "Draft saved with changes."
+            )
+
+            conn.commit()
+            conn.close()
+
+            flash(f"Request {req['request_no']} saved as a draft.", "success")
+            return redirect(
+                url_for("requests_bp.detail", request_id=request_id)
+            )
 
         # A successful edit is a fresh submission. Existing history remains.
         c.execute("""

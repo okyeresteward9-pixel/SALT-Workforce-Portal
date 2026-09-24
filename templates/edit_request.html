@@ -101,7 +101,7 @@
     {% if attachments %}
       <div style="display:grid;gap:8px;margin-bottom:14px">
       {% for a in attachments %}
-        <div class="rq-attachment"><span>📎 {{ a.original_name }}</span><form method="POST" action="{{ url_for('requests_bp.delete_attachment', request_id=req.id, attachment_id=a.id) }}" onsubmit="return confirm('Remove this attachment?')"><button class="rq-btn rq-danger" type="submit" style="padding:7px 10px">Remove</button></form></div>
+        <div class="rq-attachment"><span>📎 {{ a.original_name }}</span><button class="rq-btn rq-danger" type="submit" form="del-att-{{ a.id }}" style="padding:7px 10px">Remove</button></div>
       {% endfor %}
       </div>
     {% endif %}
@@ -112,10 +112,17 @@
     <div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">✓</div><div><h2>Ready to resubmit</h2><div class="rq-card-sub">Submitting will reset the approval route and notify the first approver.</div></div></div></div>
     <div class="rq-actions">
       <a class="rq-btn" href="{{ url_for('requests_bp.detail', request_id=req.id) }}">Cancel</a>
-      <button class="rq-btn rq-primary" type="submit">Resubmit Request ✓</button>
+      <button class="rq-btn" type="submit" name="request_action" value="draft" formnovalidate>Save as Draft</button>
+      <button class="rq-btn rq-primary" type="submit" name="request_action" value="submit">Resubmit Request ✓</button>
     </div>
   </div>
 </form>
+
+{% if attachments %}
+  {% for a in attachments %}
+  <form id="del-att-{{ a.id }}" method="POST" action="{{ url_for('requests_bp.delete_attachment', request_id=req.id, attachment_id=a.id) }}" onsubmit="return confirm('Remove this attachment?')" style="display:none"></form>
+  {% endfor %}
+{% endif %}
 {% endblock %}
 {% block scripts %}
 <script>
