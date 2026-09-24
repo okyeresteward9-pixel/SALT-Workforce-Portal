@@ -1,25 +1,7 @@
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 {% extends "request_base.html" %}
 {% block title %}SALT — Edit {{ req.request_no }}{% endblock %}
 {% block content %}
 {% set selected = selected|default({}, true) %}
-{% if not selected %}
-    {% set selected = namespace(supervisor_id=None, registrar_id=None, president_id=None, auditor_id=None, accountant_id=None) %}
-    {% for s in old_steps|default([]) %}
-        {% if s.position == 'Immediate Supervisor' %}
-            {% set selected.supervisor_id = s.approver_id %}
-        {% elif s.position == 'Registrar / Ag. Registrar' %}
-            {% set selected.registrar_id = s.approver_id %}
-        {% elif s.position == 'President' %}
-            {% set selected.president_id = s.approver_id %}
-        {% elif s.position == 'Internal Auditor' %}
-            {% set selected.auditor_id = s.approver_id %}
-        {% elif s.position == 'Accountant' %}
-            {% set selected.accountant_id = s.approver_id %}
-        {% endif %}
-    {% endfor %}
-{% endif %}
 <div class="rq-hero">
   <div>
     <div class="rq-eyebrow">Correction / Resubmission</div>
@@ -46,14 +28,7 @@
           <option value="memo_requisition" {% if req.request_type == 'memo_requisition' %}selected{% endif %}>Memo + Requisition</option>
         </select>
       </label>
-      <label>Currency
-        <select name="currency" id="currency">
-          <option value="GHS" {% if (req.currency or 'GHS') == 'GHS' %}selected{% endif %}>GHS — Ghana Cedi (GH₵)</option>
-          <option value="USD" {% if req.currency == 'USD' %}selected{% endif %}>USD — US Dollar ($)</option>
-        </select>
-      </label>
-    </div>
-    <div class="rq-grid2"><label>Request title / subject
+      <label>Request title / subject
         <input name="title" required value="{{ req.title or '' }}">
       </label>
     </div>
@@ -77,7 +52,7 @@
         <div class="rq-item-row">
           <input name="item_description[]" value="{{ i.description }}" placeholder="Item / description">
           <input name="item_quantity[]" type="number" step="0.01" min="0" value="{{ i.quantity }}" placeholder="Qty">
-          <input name="item_unit_price[]" type="number" step="0.01" min="0" value="{{ i.unit_price }}" placeholder="Unit price">
+          <input name="item_unit_price[]" type="number" step="0.01" min="0" value="{{ i.unit_price }}" placeholder="Unit price (GH₵)">
           <button class="rq-remove" type="button" onclick="removeItem(this)">×</button>
         </div>
         {% endfor %}
@@ -85,7 +60,7 @@
         <div class="rq-item-row">
           <input name="item_description[]" placeholder="Item / description">
           <input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty">
-          <input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price">
+          <input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price (GH₵)">
           <button class="rq-remove" type="button" onclick="removeItem(this)">×</button>
         </div>
       {% endif %}
@@ -99,12 +74,12 @@
     <label>Immediate Supervisor <span class="rq-muted">(Optional — any employee)</span>
       <select name="supervisor_id">
         <option value="">Skip / Not applicable</option>
-        {% for e in supervisors %}<option value="{{ e.id }}" {% if selected.supervisor_id is not none and e.id|int == selected.supervisor_id|int %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}{% if e.department %} · {{ e.department }}{% endif %}</option>{% endfor %}
+        {% for e in supervisors %}<option value="{{ e.id }}" {% if selected.supervisor_id and e.id == selected.supervisor_id %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}{% if e.department %} · {{ e.department }}{% endif %}</option>{% endfor %}
       </select>
     </label>
     <div class="rq-grid2">
-      <label>Registrar / Ag. Registrar<select name="registrar_id" required><option value="">Select authorized approver</option>{% for e in registrars %}<option value="{{ e.id }}" {% if selected.registrar_id is not none and e.id|int == selected.registrar_id|int %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label>
-      <label>President<select name="president_id" required><option value="">Select authorized approver</option>{% for e in presidents %}<option value="{{ e.id }}" {% if selected.president_id is not none and e.id|int == selected.president_id|int %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label>
+      <label>Registrar / Ag. Registrar<select name="registrar_id" required><option value="">Select authorized approver</option>{% for e in registrars %}<option value="{{ e.id }}" {% if selected.registrar_id and e.id == selected.registrar_id %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label>
+      <label>President<select name="president_id" required><option value="">Select authorized approver</option>{% for e in presidents %}<option value="{{ e.id }}" {% if selected.president_id and e.id == selected.president_id %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label>
     </div>
     <div class="rq-finance">
       <strong style="color:var(--navy)">Is this finance-related?</strong>
@@ -114,19 +89,19 @@
       </div>
       <div id="financeFields" {% if not req.is_finance_related %}class="rq-hidden"{% endif %} style="margin-top:14px">
         <div class="rq-grid2">
-          <label>Internal Auditor<select name="auditor_id"><option value="">Select authorized approver</option>{% for e in auditors %}<option value="{{ e.id }}" {% if selected.auditor_id is not none and e.id|int == selected.auditor_id|int %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label>
-          <label>Accountant<select name="accountant_id"><option value="">Select authorized approver</option>{% for e in accountants %}<option value="{{ e.id }}" {% if selected.accountant_id is not none and e.id|int == selected.accountant_id|int %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label>
+          <label>Internal Auditor<select name="auditor_id"><option value="">Select authorized approver</option>{% for e in auditors %}<option value="{{ e.id }}" {% if selected.auditor_id and e.id == selected.auditor_id %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label>
+          <label>Accountant<select name="accountant_id"><option value="">Select authorized approver</option>{% for e in accountants %}<option value="{{ e.id }}" {% if selected.accountant_id and e.id == selected.accountant_id %}selected{% endif %}>{{ e.name }}{% if e.position %} — {{ e.position }}{% endif %}</option>{% endfor %}</select></label>
         </div>
       </div>
     </div>
   </div>
 
   <div class="rq-card">
-    <div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">04</div><div><h2>Attachments</h2><div class="rq-card-sub">Existing files are retained. Add corrected supporting documents below.</div></div></div></div>
+    <div class="rq-card-head"><div class="rq-card-title"><div class="rq-icon">04</div><div><h2>Attachments</h2><div class="rq-card-sub">Keep existing files or add corrected supporting documents.</div></div></div></div>
     {% if attachments %}
       <div style="display:grid;gap:8px;margin-bottom:14px">
       {% for a in attachments %}
-        <div class="rq-attachment"><span>📎 {{ a.original_name }}</span><span class="rq-muted" style="font-size:11px">Existing file</span></div>
+        <div class="rq-attachment"><span>📎 {{ a.original_name }}</span><form method="POST" action="{{ url_for('requests_bp.delete_attachment', request_id=req.id, attachment_id=a.id) }}" onsubmit="return confirm('Remove this attachment?')"><button class="rq-btn rq-danger" type="submit" style="padding:7px 10px">Remove</button></form></div>
       {% endfor %}
       </div>
     {% endif %}
@@ -144,14 +119,11 @@
 {% endblock %}
 {% block scripts %}
 <script>
-function addItem(){const row=document.createElement('div');row.className='rq-item-row';row.innerHTML='<input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button>';document.getElementById('items').appendChild(row);bindTotals()}
+function addItem(){const row=document.createElement('div');row.className='rq-item-row';row.innerHTML='<input name="item_description[]" placeholder="Item / description"><input name="item_quantity[]" type="number" step="0.01" min="0" placeholder="Qty"><input name="item_unit_price[]" type="number" step="0.01" min="0" placeholder="Unit price (GH₵)"><button class="rq-remove" type="button" onclick="removeItem(this)">×</button>';document.getElementById('items').appendChild(row);bindTotals()}
 function removeItem(btn){const rows=document.querySelectorAll('#items .rq-item-row');if(rows.length>1)btn.parentElement.remove();else btn.parentElement.querySelectorAll('input').forEach(x=>x.value='');updateTotal()}
-function money(n){const c=document.getElementById('currency')?.value||'GHS';return (c==='USD'?'$ ':'GH₵ ')+Number(n||0).toFixed(2)}
-function updateTotal(){let total=0;document.querySelectorAll('#items .rq-item-row').forEach(r=>{total+=(parseFloat(r.querySelector('[name="item_quantity[]"]').value)||0)*(parseFloat(r.querySelector('[name="item_unit_price[]"]').value)||0)});document.getElementById('estimate').textContent=money(total)}
+function updateTotal(){let total=0;document.querySelectorAll('#items .rq-item-row').forEach(r=>{total+=(parseFloat(r.querySelector('[name="item_quantity[]"]').value)||0)*(parseFloat(r.querySelector('[name="item_unit_price[]"]').value)||0)});document.getElementById('estimate').textContent='GH₵ '+total.toFixed(2)}
 function bindTotals(){document.querySelectorAll('[name="item_quantity[]"],[name="item_unit_price[]"]').forEach(x=>x.addEventListener('input',updateTotal))}
 function toggleFinance(){const yes=document.querySelector('[name="finance_related"]:checked').value==='yes';document.getElementById('financeFields').classList.toggle('rq-hidden',!yes)}
-bindTotals();updateTotal();document.getElementById('currency')?.addEventListener('change',updateTotal);
+bindTotals();updateTotal();
 </script>
 {% endblock %}
-
-<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>

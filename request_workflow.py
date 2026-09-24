@@ -25,7 +25,7 @@ ALLOWED_EXTENSIONS = {
 APPROVER_POSITIONS = {
     "supervisor": "Immediate Supervisor",
     "registrar": "Registrar / Ag. Registrar",
-    "president": "President",
+    "president": "President / Vice President",
     "auditor": "Internal Auditor",
     "accountant": "Accountant",
 }
@@ -34,6 +34,7 @@ POSITION_OPTIONS = [
     "Registrar",
     "Ag. Registrar",
     "President",
+    "Vice President",
     "Internal Auditor",
     "Accountant",
 ]
@@ -345,24 +346,42 @@ def _cloudinary_ready():
 
 
 def save_attachments(conn, request_id, files, upload_root=None):
-    """Upload each attachment to Cloudinary and save its metadata."""
+    """Upload valid attachments to Cloudinary and save their metadata.
+
+    Attachments are optional. If the request contains no usable files, this
+    function returns immediately and does not require Cloudinary to be
+    configured. Cloudinary is required only when an actual attachment needs
+    to be uploaded.
+    """
+    valid_files = []
+
+    for file in files or []:
+        if not file or not file.filename or not allowed_file(file.filename):
+            continue
+
+        original = secure_filename(file.filename)
+        if not original:
+            continue
+
+        valid_files.append((file, original))
+
+    # Attachments are optional. Saving a draft/request without an attachment
+    # must work even if Cloudinary is not configured on the local machine.
+    if not valid_files:
+        return
+
     if not _cloudinary_ready():
         raise RuntimeError(
-            "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, "
-            "CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET."
+            "Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, "
+            "CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET before uploading "
+            "an attachment."
         )
 
     c = conn.cursor()
     uploaded_assets = []
 
     try:
-        for file in files:
-            if not file or not file.filename or not allowed_file(file.filename):
-                continue
-
-            original = secure_filename(file.filename)
-            if not original:
-                continue
+        for file, original in valid_files:
 
             file_size = getattr(file, "content_length", None)
             if not file_size:
@@ -492,7 +511,7 @@ def new_request():
 
     supervisors = employees_for_supervisor(conn)
     registrars = approvers_for_position(conn, ["Registrar", "Ag. Registrar"])
-    presidents = approvers_for_position(conn, ["President"])
+    presidents = approvers_for_position(conn, ["President", "Vice President"])
     auditors = approvers_for_position(conn, ["Internal Auditor"])
     accountants = approvers_for_position(conn, ["Accountant"])
 
@@ -508,7 +527,8 @@ def new_request():
         currency = normalize_currency(request.form.get("currency", "GHS"))
 
         action = request.form.get("request_action", "").strip().lower()
-        # Support the current request_action buttons and the older
+        # request_action is the authoritative action from the form.
+        # Support the current buttons and the older
         # save_draft=yes form value for backwards compatibility.
         is_draft = action == "draft" or (
             not action and request.form.get("save_draft") == "yes"
@@ -562,7 +582,7 @@ def new_request():
                 return redirect(url_for("requests_bp.new_request"))
 
             if not valid_id(presidents, president_id):
-                flash("Please select an authorized President.", "error")
+                flash("Please select an authorized President or Vice President.", "error")
                 conn.close()
                 return redirect(url_for("requests_bp.new_request"))
 
@@ -797,7 +817,7 @@ def _load_edit_options(conn):
     return (
         employees_for_supervisor(conn),
         approvers_for_position(conn, ["Registrar", "Ag. Registrar"]),
-        approvers_for_position(conn, ["President"]),
+        approvers_for_position(conn, ["President", "Vice President"]),
         approvers_for_position(conn, ["Internal Auditor"]),
         approvers_for_position(conn, ["Accountant"]),
     )
@@ -807,7 +827,7 @@ def _parse_edit_route(conn):
     """Read and validate the approval route from the edit form."""
     supervisors = employees_for_supervisor(conn)
     registrars = approvers_for_position(conn, ["Registrar", "Ag. Registrar"])
-    presidents = approvers_for_position(conn, ["President"])
+    presidents = approvers_for_position(conn, ["President", "Vice President"])
     auditors = approvers_for_position(conn, ["Internal Auditor"])
     accountants = approvers_for_position(conn, ["Accountant"])
 
@@ -1365,7 +1385,7 @@ def submit_draft(request_id):
 
         supervisors = employees_for_supervisor(conn)
         registrars = approvers_for_position(conn, ["Registrar", "Ag. Registrar"])
-        presidents = approvers_for_position(conn, ["President"])
+        presidents = approvers_for_position(conn, ["President", "Vice President"])
         auditors = approvers_for_position(conn, ["Internal Auditor"])
         accountants = approvers_for_position(conn, ["Accountant"])
 
@@ -1398,7 +1418,7 @@ def submit_draft(request_id):
             return redirect(url_for("requests_bp.detail", request_id=request_id))
 
         if not valid_id(presidents, president_id):
-            flash("Please select an authorized President.", "error")
+            flash("Please select an authorized President or Vice President.", "error")
             return redirect(url_for("requests_bp.detail", request_id=request_id))
 
         selected.append((int(registrar_id), "registrar"))
