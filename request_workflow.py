@@ -1398,19 +1398,80 @@ def _decision(request_id, decision):
 def approvals():
     if "user_id" not in session:
         return redirect("/")
+
     conn = get_db()
     c = conn.cursor()
+    uid = session["user_id"]
+
+    # --------------------------------------------------
+    # PENDING APPROVALS
+    # Only requests that currently require this approver's
+    # decision appear in the pending section.
+    # --------------------------------------------------
     c.execute("""
         SELECT r.*, e.name AS requester_name, s.position
         FROM request_steps s
         JOIN requests r ON r.id=s.request_id
         JOIN employees e ON e.id=r.requester_id
-        WHERE s.approver_id=%s AND s.status='pending'
+        WHERE s.approver_id=%s
+          AND s.status='pending'
         ORDER BY r.created_at DESC
-    """, (session["user_id"],))
+    """, (uid,))
     rows = c.fetchall()
+
+    # --------------------------------------------------
+    # MY APPROVAL HISTORY
+    #
+    # Use request_history rather than request_steps here.
+    # This is important because an old approval step can be
+    # rebuilt when a request is resubmitted, while the audit
+    # history must remain permanent.
+    #
+    # Each request appears once, using this approver's latest
+    # decision on that request.
+    # --------------------------------------------------
+    c.execute("""
+        SELECT
+            r.*,
+            e.name AS requester_name,
+            h.action AS my_decision,
+            h.comment AS my_comment,
+            h.created_at AS acted_at,
+            s.position
+        FROM requests r
+        JOIN employees e
+          ON e.id = r.requester_id
+        JOIN LATERAL (
+            SELECT
+                rh.action,
+                rh.comment,
+                rh.created_at
+            FROM request_history rh
+            WHERE rh.request_id = r.id
+              AND rh.actor_id = %s
+              AND rh.action IN ('Approved', 'Rejected', 'Returned')
+            ORDER BY rh.id DESC
+            LIMIT 1
+        ) h ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT rs.position
+            FROM request_steps rs
+            WHERE rs.request_id = r.id
+              AND rs.approver_id = %s
+            ORDER BY rs.step_order DESC
+            LIMIT 1
+        ) s ON TRUE
+        ORDER BY h.created_at DESC
+    """, (uid, uid))
+    history_rows = c.fetchall()
+
     conn.close()
-    return render_template("approval_inbox.html", requests=rows)
+
+    return render_template(
+        "approval_inbox.html",
+        requests=rows,
+        approval_history=history_rows
+    )
 
 
 @requests_bp.route("/<int:request_id>/submit", methods=["POST"])
