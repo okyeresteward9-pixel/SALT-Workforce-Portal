@@ -1,4 +1,3 @@
-
 <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 
 <style>
@@ -8,31 +7,241 @@
     pointer-events: none;
     transform: none !important;
 }
+
+.rq-history-decision {
+    font-weight: 900;
+}
+
+.rq-history-decision.approved {
+    color: #087443;
+}
+
+.rq-history-decision.rejected {
+    color: #b42318;
+}
+
+.rq-history-decision.returned {
+    color: #b54708;
+}
+
+.rq-history-comment {
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
 </style>
 
 {% extends "request_base.html" %}
-{% block title %}SALT — Pending Approvals{% endblock %}
+{% block title %}SALT — Approval Workspace{% endblock %}
+
 {% block content %}
-<div class="rq-hero"><div><div class="rq-eyebrow">Approval workspace</div><h1>Pending Approvals</h1><p>Requests currently waiting for your decision.</p></div></div>
-{% if requests %}<div class="rq-alert"><strong>{{ requests|length }} request{{ 's' if requests|length != 1 else '' }} require{{ '' if requests|length != 1 else 's' }} your attention.</strong> Review the complete package before making a decision.</div><div class="rq-card"><div class="rq-table-wrap"><table class="rq-table"><thead><tr><th>Request</th><th>Requester</th><th>Current stage</th><th>Amount</th><th>Submitted</th><th></th></tr></thead><tbody>{% for r in requests %}<tr><td><div class="rq-request-title">{{ r.title }}</div><div class="rq-request-no">{{ r.request_no }}</div></td><td>{{ r.requester_name }}</td><td><span class="rq-status rq-status-pending">Awaiting your approval</span><div class="rq-request-no">{{ r.position }}</div></td><td>{{ format_currency(r.total_amount, r.currency) }}</td><td>{{ r.created_at.strftime('%d %b %Y') if r.created_at else '—' }}</td><td><a class="rq-btn rq-primary rq-review-btn"
-   href="{{ url_for('requests_bp.detail', request_id=r.id) }}">
-    Review →
-</a></td></tr>{% endfor %}</tbody></table></div></div>{% else %}<div class="rq-card"><div class="rq-empty"><div class="rq-empty-icon">✓</div><h3>You're all caught up</h3><p>No requests are waiting for your approval.</p></div></div>{% endif %}
+
+<div class="rq-hero">
+    <div>
+        <div class="rq-eyebrow">Approval workspace</div>
+        <h1>Approval Workspace</h1>
+        <p>Review requests waiting for you and revisit requests you have already acted on.</p>
+    </div>
+</div>
+
+<!-- =========================================================
+     PENDING APPROVALS
+     ========================================================= -->
+<div class="rq-card">
+    <div class="rq-card-head">
+        <div>
+            <h2>Pending Approvals</h2>
+            <div class="rq-card-sub">
+                Requests currently waiting for your decision.
+            </div>
+        </div>
+        {% if requests %}
+        <span class="rq-status rq-status-pending">
+            {{ requests|length }} pending
+        </span>
+        {% endif %}
+    </div>
+
+    {% if requests %}
+
+    <div class="rq-alert">
+        <strong>
+            {{ requests|length }}
+            request{{ 's' if requests|length != 1 else '' }}
+            require{{ '' if requests|length != 1 else 's' }} your attention.
+        </strong>
+        Review the complete package before making a decision.
+    </div>
+
+    <div class="rq-table-wrap">
+        <table class="rq-table">
+            <thead>
+                <tr>
+                    <th>Request</th>
+                    <th>Requester</th>
+                    <th>Current stage</th>
+                    <th>Amount</th>
+                    <th>Submitted</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for r in requests %}
+                <tr>
+                    <td>
+                        <div class="rq-request-title">{{ r.title }}</div>
+                        <div class="rq-request-no">{{ r.request_no }}</div>
+                    </td>
+
+                    <td>{{ r.requester_name }}</td>
+
+                    <td>
+                        <span class="rq-status rq-status-pending">
+                            Awaiting your approval
+                        </span>
+                        <div class="rq-request-no">
+                            {{ r.position }}
+                        </div>
+                    </td>
+
+                    <td>
+                        {{ format_currency(r.total_amount, r.currency) }}
+                    </td>
+
+                    <td>
+                        {{ r.created_at.strftime('%d %b %Y') if r.created_at else '—' }}
+                    </td>
+
+                    <td>
+                        <a class="rq-btn rq-primary rq-review-btn"
+                           href="{{ url_for('requests_bp.detail', request_id=r.id) }}">
+                            Review →
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+
+    <div class="rq-empty">
+        <div class="rq-empty-icon">✓</div>
+        <h3>You're all caught up</h3>
+        <p>No requests are currently waiting for your approval.</p>
+    </div>
+
+    {% endif %}
+</div>
+
+
+<!-- =========================================================
+     MY APPROVAL HISTORY
+     ========================================================= -->
+<div class="rq-card" style="margin-top:20px">
+
+    <div class="rq-card-head">
+        <div>
+            <h2>My Approval History</h2>
+            <div class="rq-card-sub">
+                Requests you have previously approved, rejected, or returned.
+            </div>
+        </div>
+
+        {% if approval_history %}
+        <span class="rq-status rq-status-completed">
+            {{ approval_history|length }}
+            record{{ 's' if approval_history|length != 1 else '' }}
+        </span>
+        {% endif %}
+    </div>
+
+    {% if approval_history %}
+
+    <div class="rq-table-wrap">
+        <table class="rq-table">
+            <thead>
+                <tr>
+                    <th>Request</th>
+                    <th>Requester</th>
+                    <th>My decision</th>
+                    <th>Amount</th>
+                    <th>Action date</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for r in approval_history %}
+                <tr>
+                    <td>
+                        <div class="rq-request-title">{{ r.title }}</div>
+                        <div class="rq-request-no">{{ r.request_no }}</div>
+                    </td>
+
+                    <td>{{ r.requester_name }}</td>
+
+                    <td>
+                        <span class="rq-history-decision {{ r.my_decision|lower }}">
+                            {% if r.my_decision == 'Approved' %}
+                                ✓ Approved
+                            {% elif r.my_decision == 'Rejected' %}
+                                ✕ Rejected
+                            {% elif r.my_decision == 'Returned' %}
+                                ↩ Returned
+                            {% else %}
+                                {{ r.my_decision }}
+                            {% endif %}
+                        </span>
+
+                        {% if r.position %}
+                        <div class="rq-request-no" style="margin-top:4px">
+                            {{ r.position }}
+                        </div>
+                        {% endif %}
+
+                        {% if r.my_comment %}
+                        <div class="rq-history-comment">
+                            {{ r.my_comment }}
+                        </div>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {{ format_currency(r.total_amount, r.currency) }}
+                    </td>
+
+                    <td>
+                        {{ r.acted_at.strftime('%d %b %Y, %I:%M %p') if r.acted_at else '—' }}
+                    </td>
+
+                    <td>
+                        <a class="rq-btn rq-primary rq-review-btn"
+                           href="{{ url_for('requests_bp.detail', request_id=r.id) }}">
+                            View History →
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+
+    <div class="rq-empty">
+        <div class="rq-empty-icon">🗂</div>
+        <h3>No approval history yet</h3>
+        <p>Requests you act on will remain available here after your decision.</p>
+    </div>
+
+    {% endif %}
+</div>
+
 {% endblock %}
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.rq-review-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            if (btn.dataset.loading === '1') return;
-
-            btn.dataset.loading = '1';
-            btn.classList.add('is-loading');
-            btn.innerHTML = '⏳ Opening...';
-        });
-    });
-});
-</script>
 
 {% block scripts %}
 <style>
@@ -43,11 +252,13 @@ document.addEventListener('DOMContentLoaded', function () {
     transform: none !important;
 }
 </style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.rq-review-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             if (btn.dataset.loading === '1') return;
+
             btn.dataset.loading = '1';
             btn.classList.add('is-loading');
             btn.innerHTML = '⏳ Opening...';
