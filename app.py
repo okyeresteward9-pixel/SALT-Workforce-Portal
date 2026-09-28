@@ -21,7 +21,6 @@ from routes.chat import (
     chat_bp,
     register_chat_socketio
 )
-from routes.social import social_bp
 
 from request_workflow import register_request_workflow
 from cloudinary import uploader
@@ -35,7 +34,6 @@ app = Flask(__name__)
 
 
 app.register_blueprint(chat_bp)
-app.register_blueprint(social_bp)
 
 app.secret_key = os.environ.get(
     "SECRET_KEY",
@@ -238,164 +236,6 @@ def init_db():
                 created_at TEXT
             )
         """)
-
-        # ============================================================
-        # SALT CONNECT SOCIAL
-        # ============================================================
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_posts (
-                id SERIAL PRIMARY KEY,
-                author_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-                content TEXT NOT NULL,
-                visibility TEXT NOT NULL DEFAULT 'everyone',
-                post_type TEXT NOT NULL DEFAULT 'post',
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
-                is_deleted BOOLEAN NOT NULL DEFAULT FALSE
-            )
-        """)
-
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_post_media (
-                id SERIAL PRIMARY KEY,
-                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
-                media_url TEXT NOT NULL,
-                media_type TEXT NOT NULL DEFAULT 'image',
-                original_name TEXT,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_reactions (
-                id SERIAL PRIMARY KEY,
-                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
-                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-                reaction_type TEXT NOT NULL DEFAULT 'like',
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE (post_id, user_id)
-            )
-        """)
-
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_comments (
-                id SERIAL PRIMARY KEY,
-                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
-                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-                parent_comment_id INTEGER REFERENCES social_comments(id) ON DELETE CASCADE,
-                content TEXT NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                is_deleted BOOLEAN NOT NULL DEFAULT FALSE
-            )
-        """)
-
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_shares (
-                id SERIAL PRIMARY KEY,
-                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
-                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE (post_id, user_id)
-            )
-        """)
-
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_bookmarks (
-                id SERIAL PRIMARY KEY,
-                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
-                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE (post_id, user_id)
-            )
-        """)
-
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_notifications (
-                id SERIAL PRIMARY KEY,
-                recipient_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-                actor_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-                post_id INTEGER REFERENCES social_posts(id) ON DELETE CASCADE,
-                comment_id INTEGER REFERENCES social_comments(id) ON DELETE CASCADE,
-                type TEXT NOT NULL,
-                is_read BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_hashtags (
-                id SERIAL PRIMARY KEY,
-                tag TEXT NOT NULL UNIQUE,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_post_hashtags (
-                post_id INTEGER NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
-                hashtag_id INTEGER NOT NULL REFERENCES social_hashtags(id) ON DELETE CASCADE,
-                PRIMARY KEY (post_id, hashtag_id)
-            )
-        """)
-
-        # ============================================================
-        # SOCIAL POLLS / ACHIEVEMENT POSTS
-        # ============================================================
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_polls (
-                id SERIAL PRIMARY KEY,
-                post_id INTEGER NOT NULL UNIQUE REFERENCES social_posts(id) ON DELETE CASCADE,
-                question TEXT NOT NULL,
-                expires_at TIMESTAMPTZ,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_poll_options (
-                id SERIAL PRIMARY KEY,
-                poll_id INTEGER NOT NULL REFERENCES social_polls(id) ON DELETE CASCADE,
-                label TEXT NOT NULL,
-                position INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE(poll_id, position)
-            )
-        """)
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_poll_votes (
-                id SERIAL PRIMARY KEY,
-                poll_id INTEGER NOT NULL REFERENCES social_polls(id) ON DELETE CASCADE,
-                option_id INTEGER NOT NULL REFERENCES social_poll_options(id) ON DELETE CASCADE,
-                user_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE(poll_id, user_id)
-            )
-        """)
-        c.execute("CREATE INDEX IF NOT EXISTS idx_social_polls_post ON social_polls(post_id)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_social_poll_options_poll ON social_poll_options(poll_id, position)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_social_poll_votes_poll ON social_poll_votes(poll_id)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_social_poll_votes_user ON social_poll_votes(user_id)")
-
-        # Helpful indexes for the feed.
-        c.execute("""
-            CREATE INDEX IF NOT EXISTS idx_social_posts_created_at
-            ON social_posts (created_at DESC)
-        """)
-        c.execute("""
-            CREATE INDEX IF NOT EXISTS idx_social_posts_author
-            ON social_posts (author_id)
-        """)
-        c.execute("""
-            CREATE INDEX IF NOT EXISTS idx_social_comments_post
-            ON social_comments (post_id, created_at)
-        """)
-        c.execute("""
-            CREATE INDEX IF NOT EXISTS idx_social_notifications_recipient
-            ON social_notifications (recipient_id, created_at DESC)
-        """)
-
-        conn.commit()
 
         # ============================================================
         # EMPLOYEE MIGRATIONS
@@ -608,15 +448,7 @@ def init_db():
             )
         """)
 
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS social_post_achievements (
-                post_id INTEGER PRIMARY KEY REFERENCES social_posts(id) ON DELETE CASCADE,
-                employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-                achievement_id INTEGER NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-        c.execute("CREATE INDEX IF NOT EXISTS idx_social_post_achievements_employee ON social_post_achievements(employee_id)")
+
 
         achievements_seed = [
             ('first_step', 'First Step',
@@ -4741,35 +4573,7 @@ def delete_employee(id):
         """, (id,))
 
 
-        c.execute("""
-            DELETE FROM social_notifications
-            WHERE recipient_id=%s OR actor_id=%s
-        """, (id, id))
 
-        c.execute("""
-            DELETE FROM social_posts
-            WHERE author_id=%s
-        """, (id,))
-
-        c.execute("""
-            DELETE FROM social_reactions
-            WHERE user_id=%s
-        """, (id,))
-
-        c.execute("""
-            DELETE FROM social_comments
-            WHERE user_id=%s
-        """, (id,))
-
-        c.execute("""
-            DELETE FROM social_shares
-            WHERE user_id=%s
-        """, (id,))
-
-        c.execute("""
-            DELETE FROM social_bookmarks
-            WHERE user_id=%s
-        """, (id,))
 
         c.execute("""
             DELETE FROM messages
