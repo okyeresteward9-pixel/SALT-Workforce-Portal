@@ -2580,6 +2580,8 @@ class ChatApp {
 
     initEvents() {
 
+        this.initEditModal();
+
         const unlockSound = () => this.unlockChatNotificationSound();
 
         document.addEventListener("click", unlockSound, { once: true, passive: true });
@@ -2946,12 +2948,9 @@ class ChatApp {
     // EDIT MESSAGE
     // =====================================================
 
-    async editMessage(messageId) {
-
+    editMessage(messageId) {
         const id = String(messageId);
-
-        const chat =
-            this.messages.get(id);
+        const chat = this.messages.get(id);
 
         if (!chat) {
             console.warn("Edit: message not found:", id);
@@ -2959,196 +2958,165 @@ class ChatApp {
             return;
         }
 
-        /*
-         * Use the Edit Message modal already present in messages.html.
-         * The previous implementation used prompt(), which bypassed the
-         * modal completely.
-         */
-        const modal =
-            document.getElementById("edit-modal");
+        const modal = document.getElementById("edit-modal");
+        const editText = document.getElementById("edit-text");
 
-        const editText =
-            document.getElementById("edit-text");
-
-        const saveEdit =
-            document.getElementById("save-edit");
-
-        const cancelEdit =
-            document.getElementById("cancel-edit");
-
-        if (!modal || !editText || !saveEdit) {
+        if (!modal || !editText) {
             console.error("Edit modal elements are missing.");
             this.showToast("Edit window is unavailable.");
             return;
         }
 
-        // Close the message menu immediately.
-        document
-            .querySelectorAll("[id^='menu-']")
-            .forEach(menu => menu.classList.add("hidden"));
-
-        // Load the current message into the editor.
-        editText.value = chat.message || "";
-
-        // Remember which message is being edited.
-        modal.dataset.messageId = id;
-
-        modal.classList.remove("hidden");
-
-        // Focus and select the message text.
-        requestAnimationFrame(() => {
-            editText.focus();
-            editText.setSelectionRange(
-                editText.value.length,
-                editText.value.length
-            );
+        // Close all open message menus.
+        document.querySelectorAll("[id^='menu-']").forEach(menu => {
+            menu.classList.add("hidden");
         });
 
-        // Avoid stacking duplicate event listeners if the modal is opened
-        // repeatedly during the same page session.
-        if (saveEdit.dataset.bound === "true") {
+        // Store the message being edited and load its current text.
+        modal.dataset.messageId = id;
+        editText.value = chat.message || "";
+
+        // Show the modal.
+        modal.classList.remove("hidden");
+
+        // Focus the editor after the modal becomes visible.
+        requestAnimationFrame(() => {
+            editText.focus();
+            const end = editText.value.length;
+            try {
+                editText.setSelectionRange(end, end);
+            } catch (_) {}
+        });
+    }
+
+    // =====================================================
+    // INITIALIZE EDIT MODAL
+    // =====================================================
+
+    initEditModal() {
+        const modal = document.getElementById("edit-modal");
+        const editText = document.getElementById("edit-text");
+        const saveEdit = document.getElementById("save-edit");
+        const cancelEdit = document.getElementById("cancel-edit");
+
+        if (!modal || !editText || !saveEdit) {
+            console.warn("Edit modal is not available on this page.");
             return;
         }
 
-        saveEdit.dataset.bound = "true";
+        // Prevent duplicate bindings if initEvents is ever called again.
+        if (saveEdit.dataset.editBound === "true") {
+            return;
+        }
+
+        saveEdit.dataset.editBound = "true";
 
         const closeModal = () => {
             modal.classList.add("hidden");
             delete modal.dataset.messageId;
         };
 
-        cancelEdit?.addEventListener(
-            "click",
-            event => {
+        cancelEdit?.addEventListener("click", event => {
+            event.preventDefault();
+            closeModal();
+        });
+
+        modal.addEventListener("click", event => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        editText.addEventListener("keydown", event => {
+            if (event.key === "Escape") {
                 event.preventDefault();
                 closeModal();
             }
-        );
 
-        modal.addEventListener(
-            "click",
-            event => {
-                if (event.target === modal) {
-                    closeModal();
-                }
-            }
-        );
-
-        document.addEventListener(
-            "keydown",
-            event => {
-                if (
-                    event.key === "Escape" &&
-                    !modal.classList.contains("hidden")
-                ) {
-                    closeModal();
-                }
-            }
-        );
-
-        saveEdit.addEventListener(
-            "click",
-            async event => {
-
+            // Ctrl/Cmd + Enter saves the edit.
+            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
                 event.preventDefault();
+                saveEdit.click();
+            }
+        });
 
-                const currentId =
-                    modal.dataset.messageId;
+        saveEdit.addEventListener("click", async event => {
+            event.preventDefault();
 
-                if (!currentId) {
-                    this.showToast("No message selected.");
-                    return;
-                }
+            const currentId = modal.dataset.messageId;
 
-                const newMessage =
-                    editText.value.trim();
+            if (!currentId) {
+                this.showToast("No message selected.");
+                return;
+            }
 
-                if (!newMessage) {
-                    this.showToast(
-                        "Message cannot be empty."
-                    );
-                    editText.focus();
-                    return;
-                }
+            const newMessage = editText.value.trim();
 
-                const originalHTML =
-                    saveEdit.innerHTML;
+            if (!newMessage) {
+                this.showToast("Message cannot be empty.");
+                editText.focus();
+                return;
+            }
 
-                saveEdit.disabled = true;
-                saveEdit.innerHTML =
-                    '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            const originalHTML = saveEdit.innerHTML;
 
-                const formData =
-                    new FormData();
+            saveEdit.disabled = true;
+            saveEdit.innerHTML =
+                '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
-                formData.append(
-                    "message",
-                    newMessage
+            try {
+                const formData = new FormData();
+                formData.append("message", newMessage);
+
+                const response = await fetch(
+                    `/edit_message/${encodeURIComponent(currentId)}`,
+                    {
+                        method: "POST",
+                        body: formData,
+                        headers: {
+                            "Accept": "application/json"
+                        }
+                    }
                 );
 
-                try {
+                const data = await this.readJSON(response);
 
-                    const response =
-                        await fetch(
-                            `/edit_message/${encodeURIComponent(currentId)}`,
-                            {
-                                method: "POST",
-                                body: formData,
-                                headers: {
-                                    "Accept": "application/json"
-                                }
-                            }
-                        );
+                if (!response.ok || !data.success) {
+                    throw new Error(
+                        data.message || "Unable to edit message."
+                    );
+                }
 
-                    const data =
-                        await this.readJSON(response);
-
-                    if (
-                        !response.ok ||
-                        !data.success
-                    ) {
-                        throw new Error(
-                            data.message ||
-                            "Unable to edit message."
-                        );
+                if (data.message) {
+                    this.update(data.message);
+                } else {
+                    // Fallback in case the backend returns success without
+                    // the updated message object.
+                    const existing = this.messages.get(String(currentId));
+                    if (existing) {
+                        existing.message = newMessage;
+                        existing.edited = true;
+                        this.update(existing);
                     }
-
-                    if (data.message) {
-                        this.update(data.message);
-                    }
-
-                    closeModal();
-
-                    this.showToast(
-                        "Message updated."
-                    );
-
-                }
-                catch (error) {
-
-                    console.error(
-                        "Edit message error:",
-                        error
-                    );
-
-                    this.showToast(
-                        error.message ||
-                        "Unable to edit message."
-                    );
-
-                }
-                finally {
-
-                    saveEdit.disabled = false;
-                    saveEdit.innerHTML = originalHTML;
-
                 }
 
+                closeModal();
+                this.showToast("Message updated.");
+
+            } catch (error) {
+                console.error("Edit message error:", error);
+                this.showToast(
+                    error.message || "Unable to edit message."
+                );
+
+            } finally {
+                saveEdit.disabled = false;
+                saveEdit.innerHTML = originalHTML;
             }
-        );
-
+        });
     }
 
+    // =====================================================
     // =====================================================
     // DELETE MESSAGE
     // =====================================================
