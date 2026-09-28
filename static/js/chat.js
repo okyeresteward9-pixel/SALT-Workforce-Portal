@@ -2967,30 +2967,34 @@ class ChatApp {
             return;
         }
 
-        // Close all open message menus.
+        // Close any open message menus.
         document.querySelectorAll("[id^='menu-']").forEach(menu => {
             menu.classList.add("hidden");
         });
 
-        // Store the message being edited and load its current text.
+        // Remember the message being edited.
         modal.dataset.messageId = id;
+
+        // Load the current message.
         editText.value = chat.message || "";
 
         // Show the modal.
         modal.classList.remove("hidden");
 
-        // Focus the editor after the modal becomes visible.
+        // Focus the editor after it becomes visible.
         requestAnimationFrame(() => {
             editText.focus();
-            const end = editText.value.length;
             try {
-                editText.setSelectionRange(end, end);
+                editText.setSelectionRange(
+                    editText.value.length,
+                    editText.value.length
+                );
             } catch (_) {}
         });
     }
 
     // =====================================================
-    // INITIALIZE EDIT MODAL
+    // EDIT MODAL EVENTS
     // =====================================================
 
     initEditModal() {
@@ -3000,11 +3004,11 @@ class ChatApp {
         const cancelEdit = document.getElementById("cancel-edit");
 
         if (!modal || !editText || !saveEdit) {
-            console.warn("Edit modal is not available on this page.");
+            console.warn("Edit modal is not available.");
             return;
         }
 
-        // Prevent duplicate bindings if initEvents is ever called again.
+        // Bind exactly once.
         if (saveEdit.dataset.editBound === "true") {
             return;
         }
@@ -3031,10 +3035,13 @@ class ChatApp {
             if (event.key === "Escape") {
                 event.preventDefault();
                 closeModal();
+                return;
             }
 
-            // Ctrl/Cmd + Enter saves the edit.
-            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+            if (
+                (event.ctrlKey || event.metaKey) &&
+                event.key === "Enter"
+            ) {
                 event.preventDefault();
                 saveEdit.click();
             }
@@ -3090,9 +3097,10 @@ class ChatApp {
                 if (data.message) {
                     this.update(data.message);
                 } else {
-                    // Fallback in case the backend returns success without
-                    // the updated message object.
+                    // Fallback if the backend returns success without
+                    // returning the updated message object.
                     const existing = this.messages.get(String(currentId));
+
                     if (existing) {
                         existing.message = newMessage;
                         existing.edited = true;
@@ -3116,7 +3124,6 @@ class ChatApp {
         });
     }
 
-    // =====================================================
     // =====================================================
     // DELETE MESSAGE
     // =====================================================

@@ -3,7 +3,7 @@
  * Sensitive portal/API pages are deliberately NOT cached.
  */
 
-const CACHE_NAME = 'salt-workforce-static-v1';
+const CACHE_NAME = 'salt-workforce-static-v2';
 const OFFLINE_URL = '/offline';
 
 const STATIC_ASSETS = [
@@ -14,7 +14,8 @@ const STATIC_ASSETS = [
     '/static/salt-mascot.png',
     '/static/icons/icon-192.png',
     '/static/icons/icon-512.png',
-    '/static/js/pwa.js'
+    '/static/js/pwa.js',
+    '/static/js/chat.js?v=3'
 ];
 
 self.addEventListener('install', function (event) {
@@ -81,19 +82,21 @@ self.addEventListener('fetch', function (event) {
         return;
     }
 
-    // Static assets: cache-first, then network.
+    // Static assets: network-first so deployed JS/CSS updates are picked up
+    // without requiring users to hard-refresh. Fall back to the PWA cache
+    // when offline.
     if (url.pathname.startsWith('/static/')) {
         event.respondWith(
-            caches.match(request).then(function (cached) {
-                return cached || fetch(request).then(function (response) {
-                    if (response.ok) {
-                        const copy = response.clone();
-                        caches.open(CACHE_NAME).then(function (cache) {
-                            cache.put(request, copy);
-                        });
-                    }
-                    return response;
-                });
+            fetch(request).then(function (response) {
+                if (response.ok) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then(function (cache) {
+                        cache.put(request, copy);
+                    });
+                }
+                return response;
+            }).catch(function () {
+                return caches.match(request);
             })
         );
         return;
