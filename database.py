@@ -40,7 +40,8 @@ def get_db():
         conn = psycopg2.connect(
             database_url,
             cursor_factory=RealDictCursor,
-            options="-c timezone=UTC"
+            options="-c timezone=UTC -c statement_timeout=30000",
+            connect_timeout=10
         )
 
     else:
@@ -49,9 +50,10 @@ def get_db():
             host="localhost",
             database="salt_portal",
             user="salt_user",
-            password="ChooseAStrongpassword",
+            password=os.environ.get("LOCAL_DB_PASSWORD", ""),
             cursor_factory=RealDictCursor,
-            options="-c timezone=UTC"
+            options="-c timezone=UTC -c statement_timeout=30000",
+            connect_timeout=10
         )
 
     return conn
