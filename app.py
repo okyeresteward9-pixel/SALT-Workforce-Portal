@@ -850,17 +850,18 @@ def get_gamification_data(employee_id):
 # Create admin if not exists
 # -------------------------
 def create_admin():
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+
+    if not admin_password:
+        print("ADMIN_PASSWORD not set, skipping admin creation.")
+        return
+
     conn = get_db()
     c = conn.cursor()
 
     admin_email = "admin@salt.com"
-    hashed_password = generate_password_hash("Stgh2@&$%#3")
 
-    c.execute(
-        "SELECT id FROM employees WHERE email=%s",
-        (admin_email,)
-    )
-
+    c.execute("SELECT id FROM employees WHERE email=%s", (admin_email,))
     admin = c.fetchone()
 
     if not admin:
@@ -871,15 +872,13 @@ def create_admin():
         """, (
             "System Administrator",
             admin_email,
-            hashed_password,
+            generate_password_hash(admin_password),
             "admin",
             "light"
         ))
-
         conn.commit()
 
     conn.close()
-
 # -------------------------
 # Routes
 # -------------------------
@@ -6525,22 +6524,17 @@ def delete_task(id):
         return redirect('/')
 
     conn = get_db()
-
     c = conn.cursor()
 
+    # Only hide the task from the employee's own list
     c.execute("""
-
-        DELETE FROM tasks
-
+        UPDATE tasks
+        SET employee_deleted = TRUE
         WHERE id=%s
-
-    """,
-    (
-        id,
-    ))
+        AND assigned_to=%s
+    """, (id, session['user_id']))
 
     conn.commit()
-
     conn.close()
 
     return redirect('/tasks')
