@@ -1,6 +1,9 @@
 from gevent import monkey
 monkey.patch_all()
 
+from psycogreen.gevent import patch_psycopg
+patch_psycopg()
+
 from flask import Flask, render_template, request, redirect, session, jsonify, flash, url_for
 import psycopg2
 from psycopg2.extras import RealDictCursor
