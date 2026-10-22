@@ -45,10 +45,17 @@ body {
 .sidebar-link:hover { background: rgba(255,255,255,.10); transform: translateX(2px); }
 .sidebar-link.active { background: rgba(255,255,255,.16); box-shadow: inset 3px 0 0 #60a5fa; }
 
+/* Sidebar stays in place while the page scrolls */
+@media (min-width: 769px) {
+    .sidebar { position: sticky; top: 0; height: 100vh; align-self: flex-start; overflow-y: auto; }
+    .sidebar::-webkit-scrollbar { width: 0; }
+}
+.sidebar-user { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); }
+
 /* Cards and form */
 .page-container { max-width: 1180px; margin: 0 auto; }
 .info-box { background: var(--blue-light); border: 1px solid #cfe0fb; color: #31527f; border-radius: 14px; }
-.form-card { background: #fff; border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 8px 30px rgba(15,43,91,.06); }
+.form-card { overflow: clip; background: #fff; border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 8px 30px rgba(15,43,91,.06); }
 .section-header { border-bottom: 1px solid var(--border); }
 
 .form-label { display: block; color: #26344d; font-size: .9rem; font-weight: 700; margin-bottom: 8px; }
@@ -114,6 +121,37 @@ body {
 }
 .chip button:hover { background: rgba(21,88,176,.24); }
 
+/* Action bar stays visible while scrolling a long form */
+.action-bar {
+    position: sticky; bottom: 0; z-index: 20;
+    margin-left: -28px; margin-right: -28px; margin-bottom: -28px; padding: 16px 28px;
+    background: rgba(255,255,255,.94); backdrop-filter: blur(6px);
+    border-top: 1px solid var(--border);
+}
+
+/* Priority */
+.priority-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.priority-option { position: relative; }
+.priority-option input { position: absolute; opacity: 0; pointer-events: none; }
+.priority-option span {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #fff;
+    border: 1px solid #d6dfeb; border-radius: 12px; font-weight: 600; font-size: .9rem; color: #475569;
+    cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+}
+.priority-option span:hover { border-color: #b9c7da; background: #f8fafc; }
+.priority-option input:focus-visible + span { outline: 3px solid rgba(21,88,176,.45); outline-offset: 2px; }
+.priority-low input:checked + span { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
+.priority-medium input:checked + span { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+.priority-high input:checked + span { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+
+/* Deadline shortcuts */
+.quick-dates { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.quick-dates button {
+    border: 1px solid var(--border); background: #fff; color: #334155; border-radius: 999px;
+    padding: 4px 12px; font-size: .8rem; font-weight: 600; cursor: pointer;
+}
+.quick-dates button:hover { background: var(--blue-light); border-color: #cfe0fb; color: var(--blue); }
+
 /* Alerts */
 .alert { border-radius: 12px; padding: 12px 16px; font-size: .9rem; margin-bottom: 20px; }
 .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
@@ -122,7 +160,7 @@ body {
 .menu-toggle { display: none; }
 @media (max-width: 768px) {
     .layout { flex-direction: column; }
-    .sidebar { width: 100% !important; }
+    .sidebar { width: 100% !important; position: sticky; top: 0; z-index: 40; max-height: 100vh; overflow-y: auto; }
     .menu-toggle { display: flex; }
     .sidebar-body { display: none; }
     .sidebar.open .sidebar-body { display: block; }
@@ -133,6 +171,7 @@ body {
 @media (max-width: 500px) {
     .form-card { border-radius: 15px; }
     .form-body { padding: 18px !important; }
+    .action-bar { margin-left: -18px; margin-right: -18px; margin-bottom: -18px; padding: 14px 18px; }
     .action-buttons { flex-direction: column; width: 100%; }
     .action-buttons a, .action-buttons button { width: 100%; justify-content: center; }
     .assignee-toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
@@ -183,6 +222,22 @@ body {
             {% endfor %}
         </nav>
 
+        {% if user %}
+        <div class="px-4 pb-3">
+            <div class="sidebar-user flex items-center gap-3 px-3 py-3 rounded-xl">
+                {% if user.profile_pic %}
+                <img src="{{ user.profile_pic }}" alt="" class="w-10 h-10 rounded-full object-cover">
+                {% else %}
+                <span class="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center font-bold">{{ (user.name or '?')[:1]|upper }}</span>
+                {% endif %}
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate">{{ user.name }}</p>
+                    <p class="text-xs text-blue-200 capitalize">{{ user.role }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="p-4 border-t border-white/10">
             <a href="/logout" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/90 hover:bg-red-600">
                 <span class="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center"><i class="fas fa-right-from-bracket"></i></span>
@@ -209,10 +264,13 @@ body {
         </a>
     </div>
 
+    {% set form = form|default({}) %}
+    {% set selected = selected_ids|default([]) %}
     {% with messages = get_flashed_messages() %}
-    {% if messages %}
+    {% set shown = error or (messages[0] if messages else none) %}
+    {% if shown %}
     <div class="alert alert-error" role="alert">
-        <i class="fas fa-circle-exclamation mr-1"></i> {{ messages[0] }}
+        <i class="fas fa-circle-exclamation mr-1"></i> {{ shown }}
     </div>
     {% endif %}
     {% endwith %}
@@ -227,7 +285,7 @@ body {
         </div>
     </div>
 
-    <div class="form-card overflow-hidden">
+    <div class="form-card">
 
         <div class="section-header px-7 py-5 flex items-center gap-4">
             <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -251,7 +309,7 @@ body {
                 <div class="input-wrapper">
                     <i class="input-icon fas fa-heading"></i>
                     <input id="title" type="text" name="title" required maxlength="120" autocomplete="off"
-                           placeholder="e.g. Prepare monthly staff report" class="form-input has-icon">
+                           placeholder="e.g. Prepare monthly staff report" value="{{ form.get('title', '') }}" class="form-input has-icon">
                 </div>
                 <p class="hint">Use a short, specific title that clearly describes the task.</p>
             </div>
@@ -264,7 +322,7 @@ body {
                 </div>
                 <textarea id="description" name="description" rows="5" required maxlength="1000"
                           placeholder="Describe what needs to be done, the expected result, and any relevant details..."
-                          class="form-textarea"></textarea>
+                          class="form-textarea">{{ form.get('description', '') }}</textarea>
                 <p class="hint">Give enough detail for the team to complete the task without follow-up questions.</p>
             </div>
 
@@ -273,7 +331,7 @@ body {
                 <label for="note" class="form-label">Comment or note <span class="font-normal text-slate-400">(optional)</span></label>
                 <textarea id="note" name="note" rows="3" maxlength="500"
                           placeholder="Add extra instructions, reminders, or special considerations..."
-                          class="form-textarea"></textarea>
+                          class="form-textarea">{{ form.get('note', '') }}</textarea>
             </div>
 
             <!-- Assignment -->
@@ -308,7 +366,7 @@ body {
                                 {% for emp in employees %}
                                 <label class="assignee-item" data-name="{{ emp.name|lower }}">
                                     <input type="checkbox" name="assigned_to" value="{{ emp.id }}"
-                                           class="assignee-checkbox" data-label="{{ emp.name }}">
+                                           class="assignee-checkbox" data-label="{{ emp.name }}" {% if emp.id|string in selected %}checked{% endif %}>
                                     <span class="avatar" aria-hidden="true">{{ emp.name[:1]|upper }}</span>
                                     <span class="font-medium">{{ emp.name }}</span>
                                 </label>
@@ -327,11 +385,30 @@ body {
                         <p class="hint">Select one or more employees.</p>
                     </fieldset>
 
+                    <fieldset>
+                        <legend class="form-label">Priority</legend>
+                        <div class="priority-group" role="radiogroup">
+                            {% for p, icon in [('Low', 'fa-arrow-down'), ('Medium', 'fa-minus'), ('High', 'fa-arrow-up')] %}
+                            <label class="priority-option priority-{{ p|lower }}">
+                                <input type="radio" name="priority" value="{{ p }}" {% if (form.get('priority') or 'Medium') == p %}checked{% endif %}>
+                                <span><i class="fas {{ icon }}"></i> {{ p }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <p class="hint">Helps the team decide what to start first.</p>
+                    </fieldset>
+
                     <div class="md:max-w-sm">
                         <label for="deadline" class="form-label">Deadline <span class="font-normal text-slate-400">(optional)</span></label>
                         <div class="input-wrapper">
                             <i class="input-icon fas fa-calendar-days"></i>
-                            <input id="deadline" type="date" name="deadline" class="form-input has-icon">
+                            <input id="deadline" type="date" name="deadline" value="{{ form.get('deadline', '') }}" class="form-input has-icon">
+                        </div>
+                        <div class="quick-dates" role="group" aria-label="Deadline shortcuts">
+                            <button type="button" data-quick="today">Today</button>
+                            <button type="button" data-quick="tomorrow">Tomorrow</button>
+                            <button type="button" data-quick="week">Next week</button>
+                            <button type="button" data-quick="month">End of month</button>
                         </div>
                         <p class="hint">The expected completion date. Past dates are disabled.</p>
                     </div>
@@ -339,7 +416,7 @@ body {
             </div>
 
             <!-- Actions -->
-            <div class="border-t border-slate-200 pt-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div class="action-bar flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <p class="text-sm text-slate-500" id="summaryText">
                     <i class="fas fa-user-check text-blue-500 mr-1"></i>
                     <span id="summaryLabel">Select who will receive this task.</span>
@@ -376,7 +453,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const items = Array.from(document.querySelectorAll(".assignee-item"));
     const selectAll = $("selectAll");
     const search = $("assigneeSearch");
-    let dirty = false, submitting = false;
+    let dirty = {{ 'true' if form else 'false' }}, submitting = false;
 
     /* Mobile menu */
     const sidebar = $("sidebar"), toggle = $("menuToggle");
@@ -386,8 +463,20 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     /* Deadline: no past dates (local time) */
-    const d = new Date();
-    $("deadline").min = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const deadline = $("deadline");
+    const fmt = (x) => x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+    deadline.min = fmt(new Date());
+
+    /* Deadline shortcuts */
+    document.querySelectorAll("[data-quick]").forEach(btn => btn.addEventListener("click", () => {
+        const t = new Date();
+        const k = btn.dataset.quick;
+        if (k === "tomorrow") t.setDate(t.getDate() + 1);
+        else if (k === "week") t.setDate(t.getDate() + 7);
+        else if (k === "month") t.setMonth(t.getMonth() + 1, 0); // last day of this month
+        deadline.value = fmt(t);
+        deadline.dispatchEvent(new Event("input", { bubbles: true }));
+    }));
 
     /* Character counters */
     function bindCounter(inputId, counterId, max) {
