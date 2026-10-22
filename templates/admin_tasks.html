@@ -1,1130 +1,460 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
-
-<meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
-
-<title>Tasks Management - SALT Workforce Portal</title>
-
-<link
-    rel="icon"
-    href="{{ url_for('static', filename='salt-logo.png') }}"
->
-
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
-
-<!-- Font Awesome -->
-<link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
->
-
-<style>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SALT | Admin Task Board</title>
+  <style>
     :root {
-        --salt-navy: #0f2b5b;
-        --salt-navy-dark: #0b2147;
-        --salt-blue: #1558b0;
-        --salt-blue-light: #eaf2ff;
-        --salt-border: #dbe4f0;
-        --salt-bg: #f5f7fb;
-        --salt-text: #172033;
-        --salt-muted: #6b7280;
+      --navy:#102a56; --blue:#155eef; --blue-light:#eef4ff;
+      --ink:#172b4d; --muted:#667085; --line:#e5eaf2;
+      --surface:#fff; --page:#f4f7fb; --gold:#d6a63b;
+      --green:#137a4b; --green-bg:#eaf8f0; --amber:#9a6700;
+      --amber-bg:#fff5d6; --red:#b42318; --red-bg:#fff0ee;
+      --shadow:0 8px 26px rgba(16,42,86,.07);
     }
-
-    * {
-        box-sizing: border-box;
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--page);color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif}
+    button,input,select,textarea{font:inherit}
+    a{color:inherit;text-decoration:none}
+    .topbar{background:linear-gradient(115deg,#102a56,#174ea6);color:#fff;padding:22px clamp(16px,4vw,48px);box-shadow:0 4px 18px #102a5620}
+    .topbar-inner{max-width:1400px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .brand{display:flex;align-items:center;gap:13px}
+    .brand-mark{width:44px;height:44px;border-radius:13px;background:#fff;color:var(--navy);display:grid;place-items:center;font-weight:900;letter-spacing:-1px;box-shadow:inset 0 -4px 0 #d6a63b}
+    .brand-name{font-size:17px;font-weight:800;letter-spacing:.08em}
+    .brand-sub{font-size:12px;color:#d7e5ff;margin-top:3px}
+    .top-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .top-link{padding:10px 14px;border:1px solid #ffffff55;border-radius:10px;font-size:13px;font-weight:700}
+    .top-link:hover{background:#ffffff16}
+    main{max-width:1400px;margin:0 auto;padding:30px clamp(14px,3vw,36px) 54px}
+    .page-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:24px;flex-wrap:wrap}
+    .eyebrow{font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--blue);margin-bottom:8px}
+    h1{font-size:clamp(26px,3vw,36px);letter-spacing:-.04em;margin:0;color:var(--navy)}
+    .subtitle{margin:9px 0 0;color:var(--muted);font-size:14px;line-height:1.55}
+    .date-pill{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 15px;color:var(--muted);font-size:13px;white-space:nowrap}
+    .date-pill strong{color:var(--ink)}
+    .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:24px}
+    .stat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:19px 21px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+    .stat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--blue)}
+    .stat.progress:before{background:var(--gold)} .stat.complete:before{background:#22a06b}
+    .stat-label{color:var(--muted);font-size:13px;font-weight:650}
+    .stat-number{font-size:31px;font-weight:850;letter-spacing:-.04em;margin-top:9px;color:var(--navy)}
+    .stat-foot{font-size:12px;color:#8792a5;margin-top:5px}
+    .panel{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+    .filters{padding:18px;display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) auto;gap:12px;align-items:end}
+    .field label{display:block;font-size:12px;font-weight:750;color:#46556f;margin-bottom:7px}
+    .field select,.search-input{width:100%;height:43px;border:1px solid #d8dfeb;background:#fff;border-radius:10px;padding:0 12px;color:var(--ink);outline:none}
+    .field select:focus,.search-input:focus,.reply-box:focus{border-color:#7da7ff;box-shadow:0 0 0 3px #155eef17}
+    .btn{border:0;border-radius:10px;min-height:42px;padding:10px 15px;font-size:13px;font-weight:750;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,background .15s}
+    .btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#104bc4}
+    .btn-light{background:#f1f4f9;color:#344563;border:1px solid var(--line)}
+    .btn-danger{background:var(--red-bg);color:var(--red);border:1px solid #ffd3cf}
+    .filter-bottom{border-top:1px solid var(--line);padding:14px 18px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{padding:8px 12px;border-radius:999px;background:#f5f7fb;color:#52617a;font-size:12px;font-weight:750;border:1px solid transparent}
+    .chip:hover{border-color:#bfd0f7}.chip.active{background:var(--blue-light);color:var(--blue);border-color:#cddcff}
+    .search-wrap{width:min(280px,100%)}
+    .tasks-header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:21px 20px 15px}
+    .tasks-header h2{margin:0;font-size:17px;color:var(--navy)}
+    .result-count{font-size:12px;color:var(--muted)}
+    .task-list{padding:0 18px 18px;display:grid;gap:15px}
+    .task-card{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;transition:box-shadow .2s,border-color .2s}
+    .task-card:hover{border-color:#c7d6f4;box-shadow:0 7px 22px #102a560d}
+    .task-top{padding:17px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;background:linear-gradient(90deg,#fbfcff,#fff);border-bottom:1px solid #edf0f5}
+    .task-title-row{display:flex;align-items:flex-start;gap:10px;min-width:0}
+    .task-symbol{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;background:var(--blue-light);color:var(--blue);border-radius:11px;font-size:18px}
+    .task-title{font-size:16px;font-weight:800;line-height:1.35;color:var(--navy);overflow-wrap:anywhere}
+    .task-id{font-size:11px;color:#8a96a9;margin-top:5px}
+    .task-badges{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:800;white-space:nowrap}
+    .status-pending{background:var(--amber-bg);color:var(--amber)}
+    .status-progress{background:var(--blue-light);color:var(--blue)}
+    .status-completed{background:var(--green-bg);color:var(--green)}
+    .status-other{background:#f0f2f5;color:#566276}
+    .scope-badge{background:#f3f0ff;color:#6941c6}
+    .task-body{padding:17px 18px}
+    .description{font-size:13px;line-height:1.65;color:#4d5b73;margin:0 0 16px;white-space:pre-wrap;overflow-wrap:anywhere}
+    .meta-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+    .meta-item{background:#f8faff;border:1px solid #edf1f7;border-radius:10px;padding:10px 11px;min-width:0}
+    .meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:#8995a8;margin-bottom:5px}
+    .meta-value{font-size:12px;font-weight:700;color:#344563;overflow-wrap:anywhere}
+    .task-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+    .note-box{border-radius:10px;padding:12px;background:#f8faff;border:1px solid #e8eef8}
+    .note-box.admin-note{background:#f0f6ff;border-color:#d9e7ff}
+    .note-title{font-size:11px;font-weight:850;color:#40516e;margin-bottom:6px}
+    .note-content{font-size:12px;line-height:1.55;color:#52617a;white-space:pre-wrap;overflow-wrap:anywhere}
+    .discussion{border-top:1px solid var(--line);margin-top:17px;padding-top:16px}
+    .discussion-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+    .discussion-head h3{font-size:13px;margin:0;color:var(--navy)}
+    .discussion-count{font-size:11px;color:var(--muted)}
+    .comment{margin:10px 0 0;padding:12px;border:1px solid #edf0f5;border-radius:11px;background:#fbfcff}
+    .comment.reply-comment{margin-left:clamp(12px,3vw,30px);border-left:3px solid #bdd0ff}
+    .comment-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:7px}
+    .comment-author{font-size:12px;font-weight:800;color:#344563}
+    .comment-role{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--blue);background:var(--blue-light);padding:4px 7px;border-radius:999px;margin-left:5px}
+    .comment-time{font-size:10px;color:#98a2b3}
+    .comment-message{font-size:12px;line-height:1.6;color:#52617a;white-space:pre-wrap;overflow-wrap:anywhere}
+    .reply-form{display:flex;gap:9px;margin-top:13px;align-items:flex-end}
+    .reply-box{width:100%;min-height:43px;max-height:130px;resize:vertical;border:1px solid #d8dfeb;border-radius:10px;padding:11px 12px;outline:none;font-size:12px;color:var(--ink)}
+    .reply-form .btn{flex:0 0 auto}
+    .task-footer{border-top:1px solid #f0f2f6;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .footer-hint{font-size:11px;color:#8995a8}
+    .empty-state{padding:45px 20px;text-align:center;color:var(--muted)}
+    .empty-icon{width:54px;height:54px;border-radius:16px;background:var(--blue-light);display:grid;place-items:center;margin:0 auto 14px;font-size:23px}
+    .empty-state h3{margin:0 0 7px;color:var(--navy);font-size:16px}
+    .empty-state p{font-size:13px;margin:0}
+    .toast{position:fixed;right:20px;bottom:20px;z-index:99;max-width:min(390px,calc(100vw - 40px));background:#142e59;color:white;padding:13px 16px;border-radius:12px;box-shadow:0 12px 35px #102a5630;font-size:13px;display:none}
+    .toast.show{display:block;animation:slidein .2s ease}
+    @keyframes slidein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:760px){
+      .topbar{padding:16px}.topbar-inner{align-items:flex-start}.top-actions{justify-content:flex-end}.top-link{font-size:12px;padding:9px 10px}
+      main{padding-top:22px}.stats{gap:9px}.stat{padding:15px 13px}.stat-number{font-size:26px}.stat-label{font-size:11px}
+      .filters{grid-template-columns:1fr 1fr}.filters .filter-submit{grid-column:1/-1}.filters .filter-submit .btn{width:100%}
+      .task-top{padding:14px;flex-direction:column}.task-badges{justify-content:flex-start;padding-left:48px}
+      .task-body{padding:14px}.meta-grid{grid-template-columns:1fr 1fr}.task-notes{grid-template-columns:1fr}
+      .reply-form{align-items:stretch;flex-direction:column}.reply-form .btn{width:100%}
     }
-
-    body {
-        margin: 0;
-        background: var(--salt-bg);
-        color: var(--salt-text);
-        font-family:
-            Inter,
-            ui-sans-serif,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
+    @media(max-width:460px){
+      .brand-name{font-size:14px}.brand-sub{font-size:11px}.brand-mark{width:38px;height:38px}
+      .topbar-inner{flex-direction:column}.top-actions{width:100%}.top-link{flex:1;text-align:center}
+      .stats{grid-template-columns:1fr 1fr}.stat:last-child{grid-column:1/-1}
+      .filters{grid-template-columns:1fr}.filters .filter-submit{grid-column:auto}
+      .tasks-header{padding:17px 14px 12px}.task-list{padding:0 10px 12px}.meta-grid{grid-template-columns:1fr 1fr}
+      .task-footer{padding:12px 14px}.task-footer .btn{width:100%}
     }
-
-    /* =====================================================
-       SIDEBAR
-       ===================================================== */
-
-    .sidebar {
-        background:
-            linear-gradient(
-                180deg,
-                var(--salt-navy) 0%,
-                #12366f 100%
-            );
-    }
-
-    .sidebar-link {
-        transition:
-            background .2s ease,
-            color .2s ease,
-            transform .2s ease;
-    }
-
-    .sidebar-link:hover {
-        background: rgba(255,255,255,.10);
-        transform: translateX(2px);
-    }
-
-    .sidebar-link.active {
-        background: rgba(255,255,255,.16);
-        box-shadow:
-            inset 3px 0 0 #60a5fa;
-    }
-
-    /* =====================================================
-       MAIN CONTENT
-       ===================================================== */
-
-    .page-container {
-        max-width: 1180px;
-        margin: 0 auto;
-    }
-
-    /* =====================================================
-       INFO BAR
-       ===================================================== */
-
-    .info-box {
-        background: var(--salt-blue-light);
-        border: 1px solid #cfe0fb;
-        color: #31527f;
-        border-radius: 14px;
-    }
-
-    /* =====================================================
-       FORM CARD
-       ===================================================== */
-
-    .form-card {
-        background: #ffffff;
-        border: 1px solid var(--salt-border);
-        border-radius: 20px;
-        box-shadow:
-            0 8px 30px rgba(15,43,91,.06);
-    }
-
-    .section-header {
-        border-bottom: 1px solid var(--salt-border);
-    }
-
-    /* =====================================================
-       FORM ELEMENTS
-       ===================================================== */
-
-    .form-label {
-        display: block;
-        color: #26344d;
-        font-size: .9rem;
-        font-weight: 700;
-        margin-bottom: 8px;
-    }
-
-    .required {
-        color: #dc2626;
-    }
-
-    .form-input,
-    .form-select,
-    .form-textarea {
-        width: 100%;
-        background: #fff;
-        border: 1px solid #d6dfeb;
-        border-radius: 12px;
-        color: #172033;
-        font-size: .95rem;
-        outline: none;
-        transition:
-            border-color .2s ease,
-            box-shadow .2s ease;
-    }
-
-    .form-input,
-    .form-select {
-        height: 50px;
-        padding: 0 15px;
-    }
-
-    .form-textarea {
-        padding: 13px 15px;
-        resize: vertical;
-        min-height: 120px;
-    }
-
-    .form-input::placeholder,
-    .form-textarea::placeholder {
-        color: #9aa5b5;
-    }
-
-    .form-input:hover,
-    .form-select:hover,
-    .form-textarea:hover {
-        border-color: #b9c7da;
-    }
-
-    .form-input:focus,
-    .form-select:focus,
-    .form-textarea:focus {
-        border-color: var(--salt-blue);
-        box-shadow:
-            0 0 0 3px rgba(21,88,176,.12);
-    }
-
-    /* =====================================================
-       INPUT ICONS
-       ===================================================== */
-
-    .input-wrapper {
-        position: relative;
-    }
-
-    .input-icon {
-        position: absolute;
-        left: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #7b8aa3;
-        pointer-events: none;
-    }
-
-    .has-icon {
-        padding-left: 43px !important;
-    }
-
-    /* =====================================================
-       BUTTONS
-       ===================================================== */
-
-    .primary-btn {
-        background:
-            linear-gradient(
-                135deg,
-                #1558b0,
-                #0f4b99
-            );
-        color: #fff;
-        border: none;
-        border-radius: 12px;
-        padding: 13px 22px;
-        font-weight: 700;
-        box-shadow:
-            0 6px 16px rgba(21,88,176,.20);
-        transition:
-            transform .2s ease,
-            box-shadow .2s ease;
-    }
-
-    .primary-btn:hover {
-        transform: translateY(-1px);
-        box-shadow:
-            0 9px 20px rgba(21,88,176,.27);
-    }
-
-    .secondary-btn {
-        background: #fff;
-        color: #334155;
-        border: 1px solid #d5deea;
-        border-radius: 12px;
-        padding: 13px 20px;
-        font-weight: 700;
-        transition:
-            background .2s ease,
-            border-color .2s ease;
-    }
-
-    .secondary-btn:hover {
-        background: #f8fafc;
-        border-color: #b9c7da;
-    }
-
-    /* =====================================================
-       RESPONSIVE
-       ===================================================== */
-
-    @media (max-width: 900px) {
-
-        .sidebar {
-            width: 220px !important;
-        }
-
-    }
-
-    @media (max-width: 768px) {
-
-        .layout {
-            flex-direction: column;
-        }
-
-        .sidebar {
-            width: 100% !important;
-            min-height: auto;
-        }
-
-        .sidebar-nav {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .main-content {
-            padding: 20px !important;
-        }
-
-        .top-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
-        }
-
-        .back-btn {
-            width: 100%;
-            justify-content: center;
-        }
-
-    }
-
-    @media (max-width: 500px) {
-
-        .sidebar-nav {
-            grid-template-columns: 1fr;
-        }
-
-        .form-card {
-            border-radius: 15px;
-        }
-
-        .form-body {
-            padding: 20px !important;
-        }
-
-        .action-buttons {
-            flex-direction: column;
-        }
-
-        .action-buttons a,
-        .action-buttons button {
-            width: 100%;
-            justify-content: center;
-        }
-
-    }
-
-</style>
-
-
-
-    <!-- SALT Workforce PWA -->
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#0b3d91">
-    <meta name="application-name" content="SALT Workforce">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="SALT Workforce">
-    <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
-
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
+  </style>
 </head>
-
 <body>
-
-<div class="layout flex min-h-screen">
-
-
-<!-- =====================================================
-     SIDEBAR
-     ===================================================== -->
-
-<aside
-    class="sidebar w-64 text-white flex flex-col shrink-0"
->
-
-    <!-- LOGO -->
-    <div
-        class="px-6 py-6 border-b border-white/10"
-    >
-
-        <div class="flex items-center gap-3">
-
-            <div
-                class="w-11 h-11 rounded-xl bg-white/10
-                       flex items-center justify-center
-                       border border-white/10"
-            >
-                <img
-                    src="{{ url_for('static', filename='salt-logo.png') }}"
-                    alt="SALT"
-                    class="w-8 h-8 object-contain"
-                >
-            </div>
-
-            <div>
-
-                <h2
-                    class="text-xl font-bold tracking-tight"
-                >
-                    SALT Portal
-                </h2>
-
-                <p
-                    class="text-xs text-blue-200 mt-0.5"
-                >
-                    Assign Task
-                </p>
-
-            </div>
-
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">S</div>
+        <div>
+          <div class="brand-name">SALT WORKFORCE</div>
+          <div class="brand-sub">Administration · Task Management</div>
         </div>
-
+      </div>
+      <nav class="top-actions" aria-label="Quick navigation">
+        <a class="top-link" href="/dashboard">← Dashboard</a>
+        <a class="top-link" href="/admin/assign_task">＋ Assign task</a>
+        <a class="top-link" href="/logout">Sign out</a>
+      </nav>
     </div>
+  </header>
 
+  <main>
+    <section class="page-heading">
+      <div>
+        <div class="eyebrow">Operations workspace</div>
+        <h1>Admin Task Board</h1>
+        <p class="subtitle">Review employee tasks, follow discussions, and keep work moving forward.</p>
+      </div>
+      <div class="date-pill">Today <strong>{{ today.strftime('%d %b %Y') if today else '' }}</strong></div>
+    </section>
 
-    <!-- =================================================
-         NAVIGATION
-         ================================================= -->
+    <section class="stats" aria-label="Task statistics">
+      <article class="stat">
+        <div class="stat-label">Pending tasks</div>
+        <div class="stat-number">{{ pending_count|default(0) }}</div>
+        <div class="stat-foot">Waiting to be started</div>
+      </article>
+      <article class="stat progress">
+        <div class="stat-label">In progress</div>
+        <div class="stat-number">{{ progress_count|default(0) }}</div>
+        <div class="stat-foot">Currently being worked on</div>
+      </article>
+      <article class="stat complete">
+        <div class="stat-label">Completed tasks</div>
+        <div class="stat-number">{{ completed_count|default(0) }}</div>
+        <div class="stat-foot">Marked as completed</div>
+      </article>
+    </section>
 
-    <nav
-        class="sidebar-nav flex-1 p-4 space-y-2"
-    >
+    <section class="panel" aria-label="Task filters">
+      <form method="GET" action="{{ url_for('admin_tasks') }}" class="filters">
+        <div class="field">
+          <label for="employee_id">Filter by employee</label>
+          <select name="employee_id" id="employee_id">
+            <option value="">All employees</option>
+            {% for employee in employees %}
+              <option value="{{ employee.id }}" {% if selected_employee|string == employee.id|string %}selected{% endif %}>{{ employee.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="status">Filter by status</label>
+          <select name="status" id="status">
+            <option value="">All statuses</option>
+            <option value="Pending" {% if selected_status == 'Pending' %}selected{% endif %}>Pending</option>
+            <option value="In Progress" {% if selected_status == 'In Progress' %}selected{% endif %}>In Progress</option>
+            <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
+          </select>
+        </div>
+        <div class="filter-submit">
+          <button class="btn btn-primary" type="submit">Apply filters</button>
+          <a class="btn btn-light" href="{{ url_for('admin_tasks') }}">Reset</a>
+        </div>
+      </form>
+      <div class="filter-bottom">
+        <div class="chips">
+          <a class="chip {% if not selected_status %}active{% endif %}" href="{{ url_for('admin_tasks', employee_id=selected_employee or none) }}">All tasks</a>
+          <a class="chip {% if selected_status == 'Pending' %}active{% endif %}" href="{{ url_for('admin_tasks', status='Pending', employee_id=selected_employee or none) }}">Pending</a>
+          <a class="chip {% if selected_status == 'In Progress' %}active{% endif %}" href="{{ url_for('admin_tasks', status='In Progress', employee_id=selected_employee or none) }}">In progress</a>
+          <a class="chip {% if selected_status == 'Completed' %}active{% endif %}" href="{{ url_for('admin_tasks', status='Completed', employee_id=selected_employee or none) }}">Completed</a>
+        </div>
+        <div class="search-wrap">
+          <input class="search-input" type="search" id="taskSearch" placeholder="Search visible tasks…" aria-label="Search visible tasks">
+        </div>
+      </div>
+    </section>
 
-        <!-- DASHBOARD -->
+    <section class="panel" style="margin-top:22px">
+      <div class="tasks-header">
+        <h2>Tasks and discussions</h2>
+        <span class="result-count"><strong id="visibleCount">{{ tasks|length }}</strong> task{% if tasks|length != 1 %}s{% endif %} shown</span>
+      </div>
 
-        <a
-            href="/dashboard"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
+      {% macro render_comments(comments, task_id, depth=0) %}
+        {% for comment in comments %}
+          <div class="comment {% if depth > 0 %}reply-comment{% endif %}">
+            <div class="comment-head">
+              <div>
+                <span class="comment-author">{{ comment.sender_name|default(comment.name|default('User', true), true) }}</span>
+                <span class="comment-role">{{ comment.sender_role|default('employee', true) }}</span>
+              </div>
+              <span class="comment-time">{{ comment.created_at.strftime('%d %b %Y, %H:%M') if comment.created_at and comment.created_at.strftime is defined else comment.created_at|default('', true) }}</span>
+            </div>
+            <div class="comment-message">{{ comment.message|default('', true) }}</div>
+            <form class="reply-form" data-reply-form data-task-id="{{ task_id }}">
+              <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
+              <textarea class="reply-box" name="admin_reply" rows="1" placeholder="Reply to this comment…" required></textarea>
+              <button class="btn btn-primary" type="submit">Reply</button>
+            </form>
+            {% if comment.replies %}
+              {{ render_comments(comment.replies, task_id, depth + 1) }}
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% endmacro %}
 
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-home"></i>
-            </span>
+      {% if tasks %}
+        <div class="task-list" id="taskList">
+          {% for task in tasks %}
+            {% set task_status = task.status|default('Pending', true) %}
+            {% set status_class = 'status-completed' if task_status|lower == 'completed' else ('status-progress' if task_status|lower == 'in progress' else ('status-pending' if task_status|lower == 'pending' else 'status-other')) %}
+            <article class="task-card" id="task-{{ task.id }}" data-task-card
+              data-search="{{ (task.title|default('') ~ ' ' ~ task.description|default('') ~ ' ' ~ task.employee_name|default('') ~ ' ' ~ task.id|string)|lower }}">
+              <div class="task-top">
+                <div class="task-title-row">
+                  <div class="task-symbol">✓</div>
+                  <div>
+                    <div class="task-title">{{ task.title|default('Untitled task', true) }}</div>
+                    <div class="task-id">Task #{{ task.id }}</div>
+                  </div>
+                </div>
+                <div class="task-badges">
+                  <span class="badge {{ status_class }}">{{ task_status }}</span>
+                  {% if task.task_scope %}<span class="badge scope-badge">{{ task.task_scope|replace('_',' ')|title }}</span>{% endif %}
+                  {% if task.carried_forward %}<span class="badge status-other">Carried forward</span>{% endif %}
+                </div>
+              </div>
 
-            <span class="font-medium">
-                Dashboard
-            </span>
-
-        </a>
-
-
-        <!-- EMPLOYEES -->
-
-        <a
-            href="/admin/employees"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-users"></i>
-            </span>
-
-            <span class="font-medium">
-                Employees
-            </span>
-
-        </a>
-
-
-        <!-- TASK BOARD -->
-
-        <a
-            href="/admin/tasks"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-list-check"></i>
-            </span>
-
-            <span class="font-medium">
-                Task Board
-            </span>
-
-        </a>
-
-
-        <!-- ASSIGN TASK - ACTIVE -->
-
-        <a
-            href="/admin/assign_task"
-            class="sidebar-link active flex items-center gap-3
-                   px-4 py-3 rounded-xl text-white"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-plus"></i>
-            </span>
-
-            <span class="font-semibold">
-                Assign Task
-            </span>
-
-        </a>
-
-
-        <!-- ATTENDANCE -->
-
-        <a
-            href="/attendance"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-calendar-check"></i>
-            </span>
-
-            <span class="font-medium">
-                Attendance
-            </span>
-
-        </a>
-
-
-        <!-- MY TASKS -->
-
-        <a
-            href="/tasks"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-clipboard-list"></i>
-            </span>
-
-            <span class="font-medium">
-                My Tasks
-            </span>
-
-        </a>
-
-    </nav>
-
-
-    <!-- =================================================
-         LOGOUT
-         ================================================= -->
-
-    <div
-        class="p-4 border-t border-white/10"
-    >
-
-        <a
-            href="/logout"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl
-                   bg-red-500/90 hover:bg-red-600"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-right-from-bracket"></i>
-            </span>
-
-            <span class="font-semibold">
-                Logout
-            </span>
-
-        </a>
-
-    </div>
-
-</aside>
-
-
-<!-- =====================================================
-     MAIN CONTENT
-     ===================================================== -->
-
-<main
-    class="main-content flex-1 p-8"
->
-
-    <div class="page-container">
-
-
-        <!-- =================================================
-             TOP HEADER
-             ================================================= -->
-
-        <div
-            class="top-header flex justify-between items-center mb-7"
-        >
-
-            <div>
-
-                <!-- TOP BADGE -->
-
-                <div
-                    class="flex items-center gap-2
-                           text-sm text-blue-600
-                           font-semibold mb-2"
-                >
-
-                    <i class="fas fa-list-check"></i>
-
-                    Task Management
-
+              <div class="task-body">
+                {% if task.description %}
+                  <p class="description">{{ task.description }}</p>
+                {% endif %}
+                <div class="meta-grid">
+                  <div class="meta-item">
+                    <div class="meta-label">Assigned employee</div>
+                    <div class="meta-value">{{ task.employee_name|default('Not assigned', true) }}</div>
+                  </div>
+                  <div class="meta-item">
+                    <div class="meta-label">Deadline</div>
+                    <div class="meta-value">
+                      {% if task.deadline_date %}{{ task.deadline_date.strftime('%d %b %Y') }}
+                      {% else %}No deadline{% endif %}
+                    </div>
+                  </div>
+                  <div class="meta-item">
+                    <div class="meta-label">Created</div>
+                    <div class="meta-value">
+                      {% if task.created_at and task.created_at.strftime is defined %}{{ task.created_at.strftime('%d %b %Y') }}
+                      {% elif task.created_at %}{{ task.created_at }}{% else %}Not available{% endif %}
+                    </div>
+                  </div>
                 </div>
 
+                {% if task.note or task.reply or task.admin_reply %}
+                  <div class="task-notes">
+                    {% if task.note %}
+                      <div class="note-box">
+                        <div class="note-title">Task note</div>
+                        <div class="note-content">{{ task.note }}</div>
+                      </div>
+                    {% endif %}
+                    {% if task.reply %}
+                      <div class="note-box">
+                        <div class="note-title">Employee reply</div>
+                        <div class="note-content">{{ task.reply }}</div>
+                      </div>
+                    {% endif %}
+                    {% if task.admin_reply %}
+                      <div class="note-box admin-note">
+                        <div class="note-title">Admin reply</div>
+                        <div class="note-content">{{ task.admin_reply }}</div>
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endif %}
 
-                <h1
-                    class="text-3xl md:text-4xl
-                           font-bold text-slate-800"
-                >
-                    Assign New Task
-                </h1>
-
-
-                <p
-                    class="text-slate-500 mt-2"
-                >
-                    Create a task and assign it to a member
-                    of your team.
-                </p>
-
-            </div>
-
-
-            <a
-                href="/admin/tasks"
-                class="back-btn secondary-btn
-                       flex items-center gap-2"
-            >
-
-                <i class="fas fa-arrow-left"></i>
-
-                Back to Tasks
-
-            </a>
-
-        </div>
-
-
-        <!-- =================================================
-             LIGHT BLUE WELCOME BAR
-             ================================================= -->
-
-        <div
-            class="info-box flex items-start gap-3
-                   px-5 py-4 mb-6"
-        >
-
-            <div
-                class="w-9 h-9 rounded-lg
-                       bg-blue-600/10
-                       flex items-center justify-center
-                       shrink-0"
-            >
-
-                <i
-                    class="fas fa-circle-info text-blue-600"
-                ></i>
-
-            </div>
-
-
-            <div>
-
-                <p
-                    class="font-semibold text-slate-700"
-                >
-                    Welcome to Task Management
-                </p>
-
-                <p
-                    class="text-sm mt-0.5"
-                >
-                    Create clear, actionable tasks, assign them
-                    to the appropriate employee, and set deadlines
-                    to keep work moving efficiently.
-                </p>
-
-            </div>
-
-        </div>
-
-
-        <!-- =================================================
-             FORM CARD
-             ================================================= -->
-
-        <div
-            class="form-card overflow-hidden"
-        >
-
-            <!-- CARD HEADER -->
-
-            <div
-                class="section-header px-7 py-5
-                       flex items-center gap-4"
-            >
-
-                <div
-                    class="w-12 h-12 rounded-xl
-                           bg-blue-50 text-blue-600
-                           flex items-center justify-center"
-                >
-
-                    <i
-                        class="fas fa-clipboard-list text-xl"
-                    ></i>
-
+                <div class="discussion">
+                  <div class="discussion-head">
+                    <h3>Discussion</h3>
+                    <span class="discussion-count">{{ task.comments|length if task.comments else 0 }} comment thread(s)</span>
+                  </div>
+                  {% if task.comments %}
+                    {{ render_comments(task.comments, task.id) }}
+                  {% else %}
+                    <div style="font-size:12px;color:#8a96a9;padding:5px 0 10px">No discussion yet. Add a reply below to start the conversation.</div>
+                  {% endif %}
+                  <form class="reply-form" data-reply-form data-task-id="{{ task.id }}">
+                    <input type="hidden" name="parent_comment_id" value="">
+                    <textarea class="reply-box" name="admin_reply" rows="1" placeholder="Write an update or reply to this task…" required></textarea>
+                    <button class="btn btn-primary" type="submit">Post reply</button>
+                  </form>
                 </div>
-
-
-                <div>
-
-                    <h2
-                        class="font-bold text-lg text-slate-800"
-                    >
-                        Task Details
-                    </h2>
-
-                    <p
-                        class="text-sm text-slate-500"
-                    >
-                        Enter the information for the new task.
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <!-- FORM BODY -->
-
-            <div class="form-body p-7">
-
-                <form
-                    method="POST"
-                    class="space-y-7"
-                >
-
-
-                    <!-- TITLE -->
-
-                    <div>
-
-                        <label
-                            for="title"
-                            class="form-label"
-                        >
-                            Task Title
-                            <span class="required">*</span>
-                        </label>
-
-
-                        <div class="input-wrapper">
-
-                            <i
-                                class="input-icon fas fa-heading"
-                            ></i>
-
-                            <input
-                                id="title"
-                                type="text"
-                                name="title"
-                                required
-                                autocomplete="off"
-                                placeholder="e.g. Prepare monthly staff report"
-                                class="form-input has-icon"
-                            >
-
-                        </div>
-
-
-                        <p
-                            class="text-xs text-slate-400 mt-2"
-                        >
-                            Use a short, specific title that clearly
-                            describes the task.
-                        </p>
-
-                    </div>
-
-
-                    <!-- DESCRIPTION -->
-
-                    <div>
-
-                        <label
-                            for="description"
-                            class="form-label"
-                        >
-                            Description
-                            <span class="required">*</span>
-                        </label>
-
-
-                        <textarea
-                            id="description"
-                            name="description"
-                            rows="5"
-                            required
-                            placeholder="Describe what needs to be done, the expected result, and any relevant details..."
-                            class="form-textarea"
-                        ></textarea>
-
-
-                        <p
-                            class="text-xs text-slate-400 mt-2"
-                        >
-                            Give enough detail for the employee to
-                            complete the task without confusion.
-                        </p>
-
-                    </div>
-
-
-                    <!-- NOTE -->
-
-                    <div>
-
-                        <label
-                            for="note"
-                            class="form-label"
-                        >
-                            Comment / Note
-
-                            <span
-                                class="font-normal text-slate-400"
-                            >
-                                Optional
-                            </span>
-                        </label>
-
-
-                        <textarea
-                            id="note"
-                            name="note"
-                            rows="3"
-                            placeholder="Add additional instructions, comments, reminders, or special considerations..."
-                            class="form-textarea"
-                        ></textarea>
-
-                    </div>
-
-
-                    <!-- ASSIGNMENT SETTINGS -->
-
-                    <div
-                        class="border-t border-slate-200 pt-7"
-                    >
-
-                        <div class="mb-5">
-
-                            <h3
-                                class="font-bold text-slate-800"
-                            >
-                                Assignment Settings
-                            </h3>
-
-                            <p
-                                class="text-sm text-slate-500 mt-1"
-                            >
-                                Choose who should receive the task
-                                and when it should be completed.
-                            </p>
-
-                        </div>
-
-
-                        <div
-                            class="grid grid-cols-1
-                                   md:grid-cols-2 gap-6"
-                        >
-
-                            <!-- ASSIGN TO -->
-
-                            <div>
-
-                                <label
-                                    for="assigned_to"
-                                    class="form-label"
-                                >
-                                    Assign To
-                                    <span class="required">*</span>
-                                </label>
-
-
-                                <div class="input-wrapper">
-
-                                    <i
-                                        class="input-icon fas fa-user"
-                                    ></i>
-
-
-                                    <select
-                                        id="assigned_to"
-                                        name="assigned_to"
-                                        required
-                                        class="form-select has-icon"
-                                    >
-
-                                        <option
-                                            value=""
-                                            disabled
-                                            selected
-                                        >
-                                            Select employee
-                                        </option>
-
-
-                                        {% for emp in employees %}
-
-                                        <option
-                                            value="{{ emp.id }}"
-                                        >
-                                            {{ emp.name }}
-                                        </option>
-
-                                        {% endfor %}
-
-                                    </select>
-
-                                </div>
-
-                            </div>
-
-
-                            <!-- DEADLINE -->
-
-                            <div>
-
-                                <label
-                                    for="deadline"
-                                    class="form-label"
-                                >
-                                    Deadline
-
-                                    <span
-                                        class="font-normal
-                                               text-slate-400"
-                                    >
-                                        Optional
-                                    </span>
-                                </label>
-
-
-                                <div class="input-wrapper">
-
-                                    <i
-                                        class="input-icon
-                                               fas fa-calendar-days"
-                                    ></i>
-
-
-                                    <input
-                                        id="deadline"
-                                        type="date"
-                                        name="deadline"
-                                        class="form-input has-icon"
-                                    >
-
-                                </div>
-
-
-                                <p
-                                    class="text-xs text-slate-400 mt-2"
-                                >
-                                    Select the expected completion
-                                    date.
-                                </p>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- ACTIONS -->
-
-                    <div
-                        class="border-t border-slate-200 pt-6
-                               flex flex-col sm:flex-row
-                               sm:justify-between
-                               sm:items-center gap-4"
-                    >
-
-                        <div
-                            class="text-sm text-slate-500"
-                        >
-
-                            <i
-                                class="fas fa-shield-halved
-                                       text-blue-500 mr-1"
-                            ></i>
-
-                            The assigned employee will receive
-                            this task.
-
-                        </div>
-
-
-                        <div
-                            class="action-buttons flex
-                                   items-center gap-3"
-                        >
-
-                            <a
-                                href="/admin/tasks"
-                                class="secondary-btn
-                                       flex items-center
-                                       justify-center gap-2"
-                            >
-
-                                <i class="fas fa-xmark"></i>
-
-                                Cancel
-
-                            </a>
-
-
-                            <button
-                                type="submit"
-                                class="primary-btn
-                                       flex items-center
-                                       justify-center gap-2"
-                            >
-
-                                <i
-                                    class="fas fa-paper-plane"
-                                ></i>
-
-                                Assign Task
-
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </form>
-
-            </div>
-
+              </div>
+
+              <div class="task-footer">
+                <span class="footer-hint">Removing a task hides it from the admin board; it does not erase the task or its comments.</span>
+                <button class="btn btn-danger" type="button" data-delete-task="{{ task.id }}">Remove from board</button>
+              </div>
+            </article>
+          {% endfor %}
         </div>
-
-
-        <!-- FOOTER -->
-
-        <div
-            class="text-center text-xs text-slate-400
-                   mt-6 pb-3"
-        >
-
-            <i class="fas fa-lock mr-1"></i>
-
-            SALT Workforce Portal · Admin Task Management
-
+        <div class="empty-state" id="searchEmpty" hidden>
+          <div class="empty-icon">⌕</div>
+          <h3>No matching tasks</h3>
+          <p>Try another search term.</p>
         </div>
+      {% else %}
+        <div class="empty-state" id="noTasks">
+          <div class="empty-icon">✓</div>
+          <h3>No tasks found</h3>
+          <p>There are no tasks matching the selected filters.</p>
+        </div>
+        <div class="task-list" id="taskList" hidden></div>
+        <div class="empty-state" id="searchEmpty" hidden>
+          <div class="empty-icon">⌕</div>
+          <h3>No matching tasks</h3>
+          <p>Try another search term.</p>
+        </div>
+      {% endif %}
+    </section>
+  </main>
 
-    </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-</main>
+  <script>
+    (() => {
+      const toast = document.getElementById('toast');
+      let toastTimer;
+      function notify(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 3600);
+      }
 
-</div>
+      const search = document.getElementById('taskSearch');
+      const cards = () => Array.from(document.querySelectorAll('[data-task-card]'));
+      const visibleCount = document.getElementById('visibleCount');
+      const searchEmpty = document.getElementById('searchEmpty');
+      if (search) {
+        search.addEventListener('input', () => {
+          const term = search.value.trim().toLowerCase();
+          let visible = 0;
+          cards().forEach(card => {
+            const match = (card.dataset.search || '').includes(term);
+            card.hidden = !match;
+            if (match) visible++;
+          });
+          if (visibleCount) visibleCount.textContent = visible;
+          if (searchEmpty) searchEmpty.hidden = !(cards().length && visible === 0);
+        });
+      }
 
-<!-- =========================================================
-     DEADLINE: PREVENT PAST DATES
-     ========================================================= -->
-
-<script>
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-        const deadline =
-            document.getElementById(
-                "deadline"
-            );
-
-
-        if (!deadline) {
-            return;
+      document.addEventListener('submit', async event => {
+        const form = event.target.closest('[data-reply-form]');
+        if (!form) return;
+        event.preventDefault();
+        const button = form.querySelector('button[type="submit"]');
+        const textarea = form.querySelector('textarea[name="admin_reply"]');
+        if (!textarea || !textarea.value.trim()) {
+          notify('Please write a reply first.');
+          return;
         }
+        const taskId = form.dataset.taskId;
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Posting…';
+        try {
+          const response = await fetch(`/admin/reply_task/${encodeURIComponent(taskId)}`, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+          });
+          const data = await response.json();
+          if (!response.ok || data.status !== 'success') throw new Error(data.message || 'Could not post reply.');
+          notify('Reply posted successfully.');
+          textarea.value = '';
+          setTimeout(() => window.location.reload(), 650);
+        } catch (error) {
+          notify(error.message || 'Unable to post reply. Please try again.');
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      });
 
-
-        const today =
-            new Date();
-
-
-        const year =
-            today.getFullYear();
-
-
-        const month =
-            String(
-                today.getMonth() + 1
-            ).padStart(
-                2,
-                "0"
-            );
-
-
-        const day =
-            String(
-                today.getDate()
-            ).padStart(
-                2,
-                "0"
-            );
-
-
-        deadline.min =
-            `${year}-${month}-${day}`;
-
-    }
-);
-
-</script>
-
-
-<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
+      document.addEventListener('click', async event => {
+        const button = event.target.closest('[data-delete-task]');
+        if (!button) return;
+        const taskId = button.dataset.deleteTask;
+        if (!confirm('Remove this task from the Admin Task Board? The task and its discussion will not be permanently deleted.')) return;
+        button.disabled = true;
+        button.textContent = 'Removing…';
+        try {
+          const response = await fetch(`/delete_task/${encodeURIComponent(taskId)}`, {
+            method: 'POST',
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+          });
+          const data = await response.json();
+          if (!response.ok || data.status !== 'success') throw new Error(data.message || 'Unable to remove task.');
+          const card = document.getElementById(`task-${taskId}`);
+          if (card) card.remove();
+          if (visibleCount) visibleCount.textContent = cards().length;
+          if (cards().length === 0) {
+            const list = document.getElementById('taskList');
+            if (list) list.hidden = true;
+            let empty = document.getElementById('noTasks');
+            if (!empty) {
+              empty = document.createElement('div');
+              empty.id = 'noTasks';
+              empty.className = 'empty-state';
+              empty.innerHTML = '<div class="empty-icon">✓</div><h3>No tasks found</h3><p>There are no tasks matching the selected filters.</p>';
+              document.querySelector('.tasks-header').after(empty);
+            }
+            empty.hidden = false;
+          }
+          notify('Task removed from the admin board.');
+        } catch (error) {
+          notify(error.message || 'Unable to remove task. Please try again.');
+          button.disabled = false;
+          button.textContent = 'Remove from board';
+        }
+      });
+    })();
+  </script>
 </body>
-
 </html>
