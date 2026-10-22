@@ -3889,6 +3889,7 @@ def delete_task_route(task_id):
 # =====================================================================
 
 import logging
+import uuid
 
 # Keep these in sync with the maxlength values in assign_task.html
 TITLE_MAX = 120
@@ -3981,6 +3982,7 @@ def assign_task():
     conn = get_db()
     c = conn.cursor(cursor_factory=RealDictCursor)
     valid_ids = []
+    batch_id = str(uuid.uuid4())  # shared by every copy made in this submission
 
     try:
         # Only accept IDs that exist in employees.
@@ -4003,6 +4005,7 @@ def assign_task():
                         description,
                         note,
                         priority,
+                        batch_id,
                         assigned_to,
                         deadline,
                         status,
@@ -4010,12 +4013,13 @@ def assign_task():
                         task_scope,
                         created_at
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     title,
                     description,
                     note,
                     priority,
+                    batch_id,
                     emp_id,
                     deadline.isoformat() if deadline else None,  # tasks.deadline is TEXT
                     "Pending",
