@@ -3882,112 +3882,148 @@ def delete_task_route(task_id):
 
         }), 500
 
-@app.route('/admin/assign_task', methods=['GET','POST'])
+@app.route('/admin/assign_task', methods=['GET', 'POST'])
 def assign_task():
-
+ 
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
-
-
-    conn = get_db()
-
-    c = conn.cursor(cursor_factory=RealDictCursor)
-
-
-
+ 
+    # ------------------------------------------------------------------
+    # POST: create one task per selected employee
+    # ------------------------------------------------------------------
     if request.method == 'POST':
-
-        title = request.form['title']
-
-        description = request.form['description']
-
-        note = request.form['note']
-
-        assigned_to = request.form['assigned_to']
-
-        deadline = request.form.get('deadline') or None
-
-
-
-        created_at = datetime.now()
-
-
-
-        c.execute("""
-            INSERT INTO tasks
-            (
-                title,
-                description,
-                note,
-                assigned_to,
-                deadline,
-                status,
-                created_by,
-                task_scope,
-                created_at
-            )
-
-            VALUES
-            (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s
-            )
-
-        """,
-        (
-            title,
-            description,
-            note,
-            assigned_to,
-            deadline,
-            "Pending",
-            session['user_id'],
-            "admin_board",
-            created_at
+ 
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        note = request.form.get('note', '').strip()
+        deadline_raw = request.form.get('deadline', '').strip()
+ 
+        # Several checkboxes share name="assigned_to". getlist returns all of
+        # them; dict.fromkeys removes duplicates and keeps the order.
+        selected = list(dict.fromkeys(
+            v.strip() for v in request.form.getlist('assigned_to') if v.strip()
         ))
-
-
-
-        conn.commit()
-
-        conn.close()
-
-        # 🔔 Persistent + real-time notification
-        create_notification(
-            assigned_to,
-            f"New Task Assigned: {title}"
-        )
-
+ 
+        # --- Validation (the browser checks this too, but never trust it) ---
+        error = None
+        deadline = None
+ 
+        if not title:
+            error = "Task title is required."
+        elif len(title) > TITLE_MAX:
+            error = f"Title must be {TITLE_MAX} characters or fewer."
+        elif not description:
+            error = "Description is required."
+        elif len(description) > DESCRIPTION_MAX:
+            error = f"Description must be {DESCRIPTION_MAX} characters or fewer."
+        elif len(note) > NOTE_MAX:
+            error = f"Note must be {NOTE_MAX} characters or fewer."
+        elif not selected:
+            error = "Select at least one employee."
+        elif len(selected) > MAX_ASSIGNEES:
+            error = f"You can assign a task to at most {MAX_ASSIGNEES} people at once."
+        elif deadline_raw:
+            try:
+                deadline = datetime.strptime(deadline_raw, "%Y-%m-%d").date()
+                if deadline < date.today():
+                    error = "Deadline cannot be in the past."
+            except ValueError:
+                error = "Deadline is not a valid date."
+ 
+        if error:
+            flash(error)
+            return redirect('/admin/assign_task')
+ 
+        # --- Save ---
+        conn = get_db()
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        valid_ids = []
+ 
+        try:
+            # Only accept IDs that exist. Comparing as text works whether your
+            # employees.id is an integer or a UUID.
+            c.execute(
+                "SELECT id FROM employees WHERE id::text = ANY(%s)",
+                (selected,)
+            )
+            valid_ids = [row['id'] for row in c.fetchall()]
+ 
+            if len(valid_ids) != len(selected):
+                flash("One or more selected employees no longer exist. Please review the list.")
+                return redirect('/admin/assign_task')
+ 
+            created_at = datetime.now()
+ 
+            for emp_id in valid_ids:
+                c.execute("""
+                    INSERT INTO tasks
+                    (
+                        title,
+                        description,
+                        note,
+                        assigned_to,
+                        deadline,
+                        status,
+                        created_by,
+                        task_scope,
+                        created_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    title,
+                    description,
+                    note,
+                    emp_id,
+                    deadline,
+                    "Pending",
+                    session['user_id'],
+                    "admin_board",
+                    created_at
+                ))
+ 
+            # One commit for all rows: everyone gets the task, or nobody does.
+            conn.commit()
+ 
+        except Exception:
+            conn.rollback()
+            logging.exception("assign_task: failed to create tasks")
+            flash("Something went wrong and no tasks were created. Please try again.")
+            return redirect('/admin/assign_task')
+ 
+        finally:
+            conn.close()
+ 
+        # --- Notify each assignee (after the commit, outside the transaction) ---
+        # A failed notification should not undo or hide a successful assignment.
+        for emp_id in valid_ids:
+            try:
+                create_notification(emp_id, f"New Task Assigned: {title}")
+            except Exception:
+                logging.exception("assign_task: notification failed for employee %s", emp_id)
+ 
+        count = len(valid_ids)
+        flash("Task assigned to 1 employee." if count == 1
+              else f"Task assigned to {count} employees.")
+ 
         return redirect('/admin/tasks')
-
-
-
-    # Load employees
-
-    c.execute("""
-        SELECT id, name
-        FROM employees
-        ORDER BY name ASC
-    """)
-
-
-    employees = c.fetchall()
-
-
-    conn.close()
-
-
-    return render_template(
-        "assign_task.html",
-        employees=employees
-    )
+ 
+    # ------------------------------------------------------------------
+    # GET: show the form
+    # ------------------------------------------------------------------
+    conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
+ 
+    try:
+        c.execute("""
+            SELECT id, name
+            FROM employees
+            ORDER BY name ASC
+        """)
+        employees = c.fetchall()
+    finally:
+        conn.close()
+ 
+    return render_template("assign_task.html", employees=employees)
 
 @app.route('/admin/employees')
 def admin_employees():
