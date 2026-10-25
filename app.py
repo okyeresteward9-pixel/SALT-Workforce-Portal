@@ -1,6 +1,9 @@
 from gevent import monkey
 monkey.patch_all()
 
+from dotenv import load_dotenv
+load_dotenv()  # reads .env for local development; harmless on Render
+
 from psycogreen.gevent import patch_psycopg
 patch_psycopg()
 
@@ -33,16 +36,31 @@ import cloudinary
 import cloudinary_config
 import json
 from push_notifications import get_vapid_public_key
+from security import LoginThrottle, origin_allowed, SAFE_METHODS
 
 app = Flask(__name__)
 
 
 app.register_blueprint(chat_bp)
 
-app.secret_key = os.environ.get(
-    "SECRET_KEY",
-    "fallback-secret"
-)
+# APP_ENV=development enables debug mode and an insecure local-only key.
+# Anything else (including unset) is treated as production.
+IS_PRODUCTION = os.environ.get("APP_ENV", "production").strip().lower() != "development"
+
+_secret_key = os.environ.get("SECRET_KEY")
+if not _secret_key:
+    if IS_PRODUCTION:
+        raise RuntimeError(
+            "SECRET_KEY environment variable is required. "
+            "For local work set APP_ENV=development in your .env file."
+        )
+    _secret_key = "dev-only-insecure-key"
+app.secret_key = _secret_key
+
+# Comma-separated list, e.g. https://your-portal.onrender.com
+ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()
+]
 
 # Session settings
 app.permanent_session_lifetime = timedelta(days=30)
@@ -50,16 +68,42 @@ app.permanent_session_lifetime = timedelta(days=30)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=True
+    SESSION_COOKIE_SECURE=IS_PRODUCTION
 )
 
 socketio = SocketIO(
     app,
-    cors_allowed_origins="*",
+    cors_allowed_origins=ALLOWED_ORIGINS or None,  # None = same-origin only
     async_mode="gevent"
 )
 
 register_chat_socketio(socketio)
+
+login_throttle = LoginThrottle(max_attempts=5, window=900, ip_max=30)
+
+
+def _client_ip():
+    # Behind Render's proxy the real client is the LAST X-Forwarded-For entry
+    # (the one the proxy appended); earlier entries can be forged by the client.
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[-1].strip()
+    return request.remote_addr or "unknown"
+
+
+@app.before_request
+def block_cross_site_writes():
+    if request.method in SAFE_METHODS:
+        return None
+    if not origin_allowed(
+        request.headers.get("Origin"),
+        request.headers.get("Referer"),
+        request.host,
+        ALLOWED_ORIGINS,
+        request.headers.get("Sec-Fetch-Site"),
+    ):
+        return jsonify({"status": "error", "message": "Cross-site request blocked."}), 403
+    return None
 
 
 
@@ -927,6 +971,14 @@ def login():
             error="Please enter your email and password."
         )
 
+    client_ip = _client_ip()
+
+    if login_throttle.blocked(client_ip, email):
+        return render_template(
+            "login.html",
+            error="Too many failed attempts. Please wait 15 minutes and try again."
+        ), 429
+
     conn = get_db()
     c = conn.cursor()
 
@@ -944,6 +996,8 @@ def login():
 
     if user and check_password_hash(user['password'], password):
 
+        login_throttle.reset(client_ip, email)
+
         # Clear old session data
         session.clear()
 
@@ -959,6 +1013,8 @@ def login():
             session.permanent = False
 
         return redirect('/dashboard')
+
+    login_throttle.record_failure(client_ip, email)
 
     return render_template(
         "login.html",
@@ -1097,7 +1153,7 @@ def profile_settings():
             )[-1].lower()
 
 
-            if ext not in ALLOWED_EXTENSIONS:
+            if ext not in {"png", "jpg", "jpeg"}:
 
                 conn.close()
 
@@ -6716,6 +6772,6 @@ if __name__ == "__main__":
     socketio.run(
         app,
         host="0.0.0.0",
-        port=5000,
-        debug=True
+        port=int(os.environ.get("PORT", 5000)),
+        debug=not IS_PRODUCTION
     )

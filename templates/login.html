@@ -773,6 +773,7 @@ input::placeholder{color:#a7b3c4}
 <body>
 
 <!-- SALT Workforce Modern Tech Startup Loader -->
+{% if not error %}
 <div id="saltTechLoader" aria-label="Loading SALT Workforce">
   <div class="salt-loader-grid"></div>
   <div class="salt-loader-noise"></div>
@@ -800,6 +801,7 @@ input::placeholder{color:#a7b3c4}
     <div class="salt-loader-status">Initializing workspace</div>
   </div>
 </div>
+{% endif %}
 
 <div class="shell">
 
@@ -841,9 +843,9 @@ input::placeholder{color:#a7b3c4}
         <p>Sign in to continue to your SALT workforce workspace.</p>
       </div>
 
-      <div class="error-box" id="errorBox">
+      <div class="error-box{% if error %} show{% endif %}" id="errorBox" role="alert">
         <i class="fa-solid fa-circle-exclamation"></i>
-        <span id="errorText">Invalid email or password.</span>
+        <span id="errorText">{{ error or "Invalid email or password." }}</span>
       </div>
 
       <form id="loginForm" action="/login" method="POST" autocomplete="on">
