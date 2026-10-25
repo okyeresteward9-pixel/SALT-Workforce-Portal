@@ -1,64 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
+{% block title %}Announcements · SALT Workforce Portal{% endblock %}
+{% block page_heading %}Announcements{% endblock %}
 
-    <meta charset="UTF-8">
+{% block head %}
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="application-name" content="SALT Workforce">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SALT Workforce">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
+<script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
+{% endblock %}
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>Announcements - SALT Workforce Portal</title>
-
-    <link rel="icon"
-          href="{{ url_for('static', filename='salt-logo.png') }}">
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
-
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
-
+{% block extra_css %}
 <style>
+
 
 /* =========================================================
    PAGE LAYOUT
    ========================================================= */
 
-.main {
 
-    width: calc(100% - 260px);
-
-    margin-left: 260px;
-
-    padding: 0 28px 50px;
-
-    box-sizing: border-box;
-
-    min-height: 100vh;
-
-    transition:
-        width .3s ease,
-        margin-left .3s ease;
-}
 
 
 /* Sidebar collapsed */
 
-.sidebar.collapsed + .main {
 
-    width: calc(100% - 90px);
-
-    margin-left: 90px;
-}
 
 
 /* =========================================================
    PAGE HEADER
    ========================================================= */
 
-.page-header {
+.announcements-page .page-header{
 
     display: flex;
 
@@ -72,7 +49,7 @@
 }
 
 
-.page-title h2 {
+.announcements-page .page-title h2{
 
     margin: 0;
 
@@ -82,7 +59,7 @@
 }
 
 
-.page-title p {
+.announcements-page .page-title p{
 
     margin: 6px 0 0;
 
@@ -96,13 +73,13 @@
    FLASH MESSAGES
    ========================================================= */
 
-.flash-container {
+.announcements-page .flash-container{
 
     margin-bottom: 20px;
 }
 
 
-.flash {
+.announcements-page .flash{
 
     padding: 13px 16px;
 
@@ -120,7 +97,7 @@
 }
 
 
-.flash.success {
+.announcements-page .flash.success{
 
     background: #dcfce7;
 
@@ -130,7 +107,7 @@
 }
 
 
-.flash.error {
+.announcements-page .flash.error{
 
     background: #fee2e2;
 
@@ -144,7 +121,7 @@
    STATISTICS
    ========================================================= */
 
-.stats-grid {
+.announcements-page .stats-grid{
 
     display: grid;
 
@@ -157,7 +134,7 @@
 }
 
 
-.stat-card {
+.announcements-page .stat-card{
 
     background: white;
 
@@ -178,7 +155,7 @@
 }
 
 
-.stat-icon {
+.announcements-page .stat-icon{
 
     width: 48px;
 
@@ -200,7 +177,7 @@
 }
 
 
-.stat-card h4 {
+.announcements-page .stat-card h4{
 
     margin: 0;
 
@@ -210,7 +187,7 @@
 }
 
 
-.stat-card span {
+.announcements-page .stat-card span{
 
     display: block;
 
@@ -226,7 +203,7 @@
    CREATE ANNOUNCEMENT CARD
    ========================================================= */
 
-.announcement-card {
+.announcements-page .announcement-card{
 
     background: white;
 
@@ -243,7 +220,7 @@
 }
 
 
-.card-header {
+.announcements-page .card-header{
 
     padding: 20px 22px;
 
@@ -257,7 +234,7 @@
 }
 
 
-.card-header h3 {
+.announcements-page .card-header h3{
 
     margin: 0;
 
@@ -267,23 +244,20 @@
 }
 
 
-.card-header i {
+.announcements-page .card-header i{
 
     color: #0077b6;
 }
 
 
-.card-body {
 
-    padding: 22px;
-}
 
 
 /* =========================================================
    FORM
    ========================================================= */
 
-.form-grid {
+.announcements-page .form-grid{
 
     display: grid;
 
@@ -294,19 +268,19 @@
 }
 
 
-.form-group {
+.announcements-page .form-group{
 
     margin-bottom: 17px;
 }
 
 
-.form-group.full {
+.announcements-page .form-group.full{
 
     grid-column: 1 / -1;
 }
 
 
-.form-group label {
+.announcements-page .form-group label{
 
     display: block;
 
@@ -320,7 +294,7 @@
 }
 
 
-.form-control {
+.announcements-page .form-control{
 
     width: 100%;
 
@@ -345,7 +319,7 @@
 }
 
 
-.form-control:focus {
+.announcements-page .form-control:focus{
 
     border-color: #0077b6;
 
@@ -354,7 +328,7 @@
 }
 
 
-textarea.form-control {
+.announcements-page textarea.form-control{
 
     min-height: 125px;
 
@@ -362,7 +336,7 @@ textarea.form-control {
 }
 
 
-input[type="file"].form-control {
+.announcements-page input[type="file"].form-control{
 
     padding: 9px;
 
@@ -374,7 +348,7 @@ input[type="file"].form-control {
    BUTTONS
    ========================================================= */
 
-.btn {
+.announcements-page .btn{
 
     border: none;
 
@@ -405,13 +379,13 @@ input[type="file"].form-control {
 }
 
 
-.btn:hover {
+.announcements-page .btn:hover{
 
     transform: translateY(-1px);
 }
 
 
-.btn-primary {
+.announcements-page .btn-primary{
 
     background: #0077b6;
 
@@ -419,13 +393,13 @@ input[type="file"].form-control {
 }
 
 
-.btn-primary:hover {
+.announcements-page .btn-primary:hover{
 
     background: #005f8f;
 }
 
 
-.btn-edit {
+.announcements-page .btn-edit{
 
     background: #f59e0b;
 
@@ -433,13 +407,13 @@ input[type="file"].form-control {
 }
 
 
-.btn-edit:hover {
+.announcements-page .btn-edit:hover{
 
     background: #d97706;
 }
 
 
-.btn-delete {
+.announcements-page .btn-delete{
 
     background: #dc2626;
 
@@ -447,13 +421,13 @@ input[type="file"].form-control {
 }
 
 
-.btn-delete:hover {
+.announcements-page .btn-delete:hover{
 
     background: #b91c1c;
 }
 
 
-.btn-secondary {
+.announcements-page .btn-secondary{
 
     background: #64748b;
 
@@ -461,7 +435,7 @@ input[type="file"].form-control {
 }
 
 
-.btn-light {
+.announcements-page .btn-light{
 
     background: #eef2f7;
 
@@ -473,7 +447,7 @@ input[type="file"].form-control {
    SEARCH / FILTER
    ========================================================= */
 
-.filters {
+.announcements-page .filters{
 
     background: white;
 
@@ -490,7 +464,7 @@ input[type="file"].form-control {
 }
 
 
-.filter-form {
+.announcements-page .filter-form{
 
     display: grid;
 
@@ -503,13 +477,13 @@ input[type="file"].form-control {
 }
 
 
-.search-wrapper {
+.announcements-page .search-wrapper{
 
     position: relative;
 }
 
 
-.search-wrapper i {
+.announcements-page .search-wrapper i{
 
     position: absolute;
 
@@ -523,7 +497,7 @@ input[type="file"].form-control {
 }
 
 
-.search-wrapper input {
+.announcements-page .search-wrapper input{
 
     padding-left: 38px;
 }
@@ -533,7 +507,7 @@ input[type="file"].form-control {
    TABLE
    ========================================================= */
 
-.table-card {
+.announcements-page .table-card{
 
     background: white;
 
@@ -548,7 +522,7 @@ input[type="file"].form-control {
 }
 
 
-.table-wrapper {
+.announcements-page .table-wrapper{
 
     width: 100%;
 
@@ -558,7 +532,7 @@ input[type="file"].form-control {
 }
 
 
-table {
+.announcements-page table{
 
     width: 100%;
 
@@ -568,7 +542,7 @@ table {
 }
 
 
-thead th {
+.announcements-page thead th{
 
     background: #023e8a;
 
@@ -588,27 +562,13 @@ thead th {
 }
 
 
-tbody td {
-
-    padding: 14px;
-
-    border-bottom: 1px solid #edf2f7;
-
-    vertical-align: middle;
-
-    color: #334155;
-
-    font-size: 13px;
-}
 
 
-tbody tr:hover {
-
-    background: #f8fbff;
-}
 
 
-.title-cell {
+
+
+.announcements-page .title-cell{
 
     font-weight: 700;
 
@@ -618,7 +578,7 @@ tbody tr:hover {
 }
 
 
-.message-cell {
+.announcements-page .message-cell{
 
     max-width: 300px;
 
@@ -634,7 +594,7 @@ tbody tr:hover {
    BADGES
    ========================================================= */
 
-.badge {
+.announcements-page .badge{
 
     display: inline-flex;
 
@@ -654,7 +614,7 @@ tbody tr:hover {
 }
 
 
-.badge-everyone {
+.announcements-page .badge-everyone{
 
     background: #e0f2fe;
 
@@ -662,7 +622,7 @@ tbody tr:hover {
 }
 
 
-.badge-staff {
+.announcements-page .badge-staff{
 
     background: #dcfce7;
 
@@ -670,7 +630,7 @@ tbody tr:hover {
 }
 
 
-.badge-admin {
+.announcements-page .badge-admin{
 
     background: #fef3c7;
 
@@ -682,7 +642,7 @@ tbody tr:hover {
    FILE LINK
    ========================================================= */
 
-.file-link {
+.announcements-page .file-link{
 
     display: inline-flex;
 
@@ -708,13 +668,13 @@ tbody tr:hover {
 }
 
 
-.file-link:hover {
+.announcements-page .file-link:hover{
 
     background: #dceeff;
 }
 
 
-.file-name {
+.announcements-page .file-name{
 
     overflow: hidden;
 
@@ -724,7 +684,7 @@ tbody tr:hover {
 }
 
 
-.no-file {
+.announcements-page .no-file{
 
     color: #94a3b8;
 }
@@ -734,7 +694,7 @@ tbody tr:hover {
    ACTIONS
    ========================================================= */
 
-.actions {
+.announcements-page .actions{
 
     display: flex;
 
@@ -744,7 +704,7 @@ tbody tr:hover {
 }
 
 
-.action-btn {
+.announcements-page .action-btn{
 
     width: 34px;
 
@@ -768,25 +728,25 @@ tbody tr:hover {
 }
 
 
-.action-edit {
+.announcements-page .action-edit{
 
     background: #f59e0b;
 }
 
 
-.action-edit:hover {
+.announcements-page .action-edit:hover{
 
     background: #d97706;
 }
 
 
-.action-delete {
+.announcements-page .action-delete{
 
     background: #dc2626;
 }
 
 
-.action-delete:hover {
+.announcements-page .action-delete:hover{
 
     background: #b91c1c;
 }
@@ -796,7 +756,7 @@ tbody tr:hover {
    EMPTY STATE
    ========================================================= */
 
-.empty-state {
+.announcements-page .empty-state{
 
     padding: 55px 20px;
 
@@ -806,7 +766,7 @@ tbody tr:hover {
 }
 
 
-.empty-state i {
+.announcements-page .empty-state i{
 
     font-size: 42px;
 
@@ -816,7 +776,7 @@ tbody tr:hover {
 }
 
 
-.empty-state h3 {
+.announcements-page .empty-state h3{
 
     margin: 0 0 5px;
 
@@ -828,7 +788,7 @@ tbody tr:hover {
    MODAL
    ========================================================= */
 
-.modal {
+.announcements-page .modal{
 
     display: none;
 
@@ -850,13 +810,13 @@ tbody tr:hover {
 }
 
 
-.modal.show {
+.announcements-page .modal.show{
 
     display: flex;
 }
 
 
-.modal-content {
+.announcements-page .modal-content{
 
     width: 100%;
 
@@ -897,7 +857,7 @@ tbody tr:hover {
 }
 
 
-.modal-header {
+.announcements-page .modal-header{
 
     padding: 18px 20px;
 
@@ -911,7 +871,7 @@ tbody tr:hover {
 }
 
 
-.modal-header h3 {
+.announcements-page .modal-header h3{
 
     margin: 0;
 
@@ -921,7 +881,7 @@ tbody tr:hover {
 }
 
 
-.modal-close {
+.announcements-page .modal-close{
 
     width: 32px;
 
@@ -939,13 +899,10 @@ tbody tr:hover {
 }
 
 
-.modal-body {
-
-    padding: 20px;
-}
 
 
-.modal-footer {
+
+.announcements-page .modal-footer{
 
     padding: 15px 20px;
 
@@ -961,7 +918,7 @@ tbody tr:hover {
 
 /* Delete modal */
 
-.delete-icon {
+.announcements-page .delete-icon{
 
     width: 55px;
 
@@ -985,13 +942,13 @@ tbody tr:hover {
 }
 
 
-.delete-content {
+.announcements-page .delete-content{
 
     text-align: center;
 }
 
 
-.delete-content h3 {
+.announcements-page .delete-content h3{
 
     margin: 0 0 8px;
 
@@ -999,7 +956,7 @@ tbody tr:hover {
 }
 
 
-.delete-content p {
+.announcements-page .delete-content p{
 
     margin: 0;
 
@@ -1013,7 +970,7 @@ tbody tr:hover {
 
 /* Existing attachment */
 
-.current-file {
+.announcements-page .current-file{
 
     display: flex;
 
@@ -1035,7 +992,7 @@ tbody tr:hover {
 }
 
 
-.current-file-name {
+.announcements-page .current-file-name{
 
     display: flex;
 
@@ -1051,7 +1008,7 @@ tbody tr:hover {
 }
 
 
-.current-file-name span {
+.announcements-page .current-file-name span{
 
     overflow: hidden;
 
@@ -1061,7 +1018,7 @@ tbody tr:hover {
 }
 
 
-.remove-file {
+.announcements-page .remove-file{
 
     border: none;
 
@@ -1085,7 +1042,7 @@ tbody tr:hover {
    TOAST
    ========================================================= */
 
-.toast {
+.announcements-page .toast{
 
     position: fixed;
 
@@ -1116,7 +1073,7 @@ tbody tr:hover {
 }
 
 
-.toast.show {
+.announcements-page .toast.show{
 
     display: block;
 
@@ -1151,19 +1108,19 @@ tbody tr:hover {
 
 @media (max-width: 1100px) {
 
-    .stats-grid {
+    .announcements-page .stats-grid{
 
         grid-template-columns:
             repeat(2, 1fr);
     }
 
-    .filter-form {
+    .announcements-page .filter-form{
 
         grid-template-columns:
             1fr 180px;
     }
 
-    .filter-form .btn {
+    .announcements-page .filter-form .btn{
 
         width: 100%;
     }
@@ -1172,22 +1129,14 @@ tbody tr:hover {
 
 @media (max-width: 850px) {
 
-    .main,
-    .sidebar.collapsed + .main {
+    
 
-        width: 100%;
-
-        margin-left: 0;
-
-        padding: 0 15px 35px;
-    }
-
-    .form-grid {
+    .announcements-page .form-grid{
 
         grid-template-columns: 1fr;
     }
 
-    .form-group.full {
+    .announcements-page .form-group.full{
 
         grid-column: auto;
     }
@@ -1196,34 +1145,31 @@ tbody tr:hover {
 
 @media (max-width: 600px) {
 
-    .page-header {
+    .announcements-page .page-header{
 
         align-items: flex-start;
 
         flex-direction: column;
     }
 
-    .stats-grid {
+    .announcements-page .stats-grid{
 
         grid-template-columns: 1fr;
     }
 
-    .filter-form {
+    .announcements-page .filter-form{
 
         grid-template-columns: 1fr;
     }
 
-    .card-body {
+    
 
-        padding: 17px;
-    }
-
-    .page-title h2 {
+    .announcements-page .page-title h2{
 
         font-size: 21px;
     }
 
-    .toast {
+    .announcements-page .toast{
 
         right: 15px;
 
@@ -1233,172 +1179,155 @@ tbody tr:hover {
     }
 }
 
+
+
+/* Fixed topbar: follow the existing sidebar state without adding a hard-coded gap. */
+.salt-topbar {
+    position: fixed !important;
+    top: 0 !important;
+    left: var(--salt-sidebar-current-width, var(--salt-sidebar-width, 260px)) !important;
+    right: 0 !important;
+    width: auto !important;
+    z-index: 5000 !important;
+    box-sizing: border-box;
+    background: var(--salt-surface, var(--surface, #ffffff));
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+/* When the shared sidebar is collapsed, align to its compact width. */
+body.sidebar-collapsed .salt-topbar,
+body.sidebar-collapsed .salt-main .salt-topbar,
+.sidebar.collapsed ~ .salt-main .salt-topbar,
+.salt-sidebar.collapsed ~ .salt-main .salt-topbar {
+    left: var(--salt-sidebar-collapsed-width, 44px) !important;
+}
+
+/* Keep content below the fixed topbar without changing its horizontal layout. */
+.salt-main {
+    padding-top: 82px !important;
+}
+
+@media (max-width: 900px) {
+    .salt-topbar {
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+    }
+
+    .salt-main {
+        padding-top: 76px !important;
+    }
+}
+
+/* Keep the announcement page comfortably inset from the viewport edges. */
+.announcements-page {
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 22px 24px 36px;
+    box-sizing: border-box;
+}
+
+.announcements-page .page-header {
+    margin: 0 0 24px;
+    padding: 4px 2px;
+}
+
+.announcements-page .stats-grid,
+.announcements-page .form-grid,
+.announcements-page .filters,
+.announcements-page .announcement-card,
+.announcements-page .table-container,
+.announcements-page .content-card,
+.announcements-page .card {
+    margin-bottom: 22px;
+}
+
+.announcements-page .stat-card,
+.announcements-page .announcement-card,
+.announcements-page .form-card,
+.announcements-page .create-card,
+.announcements-page .table-card,
+.announcements-page .content-card,
+.announcements-page .card {
+    padding: 22px;
+    box-sizing: border-box;
+}
+
+.announcements-page form,
+.announcements-page .form-group {
+    min-width: 0;
+}
+
+.announcements-page label {
+    display: block;
+    margin: 0 0 8px;
+    line-height: 1.45;
+}
+
+.announcements-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.announcements-page select,
+.announcements-page textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    margin-top: 2px;
+    margin-bottom: 6px;
+    line-height: 1.5;
+}
+
+.announcements-page textarea {
+    min-height: 140px;
+    resize: vertical;
+}
+
+.announcements-page input[type="file"] {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    margin: 4px 0 8px;
+}
+
+.announcements-page .form-group,
+.announcements-page .form-field {
+    margin-bottom: 18px;
+}
+
+.announcements-page .form-grid {
+    gap: 20px;
+}
+
+.announcements-page table th,
+.announcements-page table td {
+    padding: 14px 16px;
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .announcements-page {
+        padding: 16px 12px 28px;
+    }
+
+    .announcements-page .stat-card,
+    .announcements-page .announcement-card,
+    .announcements-page .form-card,
+    .announcements-page .create-card,
+    .announcements-page .table-card,
+    .announcements-page .content-card,
+    .announcements-page .card {
+        padding: 16px;
+    }
+
+}
+
 </style>
+{% endblock %}
 
-
-    <!-- SALT Workforce PWA -->
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#0b3d91">
-    <meta name="application-name" content="SALT Workforce">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="SALT Workforce">
-    <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
-
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
-</head>
-
-
-<body>
-
-<div class="wrapper">
-
-
-    <!-- =====================================================
-         SIDEBAR
-         ===================================================== -->
-
-    <div class="sidebar">
-
-        <div class="logo">
-
-            <img
-                src="{{ url_for('static', filename='salt-logo.png') }}"
-                alt="SALT">
-
-            <p class="portal-name">
-                Workforce Portal
-            </p>
-
-        </div>
-
-
-        <ul>
-
-            <li>
-
-                <a href="/dashboard">
-
-                    <i class="fas fa-home"></i>
-
-                    Dashboard
-
-                </a>
-
-            </li>
-
-
-            <li>
-
-                <a href="/admin/employees">
-
-                    <i class="fas fa-users"></i>
-
-                    Employees
-
-                </a>
-
-            </li>
-
-
-            <li>
-
-                <a href="/admin/tasks">
-
-                    <i class="fas fa-table"></i>
-
-                    Task Board
-
-                </a>
-
-            </li>
-
-
-            <li class="active">
-
-                <a href="/admin/announcements">
-
-                    <i class="fas fa-bullhorn"></i>
-
-                    Announcements
-
-                </a>
-
-            </li>
-
-
-            <li>
-
-                <a href="/attendance">
-
-                    <i class="fas fa-clock"></i>
-
-                    Attendance
-
-                </a>
-
-            </li>
-
-
-            <li>
-
-                <a href="/tasks">
-
-                    <i class="fas fa-tasks"></i>
-
-                    My Tasks
-
-                </a>
-
-            </li>
-
-
-            <li>
-
-                <a href="/logout">
-
-                    <i class="fas fa-sign-out-alt"></i>
-
-                    Logout
-
-                </a>
-
-            </li>
-
-        </ul>
-
-    </div>
-
-
-    <!-- =====================================================
-         MAIN CONTENT
-         ===================================================== -->
-
-    <div class="main">
-
-
-        <!-- TOPBAR -->
-
-        <div class="topbar">
-
-            <button id="toggle-btn">
-
-                <i class="fas fa-bars"></i>
-
-            </button>
-
-            <h3>
-                Welcome, {{ session.get('name', 'Admin') }}
-            </h3>
-
-        </div>
-
-
-        <!-- PAGE HEADER -->
-
+{% block content %}
+<div class="announcements-page">
         <div class="page-header">
 
             <div class="page-title">
@@ -1420,41 +1349,7 @@ tbody tr:hover {
         </div>
 
 
-        <!-- =================================================
-             FLASH MESSAGES
-             ================================================= -->
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-
-            {% if messages %}
-
-                <div class="flash-container">
-
-                    {% for category, message in messages %}
-
-                        <div class="flash {{ category }}">
-
-                            {% if category == 'success' %}
-
-                                <i class="fas fa-circle-check"></i>
-
-                            {% else %}
-
-                                <i class="fas fa-circle-exclamation"></i>
-
-                            {% endif %}
-
-                            {{ message }}
-
-                        </div>
-
-                    {% endfor %}
-
-                </div>
-
-            {% endif %}
-
-        {% endwith %}
+        
 
 
         <!-- =================================================
@@ -2105,12 +2000,6 @@ tbody tr:hover {
 
         </div>
 
-
-    </div>
-
-</div>
-
-
 <!-- =========================================================
      EDIT MODAL
      ========================================================= -->
@@ -2437,53 +2326,18 @@ tbody tr:hover {
     id="toast"
     class="toast"
 ></div>
+</div>
+{% endblock %}
 
-
+{% block scripts %}
 <script>
+
 
     document.addEventListener("DOMContentLoaded", function () {
     
         console.log(
             "Announcement JavaScript loaded successfully."
         );
-    
-    
-        /* =====================================================
-           SIDEBAR
-           ===================================================== */
-    
-        const toggleBtn =
-            document.getElementById("toggle-btn");
-    
-        const sidebar =
-            document.querySelector(".sidebar");
-    
-        const main =
-            document.querySelector(".main");
-    
-    
-        if (
-            toggleBtn &&
-            sidebar &&
-            main
-        ) {
-    
-            toggleBtn.addEventListener(
-                "click",
-                function () {
-    
-                    sidebar.classList.toggle(
-                        "collapsed"
-                    );
-    
-                    main.classList.toggle(
-                        "expanded"
-                    );
-    
-                }
-            );
-    
-        }
     
     
         /* =====================================================
@@ -4095,10 +3949,6 @@ tbody tr:hover {
 
         });
     
-    </script>
-
-
-<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
-</body>
-
-</html>
+    
+</script>
+{% endblock %}

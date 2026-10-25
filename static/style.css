@@ -896,3 +896,1541 @@ tr:hover td {
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .charts{grid-template-columns:1fr!important}
 }
+
+
+/* =========================================================
+   SALT MASTER CSS — migrated from css/salt-design-system.css
+   ========================================================= */
+/* SALT Workforce — Unified Design System + Mobile UI */
+:root {
+  --salt-primary: #0B3D91;
+  --salt-primary-dark: #082D6B;
+  --salt-primary-light: #EAF1FF;
+  --salt-background: #F5F7FB;
+  --salt-surface: #FFFFFF;
+  --salt-text: #172033;
+  --salt-text-secondary: #68758A;
+  --salt-border: #E2E8F0;
+  --salt-success: #198754;
+  --salt-success-light: #EAF7F0;
+  --salt-warning: #D99A00;
+  --salt-warning-light: #FFF7DF;
+  --salt-danger: #D64545;
+  --salt-danger-light: #FDECEC;
+  --salt-shadow: 0 8px 24px rgba(15, 42, 82, 0.08);
+  --salt-shadow-lg: 0 14px 35px rgba(15, 42, 82, 0.12);
+  --salt-radius: 14px;
+  --salt-radius-sm: 10px;
+  --salt-transition: 180ms ease;
+}
+
+html, body {
+  max-width: 100%;
+}
+
+body {
+  color: var(--salt-text);
+  background: var(--salt-background);
+}
+
+a {
+  color: var(--salt-primary);
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+button, .btn, a.btn {
+  border-radius: var(--salt-radius-sm);
+  transition: transform var(--salt-transition),
+              box-shadow var(--salt-transition),
+              background var(--salt-transition);
+}
+
+button:hover, .btn:hover, a.btn:hover {
+  transform: translateY(-1px);
+}
+
+input, select, textarea {
+  border-color: var(--salt-border);
+  border-radius: var(--salt-radius-sm);
+}
+
+.card, .dashboard-card, .stat-card, .panel, .box, .form-card {
+  border-radius: var(--salt-radius);
+  box-shadow: var(--salt-shadow);
+}
+
+.salt-primary-bg { background: var(--salt-primary) !important; }
+.salt-primary-text { color: var(--salt-primary) !important; }
+.salt-success { color: var(--salt-success) !important; }
+.salt-warning { color: var(--salt-warning) !important; }
+.salt-danger { color: var(--salt-danger) !important; }
+
+.salt-status-success {
+  color: var(--salt-success);
+  background: var(--salt-success-light);
+}
+.salt-status-warning {
+  color: var(--salt-warning);
+  background: var(--salt-warning-light);
+}
+.salt-status-danger {
+  color: var(--salt-danger);
+  background: var(--salt-danger-light);
+}
+
+/* Professional mobile bottom navigation */
+.salt-mobile-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+
+  .salt-mobile-nav {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    padding: 7px 6px calc(7px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255,255,255,.98);
+    border-top: 1px solid var(--salt-border);
+    box-shadow: 0 -8px 25px rgba(15,42,82,.08);
+    backdrop-filter: blur(14px);
+  }
+
+  .salt-mobile-nav a {
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: var(--salt-text-secondary);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 10px;
+  }
+
+  .salt-mobile-nav a i {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .salt-mobile-nav a.active {
+    color: var(--salt-primary);
+    background: var(--salt-primary-light);
+  }
+
+  body.salt-mobile-template {
+    padding-bottom: 82px;
+  }
+
+  /* Convert wide tables into horizontally scrollable containers. */
+  table {
+    max-width: 100%;
+  }
+
+  .table-responsive,
+  .responsive-table,
+  .table-container {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Forms stack naturally on narrow screens. */
+  .form-row,
+  .form-grid,
+  .grid,
+  .row {
+    max-width: 100%;
+  }
+
+  /* Common action groups become full-width where useful. */
+  .mobile-full-width {
+    width: 100% !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .salt-mobile-nav {
+    display: none !important;
+  }
+}
+
+/* Auth pages must never display authenticated mobile navigation. */
+.login-page .salt-mobile-nav { display: none !important; }
+
+
+/* Mobile navigation visibility/compatibility fix v3 */
+@media (max-width: 768px) {
+  .salt-mobile-nav {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .salt-mobile-nav .salt-nav-icon {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .salt-mobile-nav .salt-nav-label {
+    white-space: nowrap;
+  }
+
+  /* If Font Awesome is not loaded on a page, keep the navigation usable. */
+  .salt-mobile-nav i {
+    font-style: normal;
+    font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", sans-serif;
+    font-weight: 900;
+  }
+}
+
+
+/* =========================================================
+   SALT MASTER CSS — migrated from css/salt-core.css
+   ========================================================= */
+/* SALT Core UI shell */
+:root{
+  --salt-primary:#0B3D91;
+  --salt-primary-2:#1558C0;
+  --salt-navy:#071B3A;
+  --salt-bg:#F5F7FB;
+  --salt-surface:#FFFFFF;
+  --salt-border:#E5EAF2;
+  --salt-text:#15233B;
+  --salt-muted:#718096;
+  --salt-success:#159957;
+  --salt-danger:#D64545;
+  --salt-shadow:0 12px 35px rgba(16,35,66,.08);
+}
+*{box-sizing:border-box}
+body.salt-app{margin:0;background:var(--salt-bg);color:var(--salt-text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.salt-app-shell{min-height:100vh;display:flex}
+.salt-sidebar{width:252px;position:fixed;inset:0 auto 0 0;background:linear-gradient(180deg,#071B3A 0%,#0B3D91 100%);color:#fff;z-index:1000;display:flex;flex-direction:column}
+.salt-brand{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.salt-brand-link{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
+.salt-brand-logo{width:36px;height:36px;object-fit:contain}
+.salt-brand-name{font-weight:800;font-size:21px;letter-spacing:.08em}
+.salt-sidebar-close{display:none;background:none;border:0;color:#fff;font-size:20px}
+.salt-sidebar-nav{padding:22px 14px;flex:1;overflow:auto}
+.salt-nav-label{font-size:10px;letter-spacing:.14em;font-weight:800;color:rgba(255,255,255,.45);padding:16px 12px 8px}
+.salt-nav-item{width:100%;display:flex;align-items:center;gap:12px;padding:11px 13px;margin:3px 0;border-radius:12px;color:rgba(255,255,255,.75);text-decoration:none;border:0;background:transparent;font:inherit;cursor:pointer;text-align:left}
+.salt-nav-item i{width:20px;text-align:center}
+.salt-nav-item:hover,.salt-nav-item.is-active{background:rgba(255,255,255,.13);color:#fff}
+.salt-nav-item.is-active{box-shadow:inset 3px 0 #fff}
+.salt-nav-button{font-size:inherit}
+.salt-notification-badge{margin-left:auto;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:#F04444;color:#fff;font-size:10px;font-weight:800;align-items:center;justify-content:center}
+.salt-notification-badge:not([hidden]){display:flex}
+.salt-sidebar-footer{padding:14px;border-top:1px solid rgba(255,255,255,.1)}
+.salt-user-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;color:#fff;text-decoration:none}
+.salt-user-card:hover,.salt-user-card.is-active{background:rgba(255,255,255,.1)}
+.salt-user-meta{min-width:0;flex:1;display:flex;flex-direction:column}
+.salt-user-meta strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.salt-user-meta small{font-size:11px;color:rgba(255,255,255,.55)}
+.salt-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;flex:0 0 auto}
+.salt-avatar-sm{width:32px;height:32px}
+.salt-avatar-fallback{display:inline-flex;align-items:center;justify-content:center;background:#DCE8FF;color:var(--salt-primary);font-weight:800}
+.salt-logout{margin-top:5px}
+.salt-main{margin-left:252px;min-width:0;flex:1}
+.salt-topbar{height:76px;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--salt-border);display:flex;align-items:center;justify-content:space-between;padding:0 30px;position:sticky;top:0;z-index:900}
+.salt-topbar-left,.salt-topbar-right{display:flex;align-items:center;gap:12px}
+.salt-page-context{display:flex;flex-direction:column}
+.salt-eyebrow{font-size:9px;font-weight:800;letter-spacing:.15em;color:var(--salt-muted)}
+.salt-page-context h1{margin:2px 0 0;font-size:18px}
+.salt-icon-button{width:40px;height:40px;border:1px solid var(--salt-border);background:#fff;border-radius:11px;color:var(--salt-text);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer;position:relative}
+.salt-icon-button:hover{border-color:#C7D3E6;background:#F8FAFD}
+.salt-notification-dot{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:#F04444}
+.salt-notification-dot:not([hidden]){display:block}
+.salt-topbar-profile{display:flex;align-items:center;gap:9px;color:var(--salt-text);text-decoration:none;padding-left:5px}
+.salt-topbar-profile-name{font-size:13px;font-weight:700}
+.salt-page{padding:28px 30px 90px;max-width:1600px;margin:0 auto}
+.salt-flash-stack{display:grid;gap:8px;margin-bottom:18px}
+.salt-flash{padding:12px 14px;background:#fff;border:1px solid var(--salt-border);border-radius:12px;box-shadow:var(--salt-shadow);display:flex;align-items:center;justify-content:space-between}
+.salt-flash-close{border:0;background:none;cursor:pointer;color:var(--salt-muted)}
+.salt-mobile-nav{display:none}
+.salt-notification-panel{position:fixed;top:0;right:0;width:min(420px,92vw);height:100vh;background:#fff;z-index:1300;transform:translateX(105%);transition:transform .22s ease;box-shadow:-15px 0 45px rgba(15,35,65,.15);display:flex;flex-direction:column}
+.salt-notification-panel.is-open{transform:translateX(0)}
+.salt-notification-panel-header{padding:22px;border-bottom:1px solid var(--salt-border);display:flex;justify-content:space-between;align-items:center}
+.salt-notification-panel-header h2{margin:3px 0 0;font-size:20px}
+.salt-notification-list{padding:18px;overflow:auto;flex:1}
+.salt-notification-empty{text-align:center;color:var(--salt-muted);padding:70px 20px}
+.salt-notification-empty i{font-size:30px;margin-bottom:12px}
+.salt-notification-backdrop,.salt-sidebar-overlay{display:none}
+@media(max-width:900px){
+  .salt-sidebar{transform:translateX(-105%);transition:transform .22s ease}
+  .salt-sidebar.is-open{transform:translateX(0)}
+  .salt-sidebar-close{display:block}
+  .salt-main{margin-left:0}
+  .salt-menu-button{display:inline-flex}
+  .salt-sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(3,12,28,.45);z-index:950;opacity:0;pointer-events:none;transition:opacity .2s}
+  .salt-sidebar-overlay.is-visible{opacity:1;pointer-events:auto}
+  .salt-topbar{padding:0 16px}
+  .salt-topbar-profile-name{display:none}
+  .salt-page{padding:20px 16px 90px}
+  .salt-mobile-nav{position:fixed;display:flex;bottom:0;left:0;right:0;height:66px;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-top:1px solid var(--salt-border);z-index:1100;justify-content:space-around}
+  .salt-mobile-nav a,.salt-mobile-nav button{flex:1;border:0;background:transparent;text-decoration:none;color:var(--salt-muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:700}
+  .salt-mobile-nav a i,.salt-mobile-nav button i{font-size:17px}
+  .salt-mobile-nav a.active,.salt-mobile-nav button:active{color:var(--salt-primary)}
+}
+@media(min-width:901px){.salt-menu-button{display:none}}
+
+
+/* =========================================================
+   SALT MASTER CSS — migrated from css/salt-mobile-pwa.css
+   ========================================================= */
+/* SALT Workforce — Professional Mobile/PWA Experience
+   No cartoon/emoji UI icons. Uses the existing icon system (e.g. Font Awesome).
+*/
+:root {
+  --salt-blue: #0b3d91;
+  --salt-blue-dark: #082d6b;
+  --salt-surface: #ffffff;
+  --salt-bg: #f5f7fb;
+  --salt-border: rgba(15, 42, 82, .10);
+  --salt-shadow: 0 8px 24px rgba(15, 42, 82, .08);
+}
+
+@media (max-width: 768px) {
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    background: var(--salt-bg);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Comfortable touch targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+
+  /* App-like top spacing */
+  .mobile-app-spacer {
+    display: block;
+    height: env(safe-area-inset-top, 0px);
+  }
+
+  /* Hide desktop-only sidebar when a mobile sidebar exists. */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Professional bottom navigation */
+  .salt-mobile-nav {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255,255,255,.97);
+    border-top: 1px solid var(--salt-border);
+    box-shadow: 0 -8px 25px rgba(15,42,82,.08);
+    backdrop-filter: blur(14px);
+  }
+
+  .salt-mobile-nav a {
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    text-decoration: none;
+    color: #68758a;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 10px;
+  }
+
+  .salt-mobile-nav a i {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .salt-mobile-nav a.active {
+    color: var(--salt-blue);
+    background: rgba(11,61,145,.07);
+  }
+
+  /* Prevent content being hidden behind bottom nav */
+  .salt-mobile-content {
+    padding-bottom: 92px !important;
+  }
+
+  /* Install prompt */
+  /* Legacy .salt-install-banner intentionally disabled. */
+.salt-install-banner {
+    position: fixed;
+    z-index: 1100;
+    left: 12px;
+    right: 12px;
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    padding: 14px;
+    border: 1px solid var(--salt-border);
+    border-radius: 16px;
+    background: var(--salt-surface);
+    box-shadow: var(--salt-shadow);
+    display: none;
+  }
+
+  .salt-install-banner.show {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .salt-install-banner .install-copy {
+    flex: 1;
+  }
+
+  .salt-install-banner strong {
+    display: block;
+    color: #172033;
+    margin-bottom: 3px;
+  }
+
+  .salt-install-banner small {
+    color: #6b778c;
+  }
+
+  .salt-install-banner button {
+    border: 0;
+    border-radius: 10px;
+    padding: 9px 12px;
+    background: var(--salt-blue);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .salt-install-banner .dismiss {
+    background: transparent;
+    color: #68758a;
+    padding: 7px;
+  }
+
+  /* Larger clock action */
+  .clock-action,
+  .clock-in-btn,
+  .clock-out-btn,
+  button[data-clock-action] {
+    width: 100%;
+    max-width: 520px;
+    min-height: 58px;
+    border-radius: 14px;
+    font-weight: 700;
+  }
+
+  /* Make cards breathe on smaller screens */
+  .card, .dashboard-card, .stat-card {
+    border-radius: 16px;
+  }
+
+  /* Avoid horizontal tables on phones */
+  .responsive-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 769px) {
+  .salt-mobile-nav,
+  .salt-install-banner,
+  .mobile-app-spacer {
+    display: none !important;
+  }
+}
+
+
+/* =========================================================
+   SALT WORKFORCE — MASTER MOBILE UI
+   Final authoritative rules
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden !important;
+  }
+
+  body {
+    margin: 0;
+    padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+    background: var(--salt-background);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Keep the desktop sidebar out of the mobile layout. */
+  .sidebar,
+  .sidebar-bottom {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .main,
+  .main.expanded {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  .content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 12px !important;
+  }
+
+  /* Mobile topbar */
+  .topbar {
+    position: sticky !important;
+    top: 0;
+    z-index: 5000;
+    width: 100%;
+    min-height: 60px;
+    padding: 8px 12px !important;
+    background: rgba(255,255,255,.97) !important;
+    border-bottom: 1px solid var(--salt-border);
+    box-shadow: 0 5px 18px rgba(15,42,82,.07);
+    backdrop-filter: blur(16px);
+  }
+
+  .topbar-links {
+    display: none !important;
+  }
+
+  /* Dashboard cards */
+  .stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    width: 100%;
+    margin: 12px 0 !important;
+  }
+
+  .card,
+  .dashboard-card,
+  .stat-card,
+  .panel,
+  .box,
+  .form-card {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .charts {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    width: 100%;
+    margin: 12px 0 !important;
+  }
+
+  .chart-box {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--salt-radius);
+  }
+
+  #map {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: var(--salt-radius);
+  }
+
+  /* Tables */
+  .table-responsive,
+  .responsive-table,
+  .table-container,
+  .working-section {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 600px;
+  }
+
+  /* Touch-friendly controls */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  /* Canonical bottom navigation */
+  .salt-mobile-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 99999 !important;
+
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    width: 100% !important;
+    min-height: 64px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+
+    padding: 5px 5px calc(5px + env(safe-area-inset-bottom, 0px));
+
+    background: rgba(255,255,255,.98);
+    border-top: 1px solid var(--salt-border);
+    box-shadow: 0 -8px 28px rgba(15,42,82,.12);
+    backdrop-filter: blur(16px);
+  }
+
+  .salt-mobile-nav a {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+
+    min-width: 0;
+    min-height: 52px;
+
+    gap: 4px;
+    padding: 4px 2px;
+
+    color: var(--salt-text-secondary);
+    text-decoration: none;
+    font-size: 9px;
+    font-weight: 700;
+    border-radius: 12px;
+  }
+
+  .salt-mobile-nav a i,
+  .salt-mobile-nav .salt-nav-icon {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 28px;
+    font-size: 15px;
+  }
+
+  .salt-mobile-nav .salt-nav-label {
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .salt-mobile-nav a.active {
+    color: var(--salt-primary);
+    background: var(--salt-primary-light);
+  }
+
+  /* Hide mobile navigation on authentication pages. */
+  .login-page .salt-mobile-nav {
+    display: none !important;
+  }
+
+  /* Mobile install prompt */
+  .salt-install-banner {
+    left: 10px;
+    right: 10px;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    z-index: 99998;
+    border-radius: 16px;
+  }
+
+  /* Optional compact floating install control */
+  .salt-install-button-wrap {
+    display: block !important;
+    position: fixed;
+    top: 70px;
+    right: 11px;
+    z-index: 99998;
+  }
+
+  .salt-install-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 13px;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0878f9, #0757c8);
+    color: #fff;
+    font: 700 11px Inter, sans-serif;
+    box-shadow: 0 10px 25px rgba(8,120,249,.24);
+  }
+
+  /* Notifications */
+  .notification-dropdown {
+    position: fixed !important;
+    top: 67px !important;
+    left: 9px !important;
+    right: 9px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 72svh !important;
+    overflow-y: auto;
+    z-index: 99997 !important;
+    border-radius: 18px !important;
+  }
+
+  /* SALTY */
+  #chatToggle {
+    right: 12px !important;
+    bottom: 88px !important;
+    z-index: 9000 !important;
+  }
+
+  #saltyChat {
+    left: 9px !important;
+    right: 9px !important;
+    bottom: 140px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: calc(100svh - 165px) !important;
+    z-index: 8999 !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .content {
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+  }
+
+  .stats {
+    gap: 8px !important;
+  }
+
+  .salt-mobile-nav a {
+    font-size: 8px;
+  }
+
+  .salt-mobile-nav a i,
+  .salt-mobile-nav .salt-nav-icon {
+    width: 28px;
+    height: 27px;
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 769px) {
+  .salt-mobile-nav,
+  .salt-install-button-wrap,
+  .salt-install-banner {
+    display: none !important;
+  }
+}
+
+
+/* =========================================================
+   SALT WORKFORCE — MOBILE DRAWER / PWA CLEAN OVERRIDES
+   Load this file after style.css and salt-design-system.css.
+   ========================================================= */
+@media (max-width:768px){
+  html,body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+  }
+
+  body{
+    padding-bottom:calc(78px + env(safe-area-inset-bottom,0px)) !important;
+  }
+
+  /* Mobile app header */
+  .topbar{
+    position:sticky !important;
+    top:0 !important;
+    z-index:9000 !important;
+    min-height:62px !important;
+    height:auto !important;
+    padding:8px 10px !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:8px !important;
+  }
+
+  #toggle-btn{
+    display:flex !important;
+    width:40px !important;
+    height:40px !important;
+    min-width:40px !important;
+    flex:0 0 40px !important;
+    align-items:center !important;
+    justify-content:center !important;
+    border:0 !important;
+    border-radius:12px !important;
+    position:relative !important;
+    z-index:23001 !important;
+  }
+
+  .welcome-block{
+    min-width:0 !important;
+    flex:1 1 auto !important;
+  }
+
+  .topbar-right{
+    display:flex !important;
+    align-items:center !important;
+    gap:6px !important;
+    flex:0 0 auto !important;
+  }
+
+  .topbar-links{
+    display:none !important;
+  }
+
+  /* Install button is header-only */
+  .salt-pwa-install-wrap,
+  .salt-pwa-install-wrap[style]{
+    position:static !important;
+    top:auto !important;
+    right:auto !important;
+    bottom:auto !important;
+    left:auto !important;
+    margin:0 !important;
+    z-index:9001 !important;
+  }
+
+  .salt-install-banner{
+    display:none !important;
+    visibility:hidden !important;
+    pointer-events:none !important;
+  }
+
+  /* Glass mobile drawer */
+  .sidebar{
+    display:flex !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    position:fixed !important;
+    top:0 !important;
+    left:0 !important;
+    bottom:0 !important;
+    width:min(310px,84vw) !important;
+    height:100dvh !important;
+    margin:0 !important;
+    padding:18px 14px !important;
+    box-sizing:border-box !important;
+    flex-direction:column !important;
+    z-index:22000 !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    transform:translateX(-110%) !important;
+    transition:transform .28s cubic-bezier(.22,.8,.28,1) !important;
+    background:rgba(255,255,255,.82) !important;
+    border-right:1px solid rgba(255,255,255,.75) !important;
+    border-radius:0 26px 26px 0 !important;
+    box-shadow:18px 0 50px rgba(7,35,70,.22) !important;
+    backdrop-filter:blur(28px) saturate(155%) !important;
+    -webkit-backdrop-filter:blur(28px) saturate(155%) !important;
+  }
+
+  /* Desktop collapsed state must never collapse the drawer on mobile. */
+  .sidebar.collapsed{
+    width:min(310px,84vw) !important;
+  }
+
+  .sidebar.collapsed li a span,
+  .sidebar li a span{
+    display:inline !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    white-space:nowrap !important;
+  }
+
+  .sidebar li a{
+    display:flex !important;
+    align-items:center !important;
+    width:100% !important;
+    min-height:48px !important;
+    box-sizing:border-box !important;
+    visibility:visible !important;
+    opacity:1 !important;
+  }
+
+  .sidebar li a i{
+    display:inline-flex !important;
+    width:24px !important;
+    min-width:24px !important;
+    align-items:center !important;
+    justify-content:center !important;
+    margin-right:11px !important;
+  }
+
+  body.salt-mobile-menu-open .sidebar{
+    transform:translateX(0) !important;
+  }
+
+  /* Overlay */
+  .salt-mobile-sidebar-overlay{
+    display:block !important;
+    position:fixed !important;
+    inset:0 !important;
+    z-index:21000 !important;
+    background:rgba(7,30,57,.44) !important;
+    opacity:0 !important;
+    visibility:hidden !important;
+    pointer-events:none !important;
+    transition:opacity .25s ease,visibility .25s ease !important;
+    backdrop-filter:blur(3px) !important;
+    -webkit-backdrop-filter:blur(3px) !important;
+  }
+
+  body.salt-mobile-menu-open .salt-mobile-sidebar-overlay{
+    opacity:1 !important;
+    visibility:visible !important;
+    pointer-events:auto !important;
+  }
+
+  body.salt-mobile-menu-open{
+    overflow:hidden !important;
+  }
+
+  .main,
+  .main.expanded{
+    width:100% !important;
+    min-width:0 !important;
+    margin-left:0 !important;
+  }
+
+  /* Bottom app navigation */
+  .salt-mobile-nav{
+    position:fixed !important;
+    left:0 !important;
+    right:0 !important;
+    bottom:0 !important;
+    z-index:10000 !important;
+    display:grid !important;
+    grid-template-columns:repeat(5,1fr) !important;
+    padding:5px 5px calc(5px + env(safe-area-inset-bottom,0px)) !important;
+    background:rgba(255,255,255,.97) !important;
+    border-top:1px solid #dfe8f1 !important;
+    box-shadow:0 -10px 30px rgba(12,45,84,.12) !important;
+    backdrop-filter:blur(20px) !important;
+    -webkit-backdrop-filter:blur(20px) !important;
+  }
+
+  .salt-mobile-nav a{
+    min-height:54px !important;
+  }
+}
+
+@media (min-width:769px){
+  .salt-mobile-nav,
+  .salt-mobile-sidebar-overlay{
+    display:none !important;
+  }
+
+  .salt-install-banner{
+    display:none !important;
+  }
+
+  .salt-pwa-install-wrap{
+    position:static !important;
+    top:auto !important;
+    right:auto !important;
+    bottom:auto !important;
+    left:auto !important;
+  }
+}
+
+
+
+
+    /* SALT smooth page navigation */
+    .salt-page {
+        opacity: 1;
+        transform: translateY(0);
+        transition:
+            opacity .22s ease,
+            transform .22s cubic-bezier(.22,1,.36,1);
+        will-change: opacity, transform;
+    }
+
+    body.salt-page-leaving .salt-page {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    body.salt-page-entering .salt-page {
+        animation: saltPageEnter .30s cubic-bezier(.22,1,.36,1) both;
+    }
+
+    @keyframes saltPageEnter {
+        from {
+            opacity: 0;
+            transform: translateY(7px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .salt-nav-item,
+    .salt-mobile-nav a,
+    .salt-mobile-nav button {
+        transition:
+            background-color .18s ease,
+            color .18s ease,
+            border-color .18s ease,
+            transform .18s ease,
+            box-shadow .18s ease;
+    }
+
+    .salt-nav-item:active,
+    .salt-mobile-nav a:active,
+    .salt-mobile-nav button:active {
+        transform: scale(.985);
+    }
+
+    .salt-route-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        z-index: 99999;
+        pointer-events: none;
+        opacity: 0;
+        transform: scaleX(0);
+        transform-origin: left center;
+        background: linear-gradient(90deg, #0B3D91, #1558C0, #4D8DFF);
+        box-shadow: 0 0 10px rgba(21, 88, 192, .35);
+    }
+
+    .salt-route-progress.is-active {
+        opacity: 1;
+        animation: saltRouteProgress 650ms cubic-bezier(.22,1,.36,1) forwards;
+    }
+
+    @keyframes saltRouteProgress {
+        0%   { transform: scaleX(0); }
+        25%  { transform: scaleX(.38); }
+        65%  { transform: scaleX(.72); }
+        100% { transform: scaleX(.92); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .salt-page,
+        .salt-nav-item,
+        .salt-mobile-nav a,
+        .salt-mobile-nav button {
+            transition: none !important;
+        }
+
+        body.salt-page-entering .salt-page,
+        body.salt-page-leaving .salt-page,
+        .salt-route-progress.is-active {
+            animation: none !important;
+        }
+    }
+
+
+
+/* =========================================================
+   SALT DASHBOARD — FINAL COMPACT LAYOUT
+   Existing dashboard content only. No new functionality.
+   This section is authoritative for dashboard layout.
+   ========================================================= */
+.salt-dashboard-page{
+    width:100%;
+    max-width:1480px;
+    margin:0 auto;
+    padding:14px 18px 20px;
+    display:grid;
+    grid-template-columns:repeat(12,minmax(0,1fr));
+    gap:12px;
+}
+.salt-dashboard-page > #desktopNotificationCard{
+    grid-column:1/-1!important;
+    margin:0!important;
+    min-height:58px;
+    padding:10px 14px!important;
+}
+.salt-dashboard-page > .dashboard-hero{
+    grid-column:1/-1;
+    margin:0!important;
+    min-height:122px;
+}
+.salt-dashboard-page > .quick-actions-section{
+    grid-column:1 / span 5;
+    margin:0!important;
+    align-self:stretch;
+}
+.salt-dashboard-page > .salt-performance{
+    grid-column:6 / -1;
+    margin:0!important;
+    align-self:stretch;
+}
+.salt-dashboard-page > .announcements{
+    grid-column:1 / span 7;
+    margin:0!important;
+    align-self:stretch;
+}
+.salt-dashboard-page > .working-section{
+    grid-column:8 / -1;
+    margin:0!important;
+    align-self:stretch;
+}
+.salt-dashboard-page > .stats{
+    grid-column:1/-1;
+    margin:0!important;
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+}
+.salt-dashboard-page > h3{
+    grid-column:1/-1;
+    margin:0!important;
+    padding:0 2px;
+    font-size:14px;
+}
+.salt-dashboard-page > #map{
+    grid-column:1/-1;
+    height:220px!important;
+    width:100%!important;
+    margin:0!important;
+    border-radius:14px!important;
+    overflow:hidden;
+}
+.salt-dashboard-page > .charts{
+    grid-column:1/-1;
+    margin:0!important;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+}
+.salt-dashboard-page .chart-box{
+    min-height:210px;
+    height:210px;
+    padding:14px!important;
+}
+.salt-dashboard-page .chart-box canvas{
+    max-height:155px!important;
+}
+.salt-dashboard-page .card{
+    padding:12px 14px!important;
+    min-height:82px;
+}
+.salt-dashboard-page .card p{font-size:22px!important}
+.salt-dashboard-page .working-section{
+    padding:14px!important;
+}
+.salt-dashboard-page .working-section h3{margin:0 0 8px!important;font-size:14px}
+.salt-dashboard-page .working-table th,
+.salt-dashboard-page .working-table td{padding:7px 9px!important;font-size:11px!important}
+.salt-dashboard-page .dashboard-section .section-heading{margin-bottom:8px}
+.salt-dashboard-page .dashboard-section .section-heading h2{font-size:16px}
+.salt-dashboard-page .salt-performance-head{padding:12px 14px!important}
+.salt-dashboard-page .salt-performance-body{padding:10px 14px!important}
+.salt-dashboard-page .salt-performance-grid{gap:8px!important}
+.salt-dashboard-page .salt-performance-stat{padding:9px!important}
+.salt-dashboard-page .salt-performance-lower{gap:8px!important;margin-top:8px!important}
+.salt-dashboard-page .salt-reward-panel{padding:9px!important}
+.salt-dashboard-page .announcement-header{padding:11px 14px!important}
+.salt-dashboard-page .announcement-slide{padding:13px 16px!important}
+.salt-dashboard-page .announcement-slide h4{font-size:16px!important;margin-bottom:5px!important}
+.salt-dashboard-page .announcement-slide-message{font-size:11px!important;line-height:1.45!important}
+.salt-dashboard-page .announcement-image-link img{height:105px!important}
+.salt-dashboard-page .announcement-pdf-card{min-height:105px!important;padding:12px!important}
+.salt-dashboard-page .announcement-carousel-controls{min-height:38px!important;padding:5px 10px!important}
+.salt-dashboard-page .announcement-arrow{height:27px!important;min-width:66px!important}
+
+@media (min-width:1500px){
+    .salt-dashboard-page{padding:12px 20px 16px;gap:10px}
+    .salt-dashboard-page > .dashboard-hero{min-height:112px}
+    .salt-dashboard-page > #map{height:190px!important}
+    .salt-dashboard-page .chart-box{height:190px;min-height:190px}
+    .salt-dashboard-page .chart-box canvas{max-height:135px!important}
+}
+
+@media (max-width:1100px){
+    .salt-dashboard-page{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .salt-dashboard-page > .quick-actions-section{grid-column:1/-1}
+    .salt-dashboard-page > .salt-performance{grid-column:1/-1}
+    .salt-dashboard-page > .announcements{grid-column:1/-1}
+    .salt-dashboard-page > .working-section{grid-column:1/-1}
+    .salt-dashboard-page > .stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+
+@media (max-width:768px){
+    .salt-dashboard-page{
+        display:block;
+        padding:10px 10px 90px;
+    }
+    .salt-dashboard-page > *{margin-bottom:10px!important}
+    .salt-dashboard-page > .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .salt-dashboard-page > #map{height:260px!important}
+    .salt-dashboard-page > .charts{display:grid;grid-template-columns:1fr;gap:10px}
+    .salt-dashboard-page .chart-box{height:220px;min-height:220px}
+}
+
+
+
+/* =========================================================
+   SALT GLOBAL THEME SYSTEM
+   ========================================================= */
+
+:root {
+    --salt-app-bg: #f5f8fc;
+    --salt-surface: #ffffff;
+    --salt-surface-2: #f7faff;
+    --salt-surface-3: #eef5fc;
+    --salt-border-theme: #dbe7f3;
+    --salt-text-theme: #172b4d;
+    --salt-text-soft-theme: #667a94;
+    --salt-shadow-theme: 0 10px 30px rgba(15, 76, 151, .08);
+}
+
+html,
+body {
+    background: var(--salt-app-bg);
+    color: var(--salt-text-theme);
+}
+
+body,
+.salt-app-shell,
+.salt-main,
+.salt-page,
+.salt-topbar,
+.salt-sidebar,
+.salt-mobile-nav,
+.salt-icon-button,
+.salt-topbar-profile,
+.salt-user-card,
+.salt-notification-panel,
+.salt-notification-backdrop,
+.card,
+.dashboard-card,
+.stat-card,
+.panel,
+.box,
+.form-card,
+.dashboard-panel,
+.announcements,
+.working-section,
+.chart-box,
+.salt-performance,
+.quick-actions-section {
+    transition:
+        background-color .28s ease,
+        color .28s ease,
+        border-color .28s ease,
+        box-shadow .28s ease;
+}
+
+.salt-theme-toggle {
+    position: relative;
+    overflow: hidden;
+}
+
+.salt-theme-toggle i {
+    transition: transform .28s ease, opacity .2s ease;
+}
+
+body.salt-theme-changing .salt-theme-toggle i {
+    transform: rotate(180deg) scale(.85);
+}
+
+/* ---------------- LIGHT ---------------- */
+html[data-theme="light"] {
+    --salt-app-bg: #f5f8fc;
+    --salt-surface: #ffffff;
+    --salt-surface-2: #f7faff;
+    --salt-surface-3: #eef5fc;
+    --salt-border-theme: #dbe7f3;
+    --salt-text-theme: #172b4d;
+    --salt-text-soft-theme: #667a94;
+}
+
+/* ---------------- DARK ---------------- */
+html[data-theme="dark"],
+body[data-theme="dark"] {
+    --salt-app-bg: #0b1220;
+    --salt-surface: #111b2d;
+    --salt-surface-2: #162238;
+    --salt-surface-3: #1c2b44;
+    --salt-border-theme: #2a3b56;
+    --salt-text-theme: #e7eef9;
+    --salt-text-soft-theme: #9fb0c8;
+    --salt-shadow-theme: 0 14px 36px rgba(0, 0, 0, .28);
+}
+
+html[data-theme="dark"] body,
+body[data-theme="dark"] {
+    background: #0b1220 !important;
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] .salt-main,
+body[data-theme="dark"] .salt-main {
+    background: #0b1220 !important;
+}
+
+html[data-theme="dark"] .salt-page,
+body[data-theme="dark"] .salt-page {
+    background: transparent !important;
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] .salt-topbar,
+body[data-theme="dark"] .salt-topbar {
+    background: rgba(17, 27, 45, .94) !important;
+    border-color: #2a3b56 !important;
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] .salt-page-context h1,
+body[data-theme="dark"] .salt-page-context h1,
+html[data-theme="dark"] .salt-eyebrow,
+body[data-theme="dark"] .salt-eyebrow {
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] .salt-icon-button,
+body[data-theme="dark"] .salt-icon-button {
+    background: #162238 !important;
+    border-color: #2a3b56 !important;
+    color: #dbe8f8 !important;
+}
+
+html[data-theme="dark"] .salt-topbar-profile,
+body[data-theme="dark"] .salt-topbar-profile,
+html[data-theme="dark"] .salt-user-card,
+body[data-theme="dark"] .salt-user-card {
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] .salt-topbar-profile-name,
+body[data-theme="dark"] .salt-topbar-profile-name,
+html[data-theme="dark"] .salt-user-meta strong,
+body[data-theme="dark"] .salt-user-meta strong {
+    color: #eef5ff !important;
+}
+
+html[data-theme="dark"] .salt-user-meta small,
+body[data-theme="dark"] .salt-user-meta small {
+    color: #9fb0c8 !important;
+}
+
+html[data-theme="dark"] .salt-mobile-nav,
+body[data-theme="dark"] .salt-mobile-nav,
+html[data-theme="dark"] .salt-notification-panel,
+body[data-theme="dark"] .salt-notification-panel {
+    background: #111b2d !important;
+    border-color: #2a3b56 !important;
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] .salt-notification-panel-header,
+body[data-theme="dark"] .salt-notification-panel-header {
+    border-color: #2a3b56 !important;
+}
+
+html[data-theme="dark"] .salt-notification-empty,
+body[data-theme="dark"] .salt-notification-empty {
+    color: #9fb0c8 !important;
+}
+
+/* Common application surfaces */
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .dashboard-card,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .box,
+html[data-theme="dark"] .form-card,
+html[data-theme="dark"] .dashboard-panel,
+html[data-theme="dark"] .announcements,
+html[data-theme="dark"] .working-section,
+html[data-theme="dark"] .chart-box,
+html[data-theme="dark"] .salt-performance,
+html[data-theme="dark"] .quick-actions-section,
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .dashboard-card,
+body[data-theme="dark"] .stat-card,
+body[data-theme="dark"] .panel,
+body[data-theme="dark"] .box,
+body[data-theme="dark"] .form-card,
+body[data-theme="dark"] .dashboard-panel,
+body[data-theme="dark"] .announcements,
+body[data-theme="dark"] .working-section,
+body[data-theme="dark"] .chart-box,
+body[data-theme="dark"] .salt-performance,
+body[data-theme="dark"] .quick-actions-section {
+    background: #111b2d !important;
+    border-color: #2a3b56 !important;
+    color: #e7eef9 !important;
+    box-shadow: var(--salt-shadow-theme) !important;
+}
+
+html[data-theme="dark"] .dashboard-hero,
+body[data-theme="dark"] .dashboard-hero,
+html[data-theme="dark"] .salt-slideshow,
+body[data-theme="dark"] .salt-slideshow {
+    background: linear-gradient(135deg, #111b2d 0%, #162238 100%) !important;
+    border-color: #2a3b56 !important;
+}
+
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] h5,
+html[data-theme="dark"] h6,
+html[data-theme="dark"] p,
+html[data-theme="dark"] label,
+html[data-theme="dark"] span,
+html[data-theme="dark"] strong,
+body[data-theme="dark"] h1,
+body[data-theme="dark"] h2,
+body[data-theme="dark"] h3,
+body[data-theme="dark"] h4,
+body[data-theme="dark"] h5,
+body[data-theme="dark"] h6,
+body[data-theme="dark"] p,
+body[data-theme="dark"] label,
+body[data-theme="dark"] span,
+body[data-theme="dark"] strong {
+    border-color: inherit;
+}
+
+html[data-theme="dark"] .salt-muted,
+html[data-theme="dark"] .muted,
+html[data-theme="dark"] small,
+body[data-theme="dark"] .salt-muted,
+body[data-theme="dark"] .muted,
+body[data-theme="dark"] small {
+    color: #9fb0c8 !important;
+}
+
+/* Inputs and tables */
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select,
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] select {
+    background: #0f192a !important;
+    color: #e7eef9 !important;
+    border-color: #334967 !important;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder,
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder {
+    color: #7f92ad !important;
+}
+
+html[data-theme="dark"] table,
+body[data-theme="dark"] table {
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] th,
+html[data-theme="dark"] td,
+body[data-theme="dark"] th,
+body[data-theme="dark"] td {
+    border-color: #2a3b56 !important;
+}
+
+html[data-theme="dark"] th,
+body[data-theme="dark"] th {
+    background: #162238 !important;
+}
+
+/* Dashboard legacy cards that use hard-coded white backgrounds */
+html[data-theme="dark"] .dashboard-panel,
+html[data-theme="dark"] .dashboard-hero,
+html[data-theme="dark"] .quick-actions,
+html[data-theme="dark"] .announcement-card,
+html[data-theme="dark"] .working-card,
+html[data-theme="dark"] .stats-card,
+html[data-theme="dark"] .chart-container,
+html[data-theme="dark"] .performance-card {
+    background: #111b2d !important;
+    color: #e7eef9 !important;
+    border-color: #2a3b56 !important;
+}
+
+/* SALTY chat */
+html[data-theme="dark"] #saltyChat,
+body[data-theme="dark"] #saltyChat {
+    background: #111b2d !important;
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] .chat-body,
+body[data-theme="dark"] .chat-body {
+    background: #0d1727 !important;
+}
+
+html[data-theme="dark"] .bot-msg,
+body[data-theme="dark"] .bot-msg {
+    background: #1c2b44 !important;
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] .chat-input,
+body[data-theme="dark"] .chat-input {
+    border-color: #2a3b56 !important;
+}
+
+html[data-theme="dark"] .chat-input input,
+body[data-theme="dark"] .chat-input input {
+    background: #0f192a !important;
+    color: #e7eef9 !important;
+}
+
+/* Profile viewer */
+html[data-theme="dark"] .profile-image-modal-content,
+body[data-theme="dark"] .profile-image-modal-content {
+    background: #111b2d !important;
+    color: #e7eef9 !important;
+}
+
+html[data-theme="dark"] .profile-image-large,
+body[data-theme="dark"] .profile-image-large {
+    background: #0d1727 !important;
+}
+
+html[data-theme="dark"] .profile-image-modal-name,
+body[data-theme="dark"] .profile-image-modal-name {
+    color: #e7eef9 !important;
+}
+

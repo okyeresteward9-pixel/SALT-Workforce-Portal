@@ -1,0 +1,2 @@
+/* SALT Workforce compatibility entry point. Use css/salt.css as the single source of truth. */
+@import url('/static/css/salt.css');

@@ -105,7 +105,7 @@
       {% endfor %}
       </div>
     {% endif %}
-    <div class="rq-file"><strong>Add attachments</strong><div class="rq-muted" style="font-size:11px;margin-top:4px">PDF, Word, Excel, CSV and images are supported.</div><input type="file" name="attachments" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp"></div>
+    <div class="rq-file"><strong>Add attachments</strong><div class="rq-muted" style="font-size:11px;margin-top:4px">PDF, Word, Excel, CSV and images are supported.</div><input type="file" id="attachments" name="attachments" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp"><div id="newFileList" style="display:grid;gap:8px;margin-top:10px"></div></div>
   </div>
 
   <div class="rq-card" style="border-color:#bfe5cf;background:#fbfffc">
@@ -132,5 +132,23 @@ function updateTotal(){let total=0;document.querySelectorAll('#items .rq-item-ro
 function bindTotals(){document.querySelectorAll('[name="item_quantity[]"],[name="item_unit_price[]"]').forEach(x=>x.addEventListener('input',updateTotal))}
 function toggleFinance(){const yes=document.querySelector('[name="finance_related"]:checked').value==='yes';document.getElementById('financeFields').classList.toggle('rq-hidden',!yes)}
 bindTotals();updateTotal();
+const attachmentInput = document.getElementById('attachments');
+const newFileList = document.getElementById('newFileList');
+if (attachmentInput && newFileList) {
+  attachmentInput.addEventListener('change', function () {
+    newFileList.replaceChildren();
+    Array.from(attachmentInput.files || []).forEach(function (file) {
+      const row = document.createElement('div');
+      row.className = 'rq-attachment';
+      const name = document.createElement('span');
+      name.textContent = '📎 ' + file.name;
+      const size = document.createElement('span');
+      size.className = 'rq-muted';
+      size.textContent = Math.max(1, Math.round(file.size / 1024)) + ' KB';
+      row.append(name, size);
+      newFileList.appendChild(row);
+    });
+  });
+}
 </script>
 {% endblock %}

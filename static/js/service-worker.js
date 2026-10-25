@@ -3,7 +3,7 @@
  * Sensitive portal/API pages are deliberately NOT cached.
  */
 
-const CACHE_NAME = 'salt-workforce-static-v2';
+const CACHE_NAME = 'salt-workforce-static-v3';
 const OFFLINE_URL = '/offline';
 
 const STATIC_ASSETS = [

@@ -1,1708 +1,460 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-
-  <title>Attendance History</title>
-
-  <link rel="icon" href="{{ url_for('static', filename='salt-logo.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    /*
-      IMPORTANT:
-      This page intentionally keeps the portal's existing .wrapper,
-      .sidebar, .main, .topbar, .content, .stats, .card,
-      .working-section, .badge and .btn classes.
-      The upgrade only adds a clean layer on top of the existing system.
-    */
-
-    .attendance-page .topbar h2 {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .attendance-page .topbar h2::before {
-      content: "\f274";
-      font-family: "Font Awesome 6 Free";
-      font-weight: 900;
-      color: #1558b0;
-      font-size: 17px;
-    }
-
-    .attendance-page .content {
-      padding-top: 24px;
-    }
-
-    /* Page heading */
-    .attendance-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 22px;
-    }
-
-    .attendance-heading h1 {
-      margin: 0;
-      color: #172033;
-      font-size: 27px;
-      font-weight: 700;
-      letter-spacing: -.02em;
-    }
-
-    .attendance-heading p {
-      margin: 6px 0 0;
-      color: #718096;
-      font-size: 13px;
-    }
-
-    .attendance-heading .record-count {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 8px 12px;
-      border: 1px solid #dce5f0;
-      border-radius: 9px;
-      background: #fff;
-      color: #64748b;
-      font-size: 11px;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    /* Stats */
-    .attendance-page .stats {
-      gap: 16px;
-      margin-bottom: 22px;
-    }
-
-    .attendance-page .stats .card {
-      position: relative;
-      overflow: hidden;
-      min-height: 116px;
-      padding: 19px 20px;
-      border: 1px solid #dce5f0;
-      border-radius: 14px;
-      background: #fff;
-      box-shadow: 0 5px 18px rgba(15, 43, 91, .045);
-      transition: transform .18s ease, box-shadow .18s ease;
-    }
-
-    .attendance-page .stats .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 9px 24px rgba(15, 43, 91, .075);
-    }
-
-    .attendance-page .stats .card::after {
-      content: "";
-      position: absolute;
-      width: 75px;
-      height: 75px;
-      right: -25px;
-      bottom: -30px;
-      border-radius: 50%;
-      background: rgba(21, 88, 176, .035);
-    }
-
-    .attendance-page .stats .card small:first-child {
-      color: #718096;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-
-    .attendance-page .stats .card p {
-      position: relative;
-      z-index: 1;
-      margin: 8px 0 3px;
-      color: #172033;
-      font-size: 25px;
-      line-height: 1.1;
-      font-weight: 700;
-    }
-
-    .attendance-page .stats .card small:not(:first-child) {
-      position: relative;
-      z-index: 1;
-      color: #9aa6b7;
-      font-size: 10px;
-    }
-
-    .stat-caption {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .stat-caption i {
-      color: #1558b0;
-      font-size: 10px;
-    }
-
-    /* Table section */
-    .attendance-page .working-section {
-      padding: 0;
-      overflow: hidden;
-      border: 1px solid #dce5f0;
-      border-radius: 15px;
-      background: #fff;
-      box-shadow: 0 6px 22px rgba(15, 43, 91, .05);
-    }
-
-    .attendance-section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 15px;
-      padding: 17px 19px;
-      border-bottom: 1px solid #e8edf3;
-    }
-
-    .attendance-section-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .attendance-section-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #eaf2ff;
-      color: #1558b0;
-    }
-
-    .attendance-section-title h3 {
-      margin: 0;
-      color: #26344d;
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .attendance-section-title p {
-      margin: 3px 0 0;
-      color: #9aa6b7;
-      font-size: 10px;
-    }
-
-    .history-count {
-      padding: 6px 9px;
-      border-radius: 7px;
-      background: #f5f7fb;
-      color: #64748b;
-      font-size: 10px;
-      font-weight: 600;
-    }
-
-    .attendance-table-wrap {
-      width: 100%;
-      overflow-x: auto;
-    }
-
-    .attendance-page table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 650px;
-    }
-
-    .attendance-page table thead {
-      background: #f8fafc;
-    }
-
-    .attendance-page table th {
-      padding: 11px 17px;
-      border-bottom: 1px solid #dce5f0;
-      color: #64748b;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: .06em;
-      text-align: left;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .attendance-page table td {
-      padding: 14px 17px;
-      border-bottom: 1px solid #edf1f5;
-      color: #475569;
-      font-size: 12px;
-      vertical-align: middle;
-    }
-
-    .attendance-page table tbody tr {
-      transition: background .15s ease;
-    }
-
-    .attendance-page table tbody tr:hover {
-      background: #fbfdff;
-    }
-
-    .attendance-page table tbody tr:last-child td {
-      border-bottom: 0;
-    }
-
-    .employee-name {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      font-weight: 600;
-      color: #334155;
-    }
-
-    .employee-avatar {
-      width: 31px;
-      height: 31px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #eaf2ff;
-      color: #1558b0;
-      font-size: 10px;
-      font-weight: 700;
-    }
-
-    .attendance-time strong {
-      color: #334155;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .attendance-time small {
-      display: block;
-      margin-top: 3px;
-      color: #94a3b8;
-      font-size: 10px;
-    }
-
-    .on-duty {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: #c46b0b;
-      font-size: 11px;
-      font-weight: 600;
-    }
-
-    .on-duty i {
-      font-size: 7px;
-    }
-
-    .attendance-page .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 9px;
-      border-radius: 999px;
-      font-size: 9px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .attendance-page .badge.active {
-      background: #fff3dc;
-      color: #b66309;
-    }
-
-    .attendance-page .badge.completed {
-      background: #eaf8ef;
-      color: #16803d;
-    }
-
-    .attendance-empty {
-      padding: 60px 20px;
-      text-align: center;
-    }
-
-    .attendance-empty-icon {
-      width: 54px;
-      height: 54px;
-      margin: 0 auto 12px;
-      border-radius: 13px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #eaf2ff;
-      color: #7da8df;
-      font-size: 21px;
-    }
-
-    .attendance-empty h4 {
-      margin: 0;
-      color: #334155;
-      font-size: 15px;
-      font-weight: 700;
-    }
-
-    .attendance-empty p {
-      margin: 5px 0 0;
-      color: #94a3b8;
-      font-size: 11px;
-    }
-
-    @media (max-width: 700px) {
-      .attendance-heading {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .attendance-heading .record-count {
-        align-self: flex-start;
-      }
-
-      .attendance-section-header {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-    }
-  
-    /* =========================================================
-       UPDATED SIDEBAR
-       ========================================================= */
-
-    .attendance-page .sidebar {
-      display: flex;
-      flex-direction: column;
-      padding: 0;
-    }
-
-    .attendance-page .sidebar .logo {
-      min-height: 78px;
-      padding: 16px 18px;
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-
-    .sidebar-logo-box {
-      width: 42px;
-      height: 42px;
-      flex: 0 0 42px;
-      border-radius: 11px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.08);
-    }
-
-    .sidebar-logo-box img {
-      width: 30px;
-      height: 30px;
-      object-fit: contain;
-    }
-
-    .portal-name-wrap {
-      min-width: 0;
-    }
-
-    .attendance-page .portal-name {
-      color: #fff;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.2;
-      white-space: nowrap;
-    }
-
-    .portal-subtitle {
-      margin-top: 3px;
-      color: #a9c2e7;
-      font-size: 9px;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-
-    .attendance-page .sidebar-section-title {
-      padding: 22px 20px 8px;
-      color: #8eabd3;
-      font-size: 8px;
-      font-weight: 700;
-      letter-spacing: .12em;
-    }
-
-    .attendance-page .sidebar ul {
-      padding: 0 12px;
-      margin: 0;
-      list-style: none;
-    }
-
-    .attendance-page .sidebar ul li {
-      margin: 3px 0;
-    }
-
-    .attendance-page .sidebar ul li a {
-      min-height: 45px;
-      padding: 6px 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border-radius: 10px;
-      color: #d8e5f8;
-      text-decoration: none;
-      font-size: 12px;
-      font-weight: 500;
-      transition: background .18s ease, color .18s ease, transform .18s ease;
-    }
-
-    .attendance-page .sidebar ul li a:hover {
-      background: rgba(255,255,255,.075);
-      color: #fff;
-      transform: translateX(2px);
-    }
-
-    .attendance-page .sidebar ul li.active a {
-      color: #fff;
-      background: rgba(255,255,255,.13);
-      box-shadow: inset 3px 0 0 #60a5fa;
-    }
-
-    .sidebar-nav-icon {
-      width: 34px;
-      height: 34px;
-      flex: 0 0 34px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 9px;
-      color: #bcd1ef;
-      background: rgba(255,255,255,.075);
-      font-size: 12px;
-    }
-
-    .attendance-page .sidebar ul li.active .sidebar-nav-icon {
-      color: #fff;
-      background: rgba(96,165,250,.20);
-    }
-
-    .attendance-page .sidebar-spacer {
-      flex: 1;
-    }
-
-    .attendance-page .sidebar-bottom {
-      padding: 13px 12px 16px;
-      border-top: 1px solid rgba(255,255,255,.10);
-    }
-
-    .sidebar-status {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      margin: 0 5px 10px;
-      padding: 10px;
-      border-radius: 10px;
-      background: rgba(255,255,255,.055);
-    }
-
-    .sidebar-status .status-dot {
-      width: 7px;
-      height: 7px;
-      flex: 0 0 7px;
-      border-radius: 50%;
-      background: #35c66f;
-      box-shadow: 0 0 0 4px rgba(53,198,111,.10);
-    }
-
-    .sidebar-status strong {
-      display: block;
-      color: #e7f0fd;
-      font-size: 9px;
-      font-weight: 600;
-    }
-
-    .sidebar-status small {
-      display: block;
-      margin-top: 2px;
-      color: #8fa9cd;
-      font-size: 8px;
-    }
-
-    .attendance-page .logout-link {
-      min-height: 43px;
-      padding: 5px 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: #d8e5f8;
-      border-radius: 10px;
-      text-decoration: none;
-      font-size: 12px;
-      font-weight: 500;
-      transition: .18s ease;
-    }
-
-    .attendance-page .logout-link:hover {
-      color: #fff;
-      background: rgba(220,38,38,.78);
-    }
-
-    .attendance-page .logout-link:hover .sidebar-nav-icon {
-      color: #fff;
-      background: rgba(255,255,255,.10);
-    }
-
-    @media (max-width: 700px) {
-      .attendance-page .sidebar .logo {
-        min-height: 72px;
-      }
-    }
-
-
-    /* =========================================================
-       TASK HISTORY STYLE SIDEBAR
-       ========================================================= */
-
-    .attendance-page .salt-sidebar {
-      position: fixed;
-      inset: 0 auto 0 0;
-      width: 260px;
-      min-width: 260px;
-      height: 100vh;
-      overflow-y: auto;
-      background: linear-gradient(180deg, #0f2b5b, #12366f);
-      color: white;
-      z-index: 1000;
-      transition: width .25s ease, min-width .25s ease, left .25s ease;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .attendance-page .salt-sidebar::-webkit-scrollbar {
-      width: 5px;
-    }
-
-    .attendance-page .salt-sidebar::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,.18);
-      border-radius: 10px;
-    }
-
-    .attendance-page .sidebar-brand {
-      padding: 22px 20px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-
-    .attendance-page .brand-logo {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.10);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .attendance-page .brand-logo img {
-      width: 32px;
-      height: 32px;
-      object-fit: contain;
-    }
-
-    .attendance-page .sidebar-link {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 11px 14px;
-      margin-bottom: 5px;
-      border-radius: 12px;
-      color: #dbeafe;
-      text-decoration: none;
-      transition: .2s ease;
-    }
-
-    .attendance-page .sidebar-link:hover {
-      background: rgba(255,255,255,.09);
-      color: white;
-      transform: translateX(2px);
-    }
-
-    .attendance-page .sidebar-link.active {
-      color: white;
-      background: rgba(255,255,255,.16);
-      box-shadow: inset 3px 0 0 #60a5fa;
-    }
-
-    .attendance-page .sidebar-icon {
-      width: 38px;
-      height: 38px;
-      flex-shrink: 0;
-      border-radius: 10px;
-      background: rgba(255,255,255,.09);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .attendance-page .salt-sidebar.collapsed {
-      width: 78px;
-      min-width: 78px;
-    }
-
-    .attendance-page .salt-sidebar.collapsed .brand-text,
-    .attendance-page .salt-sidebar.collapsed .sidebar-label {
-      display: none;
-    }
-
-    .attendance-page .salt-sidebar.collapsed .sidebar-link {
-      justify-content: center;
-    }
-
-    .attendance-page .salt-sidebar.collapsed + .portal-main {
-      margin-left: 78px;
-      width: calc(100% - 78px);
-    }
-
-    /* Keep the attendance main area aligned with the task page layout. */
-    .attendance-page .portal-main {
-      margin-left: 260px;
-      width: calc(100% - 260px);
-      min-height: 100vh;
-      transition: margin-left .25s ease, width .25s ease;
-    }
-
-    .attendance-page .main-inner {
-      max-width: 1500px;
-      margin: 0 auto;
-      padding: 28px 30px 40px;
-    }
-
-    @media (max-width: 850px) {
-      .attendance-page .salt-sidebar {
-        left: -270px;
-      }
-
-      .attendance-page .salt-sidebar.mobile-open {
-        left: 0;
-      }
-
-      .attendance-page .portal-main {
-        margin-left: 0;
-        width: 100%;
-      }
-
-      .attendance-page .salt-sidebar.collapsed + .portal-main {
-        margin-left: 0;
-        width: 100%;
-      }
-    }
-
-
-    /* =========================================================
-       ATTENDANCE — TASK HISTORY SIDEBAR
-       Exact shell styling
-       ========================================================= */
-
-    .attendance-page .salt-sidebar {
-      position: fixed;
-      inset: 0 auto 0 0;
-      width: 260px;
-      min-width: 260px;
-      height: 100vh;
-      overflow-y: auto;
-      background: linear-gradient(180deg, #0f2b5b, #12366f);
-      color: #fff;
-      z-index: 1000;
-      transition: width .25s ease, min-width .25s ease, left .25s ease;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .attendance-page .salt-sidebar::-webkit-scrollbar {
-      width: 5px;
-    }
-
-    .attendance-page .salt-sidebar::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,.18);
-      border-radius: 10px;
-    }
-
-    .attendance-page .sidebar-brand {
-      padding: 22px 20px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-
-    .attendance-page .brand-logo {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.10);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .attendance-page .brand-logo img {
-      width: 32px;
-      height: 32px;
-      object-fit: contain;
-    }
-
-    .attendance-page .sidebar-link {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 11px 14px;
-      margin-bottom: 5px;
-      border-radius: 12px;
-      color: #dbeafe;
-      text-decoration: none;
-      transition: .2s ease;
-    }
-
-    .attendance-page .sidebar-link:hover {
-      background: rgba(255,255,255,.09);
-      color: #fff;
-      transform: translateX(2px);
-    }
-
-    .attendance-page .sidebar-link.active {
-      color: #fff;
-      background: rgba(255,255,255,.16);
-      box-shadow: inset 3px 0 0 #60a5fa;
-    }
-
-    .attendance-page .sidebar-icon {
-      width: 38px;
-      height: 38px;
-      flex-shrink: 0;
-      border-radius: 10px;
-      background: rgba(255,255,255,.09);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .attendance-page .salt-sidebar.collapsed {
-      width: 78px;
-      min-width: 78px;
-    }
-
-    .attendance-page .salt-sidebar.collapsed .brand-text,
-    .attendance-page .salt-sidebar.collapsed .sidebar-label {
-      display: none;
-    }
-
-    .attendance-page .salt-sidebar.collapsed .sidebar-link {
-      justify-content: center;
-    }
-
-    .attendance-page .main {
-      margin-left: 260px;
-      width: calc(100% - 260px);
-      min-height: 100vh;
-      transition: margin-left .25s ease, width .25s ease;
-    }
-
-    .attendance-page .salt-sidebar.collapsed ~ .main {
-      margin-left: 78px;
-      width: calc(100% - 78px);
-    }
-
-    .attendance-page .topbar {
-      min-height: 58px;
-    }
-
-    .attendance-page .menu-button {
-      width: 42px;
-      height: 42px;
-      border: 1px solid #dbe4f0;
-      border-radius: 11px;
-      background: #fff;
-      color: #475569;
-      box-shadow: 0 3px 10px rgba(15,43,91,.06);
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    @media (max-width: 850px) {
-      .attendance-page .salt-sidebar {
-        left: -270px;
-      }
-
-      .attendance-page .salt-sidebar.mobile-open {
-        left: 0;
-      }
-
-      .attendance-page .main,
-      .attendance-page .salt-sidebar.collapsed ~ .main {
-        margin-left: 0;
-        width: 100%;
-      }
-    }
-
-
-    .attendance-filter-card {
-      margin-bottom:18px;padding:17px;border:1px solid #dce5f0;border-radius:15px;
-      background:#fff;box-shadow:0 5px 20px rgba(15,43,91,.045);
-    }
-    .filter-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px}
-    .filter-heading h3{margin:0;color:#26344d;font-size:14px;font-weight:700}
-    .filter-heading p{margin:3px 0 0;color:#94a3b8;font-size:10px}
-    .filter-reset{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #dce5f0;border-radius:8px;color:#64748b;background:#fff;text-decoration:none;font-size:10px;font-weight:700}
-    .filter-reset:hover{color:#1558b0;border-color:#b9cbe2;background:#f8fbff}
-    .quick-filter-row{display:flex;flex-wrap:wrap;gap:7px;padding-bottom:13px;border-bottom:1px solid #edf1f5}
-    .quick-filter{display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border:1px solid #dce5f0;border-radius:8px;color:#64748b;background:#fff;text-decoration:none;font-size:10px;font-weight:700;transition:.18s}
-    .quick-filter:hover{color:#1558b0;border-color:#b8cbe4;background:#f8fbff}
-    .quick-filter.active{color:#fff;border-color:#1558b0;background:#1558b0;box-shadow:0 4px 10px rgba(21,88,176,.14)}
-    .advanced-filter-row{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr)) auto;gap:10px;align-items:end;padding-top:13px}
-    .filter-field label{display:block;margin-bottom:5px;color:#64748b;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-    .filter-input-wrap{position:relative}
-    .filter-input-wrap>i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#7da3d1;font-size:10px;pointer-events:none}
-    .filter-input-wrap select,.filter-input-wrap input{width:100%;height:39px;padding:0 10px 0 31px;border:1px solid #dce5f0;border-radius:8px;outline:0;background:#fff;color:#475569;font-family:inherit;font-size:11px}
-    .filter-input-wrap select:focus,.filter-input-wrap input:focus{border-color:#1558b0;box-shadow:0 0 0 3px rgba(21,88,176,.08)}
-    .apply-filter-btn{height:39px;padding:0 14px;border:0;border-radius:8px;background:#1558b0;color:#fff;cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;white-space:nowrap}
-    .apply-filter-btn:hover{background:#0f4b99}
-    @media(max-width:1050px){.advanced-filter-row{grid-template-columns:repeat(2,minmax(150px,1fr))}.apply-filter-btn{width:100%}}
-    @media(max-width:650px){.filter-heading{align-items:flex-start}.quick-filter-row{display:grid;grid-template-columns:repeat(2,1fr)}.quick-filter{justify-content:center}.advanced-filter-row{grid-template-columns:1fr}}
-
+{% extends "base.html" %}
+
+{% block title %}Attendance | SALT Workforce Portal{% endblock %}
+{% block page_heading %}Attendance{% endblock %}
+{% block head %}
+<style>
+/* Attendance page layer */
+:where(:root){--salt-blue:#145cc7;--salt-blue-dark:#0b3d91;--salt-blue-soft:#edf5ff;--salt-border:#e5eaf1}
+.attendance-page{display:block}
+.attendance-page *,.attendance-page *::before,.attendance-page *::after{box-sizing:border-box}
+
+/* ===== Heading ===== */
+.attendance-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}
+.attendance-heading h1{margin:0;color:#14233b;font-size:28px;font-weight:800;letter-spacing:-.025em}
+.attendance-heading p{margin:6px 0 0;color:#6b7a90;font-size:14px}
+.attendance-heading .record-count{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid var(--salt-border);border-radius:10px;background:#fff;color:#64748b;font-size:12px;font-weight:700;white-space:nowrap;box-shadow:0 6px 18px rgba(10,40,82,.04)}
+
+/* ===== Stats ===== */
+.attendance-page .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:22px}
+.attendance-page .stats .card{position:relative;overflow:hidden;min-height:118px;padding:19px 20px;border:1px solid var(--salt-border);border-radius:16px;background:#fff;box-shadow:0 8px 25px rgba(10,40,82,.05);transition:transform .18s ease,box-shadow .18s ease}
+.attendance-page .stats .card:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(10,40,82,.08)}
+.attendance-page .stats .card::after{content:"";position:absolute;width:96px;height:96px;right:-32px;top:-38px;border-radius:50%;background:rgba(20,92,199,.04)}
+.attendance-page .stats .card p{position:relative;z-index:1;margin:10px 0 4px;color:#14233b;font-size:26px;line-height:1.1;font-weight:800}
+.attendance-page .stats .card p.is-duty{color:#c46b0b}
+.attendance-page .stats .card small{color:#8a98aa;font-size:12px}
+.stat-caption{display:flex;align-items:center;gap:8px;color:#617087;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.stat-caption i{color:var(--salt-blue)}
+
+/* ===== Filters ===== */
+.attendance-filter-card{margin-bottom:22px;padding:20px;border:1px solid var(--salt-border);border-radius:16px;background:#fff;box-shadow:0 8px 25px rgba(10,40,82,.05)}
+.filter-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.filter-heading h3{margin:0;color:#26344d;font-size:15px;font-weight:800}
+.filter-heading p{margin:4px 0 0;color:#8a98aa;font-size:12px}
+.filter-reset{display:inline-flex;align-items:center;gap:6px;color:#64748b;text-decoration:none;font-size:12px;font-weight:700}
+.filter-reset:hover{color:var(--salt-blue)}
+.quick-filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.quick-filter{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--salt-border);border-radius:9px;background:#f8fafc;color:#64748b;text-decoration:none;font-size:12px;font-weight:700;transition:background .18s,border-color .18s,color .18s}
+.quick-filter:hover{border-color:#bcd3f2;background:var(--salt-blue-soft);color:var(--salt-blue-dark)}
+.quick-filter.active{border-color:var(--salt-blue);background:var(--salt-blue);color:#fff;box-shadow:0 4px 10px rgba(20,92,199,.16)}
+.advanced-filter-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:end}
+.advanced-filter-row.no-employee{grid-template-columns:repeat(3,minmax(0,1fr)) auto}
+.filter-field label{display:block;margin:0 0 6px;color:#64748b;font-size:11px;font-weight:800}
+.filter-input-wrap{height:42px;display:flex;align-items:center;gap:8px;padding:0 11px;border:1px solid #e0e6ee;border-radius:10px;background:#fff;transition:border-color .18s,box-shadow .18s}
+.filter-input-wrap:focus-within{border-color:var(--salt-blue);box-shadow:0 0 0 3px rgba(20,92,199,.10)}
+.filter-input-wrap i{color:#8fa0b4;font-size:12px}
+.filter-input-wrap select,.filter-input-wrap input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#334155;font:inherit;font-size:13px}
+.apply-filter-btn{height:42px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 16px;border:0;border-radius:10px;background:linear-gradient(135deg,var(--salt-blue),var(--salt-blue-dark));color:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 7px 16px rgba(20,92,199,.18);transition:transform .18s}
+.apply-filter-btn:hover{transform:translateY(-1px)}
+
+/* ===== Table card ===== */
+.attendance-page .working-section{padding:0;overflow:hidden;border:1px solid var(--salt-border);border-radius:16px;background:#fff;box-shadow:0 8px 25px rgba(10,40,82,.05)}
+.attendance-section-header{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:17px 20px;border-bottom:1px solid #edf1f5}
+.attendance-section-title{display:flex;align-items:center;gap:11px}
+.attendance-section-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--salt-blue-soft);color:var(--salt-blue)}
+.attendance-section-title h3{margin:0;color:#26344d;font-size:15px;font-weight:800}
+.attendance-section-title p{margin:3px 0 0;color:#8a98aa;font-size:12px}
+.active-filters{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.filter-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--salt-blue-soft);color:var(--salt-blue-dark);font-size:11px;font-weight:700}
+.history-count{padding:6px 11px;border-radius:999px;background:#f1f5f9;color:#64748b;font-size:12px;font-weight:800;white-space:nowrap}
+
+.attendance-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.attendance-page table{width:100%;border-collapse:separate;border-spacing:0;min-width:680px}
+.attendance-page table thead th{position:sticky;top:0;z-index:1;padding:12px 20px;border-bottom:1px solid var(--salt-border);background:#f8fafc;color:#64748b;font-size:11px;font-weight:800;letter-spacing:.06em;text-align:left;text-transform:uppercase;white-space:nowrap}
+.attendance-page table td{padding:15px 20px;border-bottom:1px solid #edf1f5;color:#475569;font-size:13px;vertical-align:middle}
+.attendance-page table tbody tr.record-row{transition:background .15s ease}
+.attendance-page table tbody tr.record-row:hover{background:#fbfdff}
+.attendance-page table tbody tr.record-row.is-active td:first-child{box-shadow:inset 3px 0 0 #f59e0b}
+.attendance-page table tbody tr:last-child td{border-bottom:0}
+
+/* day separators */
+.attendance-page tr.day-row td{padding:9px 20px;border-bottom:1px solid #e5eaf1;background:#f6f9fd;color:#44566f;font-size:12px;font-weight:800;letter-spacing:.02em}
+.attendance-page tr.day-row td i{margin-right:8px;color:var(--salt-blue)}
+.attendance-page tr.day-row:first-child td{border-top:0}
+
+.employee-name{display:flex;align-items:center;gap:10px;font-weight:700;color:#334155}
+.employee-avatar{width:34px;height:34px;flex-shrink:0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.av-0{background:#dbeafe;color:#1d4ed8}.av-1{background:#ede9fe;color:#6d28d9}.av-2{background:#dcfce7;color:#15803d}
+.av-3{background:#fef3c7;color:#a16207}.av-4{background:#cffafe;color:#0e7490}.av-5{background:#fce7f3;color:#be185d}
+
+.attendance-time{display:flex;align-items:center;gap:11px}
+.time-icon{width:30px;height:30px;flex-shrink:0;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.time-icon.in{background:#eaf8ef;color:#16803d}
+.time-icon.out{background:#eef2f7;color:#64748b}
+.attendance-time strong{display:block;color:#26344d;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+.attendance-time small{display:block;margin-top:2px;color:#94a3b8;font-size:11px}
+
+.on-duty{display:inline-flex;align-items:center;gap:8px;color:#b66309;font-size:13px;font-weight:700}
+.on-duty i{font-size:8px;animation:dutyPulse 1.6s ease-in-out infinite}
+@keyframes dutyPulse{0%,100%{opacity:1}50%{opacity:.35}}
+.duration{color:#26344d;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.duration.muted{color:#94a3b8;font-weight:600}
+
+.attendance-page .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+.attendance-page .badge i{font-size:9px}
+.attendance-page .badge.active{background:#fff3dc;color:#b66309}
+.attendance-page .badge.completed{background:#eaf8ef;color:#16803d}
+
+.attendance-empty{padding:60px 20px;text-align:center}
+.attendance-empty-icon{width:56px;height:56px;margin:0 auto 12px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:var(--salt-blue-soft);color:#7da8df;font-size:22px}
+.attendance-empty h4{margin:0;color:#334155;font-size:16px;font-weight:800}
+.attendance-empty p{margin:5px 0 0;color:#94a3b8;font-size:13px}
+.attendance-empty a{display:inline-flex;align-items:center;gap:7px;margin-top:16px;color:var(--salt-blue);font-size:13px;font-weight:700;text-decoration:none}
+
+.attendance-page button:focus-visible,.attendance-page a:focus-visible{outline:2px solid var(--salt-blue);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.attendance-page *{animation:none!important;transition:none!important}}
+
+/* ===== Responsive ===== */
+@media(max-width:900px){
+  .attendance-page .stats{gap:10px}
+  .advanced-filter-row,.advanced-filter-row.no-employee{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .apply-filter-btn{width:100%}
+}
+@media(max-width:620px){
+  .attendance-heading{align-items:flex-start;flex-direction:column}
+  .attendance-heading .record-count{align-self:flex-start}
+  .attendance-page .stats{grid-template-columns:1fr}
+  .attendance-section-header{align-items:flex-start;flex-direction:column}
+  .advanced-filter-row,.advanced-filter-row.no-employee{grid-template-columns:1fr}
+  .quick-filter-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .quick-filter{justify-content:center}
+  .attendance-page .content{padding:0}
+
+  /* table becomes a list of cards */
+  .attendance-table-wrap{overflow:visible}
+  .attendance-page table{min-width:0;display:block}
+  .attendance-page table thead{display:none}
+  .attendance-page table tbody{display:block}
+  .attendance-page table tbody tr.record-row{display:grid;grid-template-columns:1fr 1fr;gap:14px 12px;padding:15px 18px;border-bottom:1px solid #edf1f5}
+  .attendance-page table tbody tr.record-row.is-active{box-shadow:inset 3px 0 0 #f59e0b}
+  .attendance-page table tbody tr.record-row.is-active td:first-child{box-shadow:none}
+  .attendance-page table td{display:block;padding:0;border:0}
+  .attendance-page table td::before{content:attr(data-label);display:block;margin-bottom:5px;color:#94a3b8;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  .attendance-page table td.cell-employee{grid-column:1/-1}
+  .attendance-page table td.cell-employee::before{content:none}
+  .attendance-page table tbody tr.day-row{display:block}
+  .attendance-page tr.day-row td{display:block;padding:9px 18px}
+  .attendance-page tr.day-row td::before{content:none}
+}
+
+/* ===== Dark mode ===== */
+html.salt-dark .attendance-heading h1,html.salt-dark .attendance-page .stats .card p,html.salt-dark .filter-heading h3,
+html.salt-dark .attendance-section-title h3,html.salt-dark .attendance-time strong,html.salt-dark .duration,
+html.salt-dark .employee-name,html.salt-dark .attendance-empty h4{color:#e8f0fb}
+html.salt-dark .attendance-heading p,html.salt-dark .filter-heading p,html.salt-dark .attendance-section-title p,
+html.salt-dark .stat-caption,html.salt-dark .attendance-page .stats .card small{color:#9fb0c8}
+html.salt-dark .attendance-heading .record-count,html.salt-dark .attendance-page .stats .card,
+html.salt-dark .attendance-filter-card,html.salt-dark .attendance-page .working-section{background:#111b2d;border-color:#2a3b56}
+html.salt-dark .attendance-section-header{border-color:#263852}
+html.salt-dark .quick-filter,html.salt-dark .filter-input-wrap{background:#0f192a;border-color:#334967;color:#b8c7da}
+html.salt-dark .quick-filter.active{background:var(--salt-blue);border-color:var(--salt-blue);color:#fff}
+html.salt-dark .filter-input-wrap select,html.salt-dark .filter-input-wrap input{color:#e8f0fb}
+html.salt-dark .attendance-page table thead th{background:#162238;border-color:#263852;color:#9fb0c8}
+html.salt-dark .attendance-page table td{border-color:#263852;color:#c5d2e3}
+html.salt-dark .attendance-page table tbody tr.record-row:hover{background:#13203a}
+html.salt-dark .attendance-page tr.day-row td{background:#14213a;border-color:#263852;color:#b8c7da}
+html.salt-dark .history-count{background:#1a2a44;color:#9fb0c8}
+html.salt-dark .filter-pill{background:#14284a;color:#9ec1f2}
+html.salt-dark .time-icon.in{background:#12301f;color:#4ade80}
+html.salt-dark .time-icon.out{background:#1a2a44;color:#9fb0c8}
 </style>
+{% endblock %}
 
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+{% block content %}
+{% set period_labels = {
+  'today': 'Today', 'yesterday': 'Yesterday', 'this_week': 'This week',
+  'last_week': 'Last week', 'this_month': 'This month', 'last_month': 'Last month'
+} %}
+{% set has_duration = records and records[0].duration is defined %}
+{% set column_count = (4 if role == 'admin' else 3) + (1 if has_duration else 0) %}
+{% set latest = records[0] if records else none %}
 
+<div class="attendance-page">
 
-    <!-- SALT Workforce PWA -->
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#0b3d91">
-    <meta name="application-name" content="SALT Workforce">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="SALT Workforce">
-    <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
-
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-mobile-pwa.css') }}">
-
-<style id="salt-attendance-mobile-final">
-@media (max-width:850px){
-html,body{width:100%;max-width:100%;overflow-x:hidden}
-body{background:#f4f8fd!important;padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))!important}
-
-/* Mobile drawer — preserve existing sidebar, only make it responsive */
-.attendance-page .salt-sidebar{
- width:min(310px,84vw)!important;min-width:min(310px,84vw)!important;
- left:0!important;transform:translateX(-110%)!important;
- transition:transform .28s cubic-bezier(.22,.8,.28,1)!important;
- border-radius:0 24px 24px 0!important;
- box-shadow:18px 0 50px rgba(7,35,70,.22)!important
-}
-.attendance-page .salt-sidebar.mobile-open{
- left:0!important;transform:translateX(0)!important
-}
-.attendance-page .main,.attendance-page .salt-sidebar.collapsed~.main{
- margin-left:0!important;width:100%!important;min-width:0!important
-}
-
-/* Header */
-.attendance-page .topbar{
- position:sticky!important;top:0!important;z-index:9000!important;
- min-height:62px!important;padding:8px 10px!important;gap:8px!important;box-sizing:border-box
-}
-.attendance-page .menu-button,.attendance-page #toggle-btn{
- width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;
- border-radius:12px!important;display:inline-flex!important;align-items:center!important;
- justify-content:center!important;flex:0 0 40px!important
-}
-.attendance-page .topbar h2{margin:0!important;min-width:0!important;font-size:15px!important;
- white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis}
-.attendance-page .topbar h2:before{font-size:14px!important}
-.attendance-page .topbar-right{margin-left:auto!important}
-.attendance-page .topbar-right .btn.green{
- width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;
- border-radius:12px!important;font-size:0!important;display:inline-flex!important;
- align-items:center!important;justify-content:center!important
-}
-.attendance-page .topbar-right .btn.green:before{
- content:"\f56d";font-family:"Font Awesome 6 Free";font-weight:900;font-size:14px
-}
-
-/* Content */
-.attendance-page .content,.attendance-page .main-inner{
- padding:16px 12px 24px!important;box-sizing:border-box!important
-}
-.attendance-heading{margin-bottom:14px!important;gap:10px!important}
-.attendance-heading h1{font-size:21px!important;line-height:1.2!important}
-.attendance-heading p{font-size:11px!important;line-height:1.45!important}
-.attendance-heading .record-count{padding:7px 10px!important;font-size:10px!important}
-
-/* Compact 3-stat strip */
-.attendance-page .stats{
- display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
- gap:8px!important;margin-bottom:14px!important
-}
-.attendance-page .stats .card{
- min-height:94px!important;padding:12px 10px!important;border-radius:14px!important
-}
-.attendance-page .stats .card small:first-child{font-size:8px!important;letter-spacing:.02em!important}
-.attendance-page .stats .card p{
- margin:8px 0 3px!important;font-size:18px!important;overflow:hidden!important;
- text-overflow:ellipsis!important;white-space:nowrap!important
-}
-.attendance-page .stats .card small:not(:first-child){font-size:8px!important}
-.attendance-page .stat-caption i{font-size:8px!important}
-
-/* Filters */
-.attendance-filter-card{margin-bottom:14px!important;padding:13px!important;border-radius:14px!important}
-.filter-heading{margin-bottom:11px!important;gap:8px!important}
-.filter-heading h3{font-size:13px!important}.filter-heading p{font-size:9px!important}
-.filter-reset{padding:7px 9px!important;font-size:9px!important}
-.quick-filter-row{
- display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
- gap:7px!important;padding-bottom:11px!important
-}
-.quick-filter{min-height:36px!important;justify-content:center!important;padding:7px 8px!important;
- font-size:9px!important;border-radius:9px!important}
-.advanced-filter-row{display:grid!important;grid-template-columns:1fr!important;gap:9px!important;padding-top:11px!important}
-.filter-field label{font-size:8px!important}
-.filter-input-wrap select,.filter-input-wrap input{
- height:42px!important;font-size:11px!important;border-radius:9px!important
-}
-.apply-filter-btn{width:100%!important;height:42px!important;border-radius:9px!important;font-size:10px!important}
-
-/* History */
-.attendance-page .working-section{border-radius:14px!important}
-.attendance-section-header{padding:13px!important;gap:9px!important}
-.attendance-section-icon{width:34px!important;height:34px!important;min-width:34px!important}
-.attendance-section-title{gap:8px!important}
-.attendance-section-title h3{font-size:12px!important}
-.attendance-section-title p{font-size:9px!important}
-.history-count{padding:6px 8px!important;font-size:9px!important}
-.attendance-table-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important}
-.attendance-page table{min-width:520px!important}
-.attendance-page table th{padding:10px 12px!important;font-size:8px!important}
-.attendance-page table td{padding:12px!important;font-size:10px!important}
-.employee-avatar{width:29px!important;height:29px!important;min-width:29px!important}
-.attendance-time strong{font-size:10px!important}.attendance-time small{font-size:8px!important}
-.attendance-page .badge{padding:5px 8px!important;font-size:8px!important}
-.attendance-empty{padding:44px 16px!important}
-
-/* Bottom navigation supplied by the portal JS */
-.salt-mobile-nav{
- position:fixed!important;left:0!important;right:0!important;bottom:0!important;
- z-index:10000!important;padding-bottom:calc(5px + env(safe-area-inset-bottom,0px))!important
-}
-}
-@media(max-width:380px){
-.attendance-page .stats{gap:6px!important}
-.attendance-page .stats .card{padding:10px 8px!important}
-.attendance-page .stats .card p{font-size:16px!important}
-.attendance-page .stats .card small:first-child{font-size:7px!important}
-}
-</style>
-
-
-<style id="salt-attendance-history-mobile-fit">
-@media (max-width: 850px) {
-
-  /* Attendance History must fit the phone viewport.
-     No horizontal scrolling is required on mobile. */
-  .attendance-page .attendance-table-wrap {
-    overflow: visible !important;
-    width: 100% !important;
-  }
-
-  .attendance-page table {
-    width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed !important;
-  }
-
-  .attendance-page table th,
-  .attendance-page table td {
-    box-sizing: border-box !important;
-  }
-
-  /* Admin: Employee / Clock In / Clock Out / Status */
-  .attendance-page table th:nth-child(1),
-  .attendance-page table td:nth-child(1) {
-    width: 30% !important;
-  }
-
-  .attendance-page table th:nth-child(2),
-  .attendance-page table td:nth-child(2) {
-    width: 23% !important;
-  }
-
-  .attendance-page table th:nth-child(3),
-  .attendance-page table td:nth-child(3) {
-    width: 23% !important;
-  }
-
-  .attendance-page table th:nth-child(4),
-  .attendance-page table td:nth-child(4) {
-    width: 24% !important;
-  }
-
-  .attendance-page table th {
-    padding: 9px 6px !important;
-    font-size: 7px !important;
-    white-space: normal !important;
-  }
-
-  .attendance-page table td {
-    padding: 10px 6px !important;
-    font-size: 9px !important;
-    overflow: hidden !important;
-  }
-
-  .attendance-page .employee-name {
-    min-width: 0 !important;
-    gap: 5px !important;
-  }
-
-  .attendance-page .employee-name span {
-    min-width: 0 !important;
-    max-width: calc(100% - 34px) !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-  }
-
-  .attendance-page .employee-avatar {
-    width: 27px !important;
-    height: 27px !important;
-    min-width: 27px !important;
-    font-size: 9px !important;
-  }
-
-  .attendance-page .attendance-time strong {
-    display: block !important;
-    font-size: 9px !important;
-    line-height: 1.2 !important;
-    white-space: nowrap !important;
-  }
-
-  .attendance-page .attendance-time small {
-    margin-top: 2px !important;
-    font-size: 7px !important;
-    line-height: 1.2 !important;
-    white-space: nowrap !important;
-  }
-
-  .attendance-page .on-duty {
-    gap: 3px !important;
-    font-size: 8px !important;
-    white-space: nowrap !important;
-  }
-
-  .attendance-page .badge {
-    max-width: 100% !important;
-    padding: 5px 5px !important;
-    gap: 3px !important;
-    font-size: 7px !important;
-    white-space: nowrap !important;
-  }
-
-  /* Employee/non-admin view has only Clock In / Clock Out / Status.
-     Give those columns equal usable space. */
-  .attendance-page table:not(:has(th:nth-child(4))) th,
-  .attendance-page table:not(:has(th:nth-child(4))) td {
-    width: 33.333% !important;
-  }
-}
-
-@media (max-width: 380px) {
-  .attendance-page table th {
-    padding-left: 4px !important;
-    padding-right: 4px !important;
-    font-size: 6.5px !important;
-  }
-
-  .attendance-page table td {
-    padding-left: 4px !important;
-    padding-right: 4px !important;
-  }
-
-  .attendance-page .employee-avatar {
-    width: 24px !important;
-    height: 24px !important;
-    min-width: 24px !important;
-    font-size: 8px !important;
-  }
-
-  .attendance-page .employee-name span {
-    max-width: calc(100% - 29px) !important;
-  }
-
-  .attendance-page .attendance-time strong {
-    font-size: 8px !important;
-  }
-
-  .attendance-page .attendance-time small,
-  .attendance-page .badge,
-  .attendance-page .on-duty {
-    font-size: 6.5px !important;
-  }
-}
-</style>
-
-</head>
-
-<body>
-
-<div class="wrapper attendance-page">
-
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-
-        <div class="logo">
-            <img src="{{ url_for('static', filename='salt-logo.png') }}">
-            <p class="portal-name">Workforce Portal</p>
-        </div>
-    
-        <ul>
-            <li>
-                <a href="/dashboard">
-                    <i class="fas fa-home"></i> <span>Dashboard</span>
-                </a>
-            </li>
-    
-            {% if role == 'admin' %}
-            <li>
-                <a href="/admin/employees">
-                    <i class="fas fa-users"></i> <span>Employees</span>
-                </a>
-            </li>
-            <li>
-                <a href="/admin/tasks">
-                    <i class="fas fa-table"></i> <span>Task Board</span>
-                </a>
-            </li>
-            <li>
-                <a href="/admin/assign_task">
-                    <i class="fas fa-plus"></i> <span>Assign Task</span>
-                </a>
-            </li>
-            <li>
-                <a href="/admin/announcements">
-                    <i class="fas fa-bullhorn"></i> <span>Announcements</span>
-                </a>
-            </li>
-            {% endif %}
-    
-            <li class="active">
-                <a href="/attendance">
-                    <i class="fas fa-clock"></i> <span>Attendance</span>
-                </a>
-            </li>
-            <li>
-                <a href="/tasks">
-                    <i class="fas fa-tasks"></i>
-                    <span>My Tasks</span>
-                </a>
-            </li>
-            
-            <li class="{% if request.path.startswith('/messages') %}active{% endif %}">
-                <a href="/messages">
-                    <i class="fas fa-comments"></i>
-                    <span>SALT Connect</span>
-                </a>
-            </li>
-            <li>
-                <a href="/logout" onclick="return confirm('Are you sure you want to logout?')">
-                    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-                </a>
-            </li>
-        </ul>
-
-        <!-- 🔽 SETTINGS GOES HERE (BOTTOM FIXED AREA) -->
-        <div class="sidebar-bottom">
-            <a href="/settings/profile">
-                <i class="fas fa-cog"></i>
-                <span>Settings</span>
-            </a>
-        </div>
-
+  <div class="attendance-heading">
+    <div>
+      <h1>Attendance History</h1>
+      <p>Review clock-in and clock-out activity in the workforce portal.</p>
     </div>
 
-  <!-- MAIN -->
-  <div class="salt-mobile-sidebar-overlay" id="saltMobileSidebarOverlay" aria-hidden="true"></div>
+    <div class="record-count">
+      <i class="fas fa-database"></i>
+      {{ records|length }} record{% if records|length != 1 %}s{% endif %}
+    </div>
+  </div>
 
-  <div class="main">
+  <!-- STATS -->
+  <div class="stats">
 
-    <!-- TOPBAR -->
-    <div class="topbar">
-
-      <button
-        id="toggle-btn"
-        class="menu-button"
-        type="button"
-        aria-label="Toggle sidebar">
-        <i class="fas fa-bars"></i>
-      </button>
-
-      <h2>Attendance</h2>
-
-      <div class="topbar-right">
-        <a href="/export/attendance" class="btn green">
-          📥 Export Excel
-        </a>
-      </div>
-
+    <div class="card">
+      <div class="stat-caption"><i class="fas fa-list-check"></i> Total records</div>
+      <p>{{ records|length }}</p>
+      <small>Attendance entries</small>
     </div>
 
-    <!-- CONTENT -->
-    <div class="content">
-
-      <!-- PAGE INTRO -->
-      <div class="attendance-heading">
-
-        <div>
-          <h1>Attendance History</h1>
-          <p>Review clock-in and clock-out activity in the workforce portal.</p>
-        </div>
-
-        <div class="record-count">
-          <i class="fas fa-database"></i>
-          {{ records|length }} record{% if records|length != 1 %}s{% endif %}
-        </div>
-
-      </div>
-
-      <!-- STATS -->
-      <div class="stats">
-
-        <div class="card">
-
-          <div class="stat-caption">
-            <i class="fas fa-list-check"></i>
-            <small>Total Records</small>
-          </div>
-
-          <p>{{ records|length }}</p>
-
-          <small>Attendance entries</small>
-
-        </div>
-
-        <div class="card">
-
-          <div class="stat-caption">
-            <i class="fas fa-right-to-bracket"></i>
-            <small>Last Clock In</small>
-          </div>
-
-          {% if records and records[0].clock_in_time %}
-
-            <p>{{ records[0].clock_in_time }}</p>
-
-            <small>{{ records[0].clock_in_date }}</small>
-
-          {% else %}
-
-            <p>--</p>
-
-            <small>No clock-in record</small>
-
-          {% endif %}
-
-        </div>
-
-        <div class="card">
-
-          <div class="stat-caption">
-            <i class="fas fa-right-from-bracket"></i>
-            <small>Last Clock Out</small>
-          </div>
-
-          {% if records and records[0].clock_out_time and not records[0].is_active %}
-
-            <p>{{ records[0].clock_out_time }}</p>
-
-            <small>{{ records[0].clock_out_date }}</small>
-
-          {% else %}
-
-            <p style="color:#c46b0b;">On duty</p>
-
-            <small>Currently clocked in</small>
-
-          {% endif %}
-
-        </div>
-
-      </div>
-
-      <!-- FILTERS -->
-      <div class="attendance-filter-card">
-
-        <div class="filter-heading">
-          <div>
-            <h3>Filter Attendance</h3>
-            <p>Choose a period or set a custom date range.</p>
-          </div>
-
-          <a href="/attendance" class="filter-reset">
-            <i class="fas fa-rotate-left"></i> Reset
-          </a>
-        </div>
-
-        <form method="GET" action="/attendance">
-
-          <div class="quick-filter-row">
-            <a href="/attendance?period=today" class="quick-filter {% if period == 'today' %}active{% endif %}">
-              <i class="fas fa-calendar-day"></i> Today
-            </a>
-
-            <a href="/attendance?period=yesterday" class="quick-filter {% if period == 'yesterday' %}active{% endif %}">
-              <i class="fas fa-calendar-minus"></i> Yesterday
-            </a>
-
-            <a href="/attendance?period=this_week" class="quick-filter {% if period == 'this_week' %}active{% endif %}">
-              <i class="fas fa-calendar-week"></i> This Week
-            </a>
-
-            <a href="/attendance?period=last_week" class="quick-filter {% if period == 'last_week' %}active{% endif %}">
-              <i class="fas fa-calendar-week"></i> Last Week
-            </a>
-
-            <a href="/attendance?period=this_month" class="quick-filter {% if period == 'this_month' %}active{% endif %}">
-              <i class="fas fa-calendar-days"></i> This Month
-            </a>
-
-            <a href="/attendance?period=last_month" class="quick-filter {% if period == 'last_month' %}active{% endif %}">
-              <i class="fas fa-calendar"></i> Last Month
-            </a>
-          </div>
-
-          <div class="advanced-filter-row">
-
-            {% if role == 'admin' %}
-            <div class="filter-field">
-              <label for="employee_id">Employee</label>
-              <div class="filter-input-wrap">
-                <i class="fas fa-user"></i>
-                <select name="employee_id" id="employee_id">
-                  <option value="">All Employees</option>
-                  {% for employee in employees|default([]) %}
-                  <option value="{{ employee.id }}"
-                    {% if selected_employee|string == employee.id|string %}selected{% endif %}>
-                    {{ employee.name }}
-                  </option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-            {% endif %}
-
-            <div class="filter-field">
-              <label for="status">Status</label>
-              <div class="filter-input-wrap">
-                <i class="fas fa-circle-half-stroke"></i>
-                <select name="status" id="status">
-                  <option value="">All Statuses</option>
-                  <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
-                  <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="filter-field">
-              <label for="start_date">From</label>
-              <div class="filter-input-wrap">
-                <i class="fas fa-calendar"></i>
-                <input type="date" id="start_date" name="start_date" value="{{ start_date or '' }}">
-              </div>
-            </div>
-
-            <div class="filter-field">
-              <label for="end_date">To</label>
-              <div class="filter-input-wrap">
-                <i class="fas fa-calendar"></i>
-                <input type="date" id="end_date" name="end_date" value="{{ end_date or '' }}">
-              </div>
-            </div>
-
-            <button type="submit" class="apply-filter-btn">
-              <i class="fas fa-filter"></i> Apply Filter
-            </button>
-
-          </div>
-        </form>
-      </div>
-
-      <!-- TABLE -->
-      <div class="working-section">
-
-        <div class="attendance-section-header">
-
-          <div class="attendance-section-title">
-
-            <div class="attendance-section-icon">
-              <i class="fas fa-clock"></i>
-            </div>
-
-            <div>
-              <h3>Attendance History</h3>
-              <p>Clock-in and clock-out records</p>
-            </div>
-
-          </div>
-
-          <div class="history-count">
-            {{ records|length }} record{% if records|length != 1 %}s{% endif %}
-          </div>
-
-        </div>
-
-        {% if records %}
-
-        <div class="attendance-table-wrap">
-
-          <table>
-
-            <thead>
-
-              <tr>
-
-                {% if role == 'admin' %}
-                  <th>Employee</th>
-                {% endif %}
-
-                <th>Clock In</th>
-                <th>Clock Out</th>
-                <th>Status</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {% for record in records %}
-
-              <tr>
-
-                {% if role == 'admin' %}
-
-                <td>
-
-                  <div class="employee-name">
-
-                    <div class="employee-avatar">
-                      {% if record.name %}
-                        {{ record.name[0]|upper }}
-                      {% else %}
-                        ?
-                      {% endif %}
-                    </div>
-
-                    <span>
-                      {{ record.name or 'Unknown employee' }}
-                    </span>
-
-                  </div>
-
-                </td>
-
-                {% endif %}
-
-                <td>
-
-                  <div class="attendance-time">
-
-                    <strong>
-                      {{ record.clock_in_time or '--' }}
-                    </strong>
-
-                    <small>
-                      {{ record.clock_in_date }}
-                    </small>
-
-                  </div>
-
-                </td>
-
-                <td>
-
-                  {% if not record.is_active %}
-
-                    <div class="attendance-time">
-
-                      <strong>
-                        {{ record.clock_out_time or '--' }}
-                      </strong>
-
-                      <small>
-                        {{ record.clock_out_date }}
-                      </small>
-
-                    </div>
-
-                  {% else %}
-
-                    <span class="on-duty">
-                      <i class="fas fa-circle"></i>
-                      On duty
-                    </span>
-
-                  {% endif %}
-
-                </td>
-
-                <td>
-
-                  {% if record.is_active %}
-
-                    <span class="badge active">
-                      <i class="fas fa-circle"></i>
-                      Active
-                    </span>
-
-                  {% else %}
-
-                    <span class="badge completed">
-                      <i class="fas fa-check"></i>
-                      Completed
-                    </span>
-
-                  {% endif %}
-
-                </td>
-
-              </tr>
-
-              {% endfor %}
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-        {% else %}
-
-        <div class="attendance-empty">
-
-          <div class="attendance-empty-icon">
-            <i class="fas fa-calendar-xmark"></i>
-          </div>
-
-          <h4>No attendance records available</h4>
-
-          <p>Attendance records will appear here when employees clock in.</p>
-
-        </div>
-
-        {% endif %}
-
-      </div>
-
+    <div class="card">
+      <div class="stat-caption"><i class="fas fa-right-to-bracket"></i> Last clock in</div>
+      {% if latest and latest.clock_in_time %}
+        <p>{{ latest.clock_in_time }}</p>
+        <small>{{ latest.clock_in_date }}</small>
+      {% else %}
+        <p>--</p>
+        <small>No clock-in record</small>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="stat-caption"><i class="fas fa-right-from-bracket"></i> Last clock out</div>
+      {% if not latest %}
+        <p>--</p>
+        <small>No clock-out record</small>
+      {% elif latest.is_active %}
+        <p class="is-duty">On duty</p>
+        <small>Currently clocked in</small>
+      {% elif latest.clock_out_time %}
+        <p>{{ latest.clock_out_time }}</p>
+        <small>{{ latest.clock_out_date }}</small>
+      {% else %}
+        <p>--</p>
+        <small>No clock-out record</small>
+      {% endif %}
     </div>
 
   </div>
 
+  <!-- FILTERS -->
+  <div class="attendance-filter-card">
+
+    <div class="filter-heading">
+      <div>
+        <h3>Filter attendance</h3>
+        <p>Choose a period or set a custom date range.</p>
+      </div>
+
+      <a href="/attendance" class="filter-reset"><i class="fas fa-rotate-left"></i> Reset</a>
+    </div>
+
+    <form method="GET" action="/attendance">
+
+      <div class="quick-filter-row">
+        <a href="/attendance?period=today" class="quick-filter {% if period == 'today' %}active{% endif %}"><i class="fas fa-calendar-day"></i> Today</a>
+        <a href="/attendance?period=yesterday" class="quick-filter {% if period == 'yesterday' %}active{% endif %}"><i class="fas fa-calendar-minus"></i> Yesterday</a>
+        <a href="/attendance?period=this_week" class="quick-filter {% if period == 'this_week' %}active{% endif %}"><i class="fas fa-calendar-week"></i> This week</a>
+        <a href="/attendance?period=last_week" class="quick-filter {% if period == 'last_week' %}active{% endif %}"><i class="fas fa-calendar-week"></i> Last week</a>
+        <a href="/attendance?period=this_month" class="quick-filter {% if period == 'this_month' %}active{% endif %}"><i class="fas fa-calendar-days"></i> This month</a>
+        <a href="/attendance?period=last_month" class="quick-filter {% if period == 'last_month' %}active{% endif %}"><i class="fas fa-calendar"></i> Last month</a>
+      </div>
+
+      <div class="advanced-filter-row{% if role != 'admin' %} no-employee{% endif %}">
+
+        {% if role == 'admin' %}
+        <div class="filter-field">
+          <label for="employee_id">Employee</label>
+          <div class="filter-input-wrap">
+            <i class="fas fa-user"></i>
+            <select name="employee_id" id="employee_id">
+              <option value="">All employees</option>
+              {% for employee in employees|default([]) %}
+              <option value="{{ employee.id }}" {% if selected_employee|string == employee.id|string %}selected{% endif %}>
+                {{ employee.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="filter-field">
+          <label for="status">Status</label>
+          <div class="filter-input-wrap">
+            <i class="fas fa-circle-half-stroke"></i>
+            <select name="status" id="status">
+              <option value="">All statuses</option>
+              <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+              <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-field">
+          <label for="start_date">From</label>
+          <div class="filter-input-wrap">
+            <i class="fas fa-calendar"></i>
+            <input type="date" id="start_date" name="start_date" value="{{ start_date or '' }}">
+          </div>
+        </div>
+
+        <div class="filter-field">
+          <label for="end_date">To</label>
+          <div class="filter-input-wrap">
+            <i class="fas fa-calendar"></i>
+            <input type="date" id="end_date" name="end_date" value="{{ end_date or '' }}">
+          </div>
+        </div>
+
+        <button type="submit" class="apply-filter-btn"><i class="fas fa-filter"></i> Apply filter</button>
+
+      </div>
+    </form>
+  </div>
+
+  <!-- TABLE -->
+  <div class="working-section">
+
+    <div class="attendance-section-header">
+
+      <div class="attendance-section-title">
+        <div class="attendance-section-icon"><i class="fas fa-clock"></i></div>
+        <div>
+          <h3>Clock-in and clock-out records</h3>
+          <div class="active-filters">
+            {% if period and period_labels[period] %}
+              <span class="filter-pill"><i class="fas fa-calendar-week"></i> {{ period_labels[period] }}</span>
+            {% endif %}
+            {% if start_date or end_date %}
+              <span class="filter-pill"><i class="fas fa-calendar"></i> {{ start_date or '…' }} → {{ end_date or '…' }}</span>
+            {% endif %}
+            {% if status %}
+              <span class="filter-pill"><i class="fas fa-circle-half-stroke"></i> {{ status|capitalize }}</span>
+            {% endif %}
+            {% if not (period and period_labels[period]) and not start_date and not end_date and not status %}
+              <p>All attendance activity</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="history-count">{{ records|length }} record{% if records|length != 1 %}s{% endif %}</div>
+
+    </div>
+
+    {% if records %}
+
+    <div class="attendance-table-wrap">
+      <table>
+
+        <thead>
+          <tr>
+            {% if role == 'admin' %}<th>Employee</th>{% endif %}
+            <th>Clock in</th>
+            <th>Clock out</th>
+            {% if has_duration %}<th>Duration</th>{% endif %}
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% set ns = namespace(day=none) %}
+
+          {% for record in records %}
+
+            {% if record.clock_in_date != ns.day %}
+              {% set ns.day = record.clock_in_date %}
+              <tr class="day-row">
+                <td colspan="{{ column_count }}"><i class="fas fa-calendar-day"></i>{{ record.clock_in_date or 'Unknown date' }}</td>
+              </tr>
+            {% endif %}
+
+            <tr class="record-row{% if record.is_active %} is-active{% endif %}">
+
+              {% if role == 'admin' %}
+              <td class="cell-employee" data-label="Employee">
+                <div class="employee-name">
+                  <div class="employee-avatar av-{{ (record.name or '?')|length % 6 }}">
+                    {% if record.name %}{{ record.name[0]|upper }}{% else %}?{% endif %}
+                  </div>
+                  <span>{{ record.name or 'Unknown employee' }}</span>
+                </div>
+              </td>
+              {% endif %}
+
+              <td data-label="Clock in">
+                <div class="attendance-time">
+                  <span class="time-icon in"><i class="fas fa-right-to-bracket"></i></span>
+                  <div>
+                    <strong>{{ record.clock_in_time or '--' }}</strong>
+                    <small>{{ record.clock_in_date }}</small>
+                  </div>
+                </div>
+              </td>
+
+              <td data-label="Clock out">
+                {% if not record.is_active %}
+                  <div class="attendance-time">
+                    <span class="time-icon out"><i class="fas fa-right-from-bracket"></i></span>
+                    <div>
+                      <strong>{{ record.clock_out_time or '--' }}</strong>
+                      <small>{{ record.clock_out_date }}</small>
+                    </div>
+                  </div>
+                {% else %}
+                  <span class="on-duty"><i class="fas fa-circle"></i> On duty</span>
+                {% endif %}
+              </td>
+
+              {% if has_duration %}
+              <td data-label="Duration">
+                {% if record.is_active %}
+                  <span class="duration muted">In progress</span>
+                {% elif record.duration %}
+                  <span class="duration">{{ record.duration }}</span>
+                {% else %}
+                  <span class="duration muted">--</span>
+                {% endif %}
+              </td>
+              {% endif %}
+
+              <td data-label="Status">
+                {% if record.is_active %}
+                  <span class="badge active"><i class="fas fa-circle"></i> Active</span>
+                {% else %}
+                  <span class="badge completed"><i class="fas fa-check"></i> Completed</span>
+                {% endif %}
+              </td>
+
+            </tr>
+
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+
+    {% else %}
+
+    <div class="attendance-empty">
+      <div class="attendance-empty-icon"><i class="fas fa-calendar-xmark"></i></div>
+      <h4>No attendance records available</h4>
+      <p>
+        {% if period or start_date or end_date or status %}
+          Nothing matches the current filters.
+        {% else %}
+          Attendance records will appear here when employees clock in.
+        {% endif %}
+      </p>
+      {% if period or start_date or end_date or status %}
+        <a href="/attendance"><i class="fas fa-rotate-left"></i> Clear filters</a>
+      {% endif %}
+    </div>
+
+    {% endif %}
+
+  </div>
+
 </div>
+{% endblock %}
 
-
-<nav class="salt-mobile-nav" aria-label="Mobile navigation">
-
-    <a href="/dashboard" {% if request.path == "/dashboard" %}class="active" aria-current="page"{% endif %}>
-        <i class="fas fa-house"></i>
-        <span>Home</span>
-    </a>
-
-    <a href="/attendance" class="active" aria-current="page">
-        <i class="fas fa-clock"></i>
-        <span>Attendance</span>
-    </a>
-
-    <a href="/tasks" {% if request.path.startswith('/tasks') %}class="active" aria-current="page"{% endif %}>
-        <i class="fas fa-list-check"></i>
-        <span>My Tasks</span>
-    </a>
-
-    <a href="/messages" {% if request.path.startswith('/messages') %}class="active" aria-current="page"{% endif %}>
-        <i class="fas fa-comments"></i>
-        <span>Connect</span>
-    </a>
-
-    <a href="/settings/profile" {% if request.path.startswith('/settings/profile') %}class="active" aria-current="page"{% endif %}>
-        <i class="fas fa-user"></i>
-        <span>Profile</span>
-    </a>
-
-</nav>
-
+{% block scripts %}
 <script>
-(function () {
-    const toggle = document.getElementById("toggle-btn");
-    const overlay = document.getElementById("saltMobileSidebarOverlay");
-    const sidebar = document.querySelector(".sidebar");
-    const main = document.querySelector(".main");
-
-    if (!toggle || !sidebar) return;
-
-    function isMobile() {
-        return window.matchMedia("(max-width: 768px)").matches;
-    }
-
-    function openMobileMenu() {
-        document.body.classList.add("salt-mobile-menu-open");
-        if (overlay) overlay.setAttribute("aria-hidden", "false");
-        toggle.setAttribute("aria-expanded", "true");
-        toggle.innerHTML = '<i class="fas fa-times"></i>';
-    }
-
-    function closeMobileMenu() {
-        document.body.classList.remove("salt-mobile-menu-open");
-        if (overlay) overlay.setAttribute("aria-hidden", "true");
-        toggle.setAttribute("aria-expanded", "false");
-        toggle.innerHTML = '<i class="fas fa-bars"></i>';
-    }
-
-    toggle.setAttribute("aria-expanded", "false");
-
-    toggle.addEventListener("click", function () {
-        if (isMobile()) {
-            document.body.classList.contains("salt-mobile-menu-open")
-                ? closeMobileMenu()
-                : openMobileMenu();
-            return;
-        }
-
-        if (main) {
-            sidebar.classList.toggle("collapsed");
-            main.classList.toggle("expanded");
-        }
+/* Keep the date range valid: "To" can never be earlier than "From". */
+document.addEventListener('DOMContentLoaded', function () {
+  const start = document.getElementById('start_date');
+  const end = document.getElementById('end_date');
+  if (start && end) {
+    start.addEventListener('change', function () {
+      if (start.value && end.value && end.value < start.value) end.value = start.value;
     });
-
-    if (overlay) overlay.addEventListener("click", closeMobileMenu);
-
-    sidebar.querySelectorAll("a").forEach(function (link) {
-        link.addEventListener("click", function () {
-            if (isMobile()) closeMobileMenu();
-        });
-    });
-
-    document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape" && isMobile()) closeMobileMenu();
-    });
-
-    window.addEventListener("resize", function () {
-        if (!isMobile()) closeMobileMenu();
-    });
-})();
+  }
+});
 </script>
-
-
-<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
-</body>
-</html>
+{% endblock %}

@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0B3D91">
+
+    <title>{% block title %}SALT Workforce Portal{% endblock %}</title>
+
+    <!-- SALT brand -->
+    <link rel="icon" type="image/png"
+          href="{{ url_for('static', filename='salt-logo.png') }}">
+
+    <!-- Icons -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <!--
+        SINGLE GLOBAL SALT STYLESHEET
+        style.css is now the source of truth for the entire application.
+    -->
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+<style id="salt-page-transition-style">
+    /* SALT smooth page navigation */
+    html {
+        background: var(--salt-app-bg, #f5f8fc);
+    }
+
+    .salt-page {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+        transition:
+            opacity .28s ease,
+            transform .28s cubic-bezier(.22, 1, .36, 1);
+        will-change: opacity, transform;
+    }
+
+    body.salt-page-leaving .salt-page {
+        opacity: 0;
+        transform: translate3d(0, 8px, 0);
+    }
+
+    body.salt-page-entering .salt-page {
+        animation: saltPageEnter .38s cubic-bezier(.22, 1, .36, 1) both;
+    }
+
+    @keyframes saltPageEnter {
+        from {
+            opacity: 0;
+            transform: translate3d(0, 10px, 0);
+        }
+        to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+    .salt-route-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        z-index: 99999;
+        pointer-events: none;
+        opacity: 0;
+        transform: scaleX(0);
+        transform-origin: left center;
+        background: linear-gradient(90deg, #0B3D91, #1769C2, #66A6FF);
+        box-shadow: 0 0 12px rgba(23, 105, 194, .38);
+    }
+
+    .salt-route-progress.is-active {
+        opacity: 1;
+        animation: saltRouteProgress 650ms cubic-bezier(.22,1,.36,1) forwards;
+    }
+
+    @keyframes saltRouteProgress {
+        0%   { transform: scaleX(0); }
+        25%  { transform: scaleX(.35); }
+        65%  { transform: scaleX(.72); }
+        100% { transform: scaleX(.94); }
+    }
+
+    .salt-nav-item,
+    .salt-mobile-nav a,
+    .salt-mobile-nav button {
+        transition:
+            background-color .18s ease,
+            color .18s ease,
+            border-color .18s ease,
+            transform .18s ease,
+            box-shadow .18s ease;
+    }
+
+    .salt-nav-item:active,
+    .salt-mobile-nav a:active,
+    .salt-mobile-nav button:active {
+        transform: scale(.985);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .salt-page,
+        .salt-nav-item,
+        .salt-mobile-nav a,
+        .salt-mobile-nav button {
+            transition: none !important;
+        }
+
+        body.salt-page-entering .salt-page,
+        body.salt-page-leaving .salt-page,
+        .salt-route-progress.is-active {
+            animation: none !important;
+        }
+    }
+</style>
+
+
+    <!--
+        Compatibility hooks:
+        Existing pages may still provide page-specific CSS here while we
+        progressively standardize the application.
+    -->
+    
+<style id="salt-liquid-glass-sidebar">
+/* ==========================================================
+   SALT LIQUID GLASS SIDEBAR
+   Visual-only enhancement: existing Flask routes and behaviour
+   are intentionally preserved.
+   ========================================================== */
+:root {
+    --salt-glass-blue: #1769c2;
+    --salt-glass-border: rgba(255,255,255,.20);
+    --salt-glass-text: #f4f8ff;
+    --salt-glass-muted: #a9bfdc;
+    --salt-glass-panel: rgba(7, 28, 58, .78);
+}
+.salt-app-shell {
+    isolation: isolate;
+}
+.salt-sidebar {
+    position: fixed;
+    inset: 12px auto 12px 12px;
+    width: 248px;
+    height: calc(100dvh - 24px);
+    box-sizing: border-box;
+    z-index: 1300;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: var(--salt-glass-text);
+    /* Fixed sidebar background: identical on every page. */
+    background: linear-gradient(155deg, #0d2f5b 0%, #04132a 100%) !important;
+    border: 1px solid var(--salt-glass-border);
+    border-radius: 25px;
+    box-shadow:
+        0 22px 55px rgba(4,19,42,.24),
+        inset 0 1px 0 rgba(255,255,255,.17),
+        inset 1px 0 0 rgba(255,255,255,.06);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transition: transform .28s cubic-bezier(.22,1,.36,1),
+                box-shadow .25s ease,
+                background .25s ease;
+}
+.salt-sidebar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255,255,255,.13), transparent 28%, transparent 70%, rgba(111,177,255,.07));
+}
+.salt-sidebar > * {
+    position: relative;
+    z-index: 1;
+}
+.salt-brand {
+    min-height: 82px;
+    padding: 17px 18px 14px;
+    box-sizing: border-box;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.salt-brand-link {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+}
+.salt-brand-logo {
+    max-width: 150px;
+    max-height: 48px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,.12));
+}
+.salt-sidebar-nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 15px 11px 18px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.23) transparent;
+}
+.salt-sidebar-nav::-webkit-scrollbar { width: 5px; }
+.salt-sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,.22);
+    border-radius: 99px;
+}
+.salt-nav-label {
+    margin: 15px 10px 9px;
+    color: #8eadd3;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .15em;
+}
+.salt-nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 45px;
+    box-sizing: border-box;
+    margin: 4px 0;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    background: transparent;
+    color: #d5e4f7;
+    text-decoration: none;
+    text-align: left;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 550;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.salt-nav-item > i {
+    width: 19px;
+    flex: 0 0 19px;
+    text-align: center;
+    color: #9ebce2;
+    font-size: 15px;
+    transition: color .2s ease, transform .2s ease;
+}
+.salt-nav-item:hover {
+    color: #fff;
+    border-color: rgba(255,255,255,.13);
+    background: rgba(255,255,255,.095);
+    transform: translateX(2px);
+}
+.salt-nav-item:hover > i {
+    color: #fff;
+    transform: scale(1.06);
+}
+.salt-nav-item.is-active {
+    color: #fff;
+    border-color: rgba(190,221,255,.28);
+    background: linear-gradient(110deg, rgba(90,163,255,.30), rgba(255,255,255,.105));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 5px 18px rgba(0,0,0,.10);
+}
+.salt-nav-item.is-active::before {
+    content: "";
+    position: absolute;
+    left: -1px;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 0 8px 8px 0;
+    background: #8bc5ff;
+    box-shadow: 0 0 12px rgba(110,184,255,.85);
+}
+.salt-nav-item.is-active > i { color: #bfe0ff; }
+.salt-nav-button {
+    appearance: none;
+    -webkit-appearance: none;
+}
+.salt-notification-badge {
+    margin-left: auto;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    color: white;
+    background: #3183ef;
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 800;
+}
+.salt-sidebar-footer {
+    flex: 0 0 auto;
+    padding: 12px 11px 13px;
+    border-top: 1px solid rgba(255,255,255,.12);
+    background: linear-gradient(0deg, rgba(0,10,28,.23), transparent);
+}
+.salt-user-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 10px;
+    color: #f4f8ff;
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 16px;
+    background: rgba(255,255,255,.075);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+    transition: background .2s ease, border-color .2s ease;
+}
+.salt-user-card:hover,
+.salt-user-card.is-active {
+    background: rgba(255,255,255,.13);
+    border-color: rgba(255,255,255,.28);
+}
+.salt-user-meta {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    gap: 3px;
+}
+.salt-user-meta strong {
+    overflow: hidden;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.salt-user-meta small {
+    color: #a9c2e2;
+    font-size: 10px;
+}
+.salt-user-card > i { color: #a9c2e2; font-size: 11px; }
+.salt-sidebar .salt-avatar {
+    flex: 0 0 auto;
+    border: 1px solid rgba(255,255,255,.35);
+    box-shadow: 0 3px 12px rgba(0,0,0,.16);
+}
+.salt-sidebar .salt-logout {
+    margin-top: 8px;
+    color: #ffd5d8;
+}
+.salt-sidebar .salt-logout > i { color: #ffadb6; }
+.salt-sidebar .salt-logout:hover {
+    background: rgba(255,83,104,.13);
+    border-color: rgba(255,145,157,.22);
+}
+.salt-sidebar-close {
+    color: #eaf3ff;
+    background: rgba(255,255,255,.09);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 11px;
+}
+.salt-sidebar-overlay {
+    background: rgba(2,12,29,.52);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+}
+.salt-topbar {
+    -webkit-backdrop-filter: blur(18px) saturate(145%);
+    backdrop-filter: blur(18px) saturate(145%);
+}
+@media (min-width: 981px) {
+    .salt-main {
+        margin-left: 272px;
+        min-width: 0;
+    }
+    .salt-topbar {
+        left: var(--salt-topbar-left, 272px) !important;
+    }
+}
+@media (max-width: 980px) {
+    .salt-sidebar {
+        inset: 8px auto 8px 8px;
+        width: min(286px, calc(100vw - 28px));
+        height: calc(100dvh - 16px);
+        border-radius: 23px;
+        transform: translateX(calc(-100% - 20px));
+    }
+    .salt-sidebar.is-open { transform: translateX(0); }
+    .salt-sidebar-overlay.is-visible { opacity: 1; visibility: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .salt-sidebar, .salt-nav-item, .salt-nav-item > i, .salt-user-card {
+        transition: none !important;
+    }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .salt-sidebar {
+        background: linear-gradient(155deg, #0d2f5b 0%, #04132a 100%) !important;
+    }
+}
+</style>
+
+    {% block head %}{% endblock %}
+    {% block extra_css %}{% endblock %}
+
+<style id="salt-sticky-topbar-fix">
+    /*
+      The topbar is fixed to the viewport instead of sticky inside .salt-main.
+      JavaScript below measures the sidebar and header, so the topbar aligns
+      with the actual layout rather than relying on a guessed sidebar width.
+    */
+    .salt-topbar {
+        position: fixed !important;
+        top: 0 !important;
+        left: var(--salt-topbar-left, 260px) !important;
+        right: 0 !important;
+        width: auto !important;
+        box-sizing: border-box;
+        z-index: 1200 !important;
+        align-self: auto !important;
+    }
+    @media (max-width: 980px) {
+        .salt-topbar {
+            left: 0 !important;
+        }
+    }
+</style>
+
+
+<style id="salt-liquid-glass-consistency-and-motion">
+/* Keep sidebar link states consistent even if older global CSS exists. */
+.salt-sidebar .salt-nav-item,
+.salt-sidebar .salt-nav-item:link,
+.salt-sidebar .salt-nav-item:visited {
+    color: #d5e4f7 !important;
+    background-color: transparent;
+    text-decoration: none !important;
+}
+.salt-sidebar .salt-nav-item > i {
+    color: #9ebce2 !important;
+}
+.salt-sidebar .salt-nav-item:hover {
+    color: #ffffff !important;
+    background: rgba(255,255,255,.095) !important;
+    border-color: rgba(255,255,255,.15) !important;
+}
+.salt-sidebar .salt-nav-item:hover > i {
+    color: #ffffff !important;
+}
+.salt-sidebar .salt-nav-item:focus-visible {
+    outline: 2px solid rgba(151,204,255,.95) !important;
+    outline-offset: 2px;
+    color: #ffffff !important;
+}
+.salt-sidebar .salt-nav-item.is-active,
+.salt-sidebar .salt-nav-item.is-active:link,
+.salt-sidebar .salt-nav-item.is-active:visited,
+.salt-sidebar .salt-nav-item.is-active:hover,
+.salt-sidebar .salt-nav-item.is-active:focus {
+    color: #ffffff !important;
+    background: linear-gradient(110deg, rgba(90,163,255,.32), rgba(255,255,255,.11)) !important;
+    border-color: rgba(190,221,255,.30) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 5px 18px rgba(0,0,0,.10) !important;
+}
+.salt-sidebar .salt-nav-item.is-active > i,
+.salt-sidebar .salt-nav-item.is-active:hover > i {
+    color: #bfe0ff !important;
+}
+.salt-sidebar .salt-nav-button {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+}
+.salt-sidebar .salt-nav-button:hover,
+.salt-sidebar .salt-nav-button:focus {
+    color: #ffffff !important;
+}
+
+/* Subtle moving light inside the glass: decorative and non-interactive. */
+.salt-sidebar {
+    isolation: isolate;
+    overflow: hidden;
+}
+.salt-sidebar::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    width: 250px;
+    height: 290px;
+    left: -115px;
+    top: 8%;
+    border-radius: 50%;
+    background: transparent;
+    filter: none;
+    opacity: 0;
+    animation: none;
+}
+.salt-sidebar::before {
+    z-index: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,.10), transparent 28%, transparent 76%, rgba(255,255,255,.025));
+    animation: none;
+}
+.salt-sidebar > * {
+    position: relative;
+    z-index: 1;
+}
+@keyframes saltGlassLightDrift {
+    0%   { transform: translate3d(0,0,0) scale(.92); opacity: .65; }
+    50%  { transform: translate3d(105px,115px,0) scale(1.12); opacity: 1; }
+    100% { transform: translate3d(35px,250px,0) scale(.98); opacity: .72; }
+}
+@keyframes saltGlassTintFlow {
+    0%   { background-position: 0 0, 0% 30%; }
+    100% { background-position: 0 0, 100% 70%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .salt-sidebar::before,
+    .salt-sidebar::after {
+        animation: none !important;
+    }
+}
+</style>
+
+
+
+<style id="salt-sidebar-only-particle-animation">
+/* Sidebar-only animation: blue particles, orbital lines and floating shapes.
+   The decoration is behind navigation content and never captures clicks. */
+.salt-sidebar {
+    isolation: isolate;
+}
+.salt-sidebar .salt-sidebar-particles {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+}
+.salt-sidebar .salt-sidebar-particles::before,
+.salt-sidebar .salt-sidebar-particles::after {
+    content: "";
+    position: absolute;
+    display: block;
+    pointer-events: none;
+    border-radius: 50%;
+}
+.salt-sidebar .salt-sidebar-particles::before {
+    width: 215px;
+    height: 215px;
+    left: -120px;
+    top: 20%;
+    border: 1px solid rgba(130, 196, 255, .16);
+    box-shadow:
+        0 0 0 18px rgba(130,196,255,.025),
+        0 0 0 38px rgba(130,196,255,.018),
+        inset 0 0 35px rgba(65,145,255,.05);
+    animation: saltSidebarOrbitPulse 12s ease-in-out infinite;
+}
+.salt-sidebar .salt-sidebar-particles::after {
+    width: 145px;
+    height: 145px;
+    right: -88px;
+    bottom: 12%;
+    border: 1px solid rgba(112,181,255,.18);
+    box-shadow: 0 0 34px rgba(60,145,255,.10);
+    animation: saltSidebarOrbitPulse 16s ease-in-out infinite reverse;
+}
+.salt-sidebar .salt-particle {
+    position: absolute;
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #a7d8ff;
+    box-shadow: 0 0 8px 2px rgba(89,170,255,.5);
+    opacity: 0;
+    animation: saltSidebarParticleFloat 9s ease-in-out infinite;
+}
+.salt-sidebar .salt-particle-1 { left: 17%; top: 18%; animation-delay: -1s; }
+.salt-sidebar .salt-particle-2 { left: 78%; top: 25%; width: 3px; height: 3px; animation-delay: -5s; animation-duration: 12s; }
+.salt-sidebar .salt-particle-3 { left: 37%; top: 37%; width: 5px; height: 5px; animation-delay: -3s; animation-duration: 11s; }
+.salt-sidebar .salt-particle-4 { left: 87%; top: 51%; animation-delay: -7s; animation-duration: 13s; }
+.salt-sidebar .salt-particle-5 { left: 22%; top: 64%; width: 3px; height: 3px; animation-delay: -4s; }
+.salt-sidebar .salt-particle-6 { left: 68%; top: 72%; width: 5px; height: 5px; animation-delay: -2s; animation-duration: 12s; }
+.salt-sidebar .salt-particle-7 { left: 44%; top: 86%; animation-delay: -6s; animation-duration: 10s; }
+.salt-sidebar .salt-particle-8 { left: 91%; top: 12%; width: 3px; height: 3px; animation-delay: -8s; animation-duration: 14s; }
+
+.salt-sidebar .salt-orbit {
+    position: absolute;
+    display: block;
+    border: 1px solid rgba(132,196,255,.17);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.salt-sidebar .salt-orbit-1 {
+    width: 210px;
+    height: 72px;
+    top: 29%;
+    left: -66px;
+    transform: rotate(-28deg);
+    animation: saltSidebarOrbitSpin 28s linear infinite;
+}
+.salt-sidebar .salt-orbit-2 {
+    width: 170px;
+    height: 58px;
+    top: 31%;
+    left: -45px;
+    border-color: rgba(132,196,255,.11);
+    transform: rotate(-28deg);
+    animation: saltSidebarOrbitSpin 34s linear infinite reverse;
+}
+.salt-sidebar .salt-floating-shape {
+    position: absolute;
+    display: block;
+    opacity: .28;
+    border: 1px solid rgba(153,207,255,.75);
+    filter: drop-shadow(0 0 6px rgba(83,157,255,.25));
+}
+.salt-sidebar .salt-shape-diamond {
+    width: 10px;
+    height: 10px;
+    right: 17%;
+    top: 39%;
+    transform: rotate(45deg);
+    animation: saltSidebarShapeDrift 13s ease-in-out infinite;
+}
+.salt-sidebar .salt-shape-ring {
+    width: 13px;
+    height: 13px;
+    right: 23%;
+    top: 61%;
+    border-radius: 50%;
+    animation: saltSidebarShapeDrift 16s ease-in-out infinite reverse;
+}
+.salt-sidebar .salt-shape-square {
+    width: 7px;
+    height: 7px;
+    left: 12%;
+    top: 48%;
+    border-radius: 2px;
+    animation: saltSidebarShapeDrift 14s ease-in-out infinite;
+    animation-delay: -4s;
+}
+/* Ensure every existing sidebar section stays above the particles. */
+.salt-sidebar > *:not(.salt-sidebar-particles) {
+    position: relative;
+    z-index: 1;
+}
+.salt-sidebar .salt-sidebar-particles {
+    z-index: 0;
+}
+@keyframes saltSidebarParticleFloat {
+    0%, 100% { opacity: 0; transform: translate3d(0, 12px, 0) scale(.7); }
+    22% { opacity: .7; }
+    52% { opacity: .35; transform: translate3d(10px, -24px, 0) scale(1.2); }
+    78% { opacity: .65; }
+}
+@keyframes saltSidebarOrbitPulse {
+    0%, 100% { opacity: .4; transform: scale(.94) translate3d(0, 0, 0); }
+    50% { opacity: .9; transform: scale(1.06) translate3d(8px, -10px, 0); }
+}
+@keyframes saltSidebarOrbitSpin {
+    from { rotate: 0deg; }
+    to { rotate: 360deg; }
+}
+@keyframes saltSidebarShapeDrift {
+    0%, 100% { translate: 0 0; rotate: 0deg; opacity: .16; }
+    50% { translate: 7px -17px; rotate: 90deg; opacity: .5; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .salt-sidebar .salt-sidebar-particles *,
+    .salt-sidebar .salt-sidebar-particles::before,
+    .salt-sidebar .salt-sidebar-particles::after {
+        animation: none !important;
+    }
+}
+</style>
+
+</head>
+
+<body class="salt-app">
+
+    <div class="salt-app-shell">
+
+        <!-- =========================================================
+             SIDEBAR
+             ========================================================= -->
+        <aside class="salt-sidebar" id="saltSidebar">
+            <!-- Decorative sidebar particles only -->
+            <div class="salt-sidebar-particles" aria-hidden="true">
+                <span class="salt-particle salt-particle-1"></span>
+                <span class="salt-particle salt-particle-2"></span>
+                <span class="salt-particle salt-particle-3"></span>
+                <span class="salt-particle salt-particle-4"></span>
+                <span class="salt-particle salt-particle-5"></span>
+                <span class="salt-particle salt-particle-6"></span>
+                <span class="salt-particle salt-particle-7"></span>
+                <span class="salt-particle salt-particle-8"></span>
+                <span class="salt-orbit salt-orbit-1"></span>
+                <span class="salt-orbit salt-orbit-2"></span>
+                <span class="salt-floating-shape salt-shape-diamond"></span>
+                <span class="salt-floating-shape salt-shape-ring"></span>
+                <span class="salt-floating-shape salt-shape-square"></span>
+            </div>
+
+
+            <div class="salt-brand">
+                <a href="{{ url_for('dashboard') }}" class="salt-brand-link">
+                    <img
+                        src="{{ url_for('static', filename='salt-logo.png') }}"
+                        alt="SALT"
+                        class="salt-brand-logo"
+                    >
+                </a>
+
+                <button
+                    type="button"
+                    class="salt-sidebar-close"
+                    id="saltSidebarClose"
+                    aria-label="Close navigation"
+                >
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <nav class="salt-sidebar-nav" aria-label="Main navigation">
+
+                <div class="salt-nav-label">WORKSPACE</div>
+
+                <a href="{{ url_for('dashboard') }}"
+                   class="salt-nav-item {% if request.endpoint == 'dashboard' %}is-active{% endif %}">
+                    <i class="fa-solid fa-grid-2"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="{{ url_for('tasks') }}"
+                   class="salt-nav-item {% if request.endpoint == 'tasks' %}is-active{% endif %}">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>My Tasks</span>
+                </a>
+
+                <a href="/task-history"
+                   class="salt-nav-item {% if request.path == '/task-history' %}is-active{% endif %}">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Task History</span>
+                </a>
+
+                <a href="{{ url_for('attendance') }}"
+                   class="salt-nav-item {% if request.endpoint == 'attendance' %}is-active{% endif %}">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Attendance</span>
+                </a>
+
+                {% if session.get('role') in ['admin', 'Admin', 'administrator'] %}
+
+                <div class="salt-nav-label">ADMINISTRATION</div>
+
+                <a href="{{ url_for('admin_employees') }}"
+                   class="salt-nav-item {% if request.endpoint == 'admin_employees' %}is-active{% endif %}">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Employees</span>
+                </a>
+
+                <a href="{{ url_for('admin_tasks') }}"
+                   class="salt-nav-item {% if request.endpoint == 'admin_tasks' %}is-active{% endif %}">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    <span>Task Management</span>
+                </a>
+
+                <a href="{{ url_for('assign_task') }}"
+                   class="salt-nav-item {% if request.endpoint == 'assign_task' %}is-active{% endif %}">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>Assign Task</span>
+                </a>
+
+                <a href="{{ url_for('admin_announcements') }}"
+                   class="salt-nav-item {% if request.endpoint == 'admin_announcements' %}is-active{% endif %}">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    <span>Announcements</span>
+                </a>
+
+                {% endif %}
+
+                <div class="salt-nav-label">CONNECT</div>
+
+                <!-- Chat is a blueprint endpoint -->
+                <a href="{{ url_for('chat.messages') }}"
+                   class="salt-nav-item {% if request.endpoint == 'chat.messages' %}is-active{% endif %}">
+                    <i class="fa-solid fa-comments"></i>
+                    <span>Chat</span>
+                </a>
+
+                <!-- Notifications are opened as a panel, not a page endpoint -->
+                <button
+                    type="button"
+                    class="salt-nav-item salt-nav-button"
+                    id="saltNotificationsButton"
+                    aria-controls="saltNotificationPanel"
+                    aria-expanded="false"
+                >
+                    <i class="fa-solid fa-bell"></i>
+                    <span>Notifications</span>
+                    <span id="saltNotificationBadge"
+                          class="salt-notification-badge"
+                          hidden></span>
+                </button>
+
+            </nav>
+
+            <!-- User / account -->
+            <div class="salt-sidebar-footer">
+
+                <a href="{{ url_for('profile_settings') }}"
+                   class="salt-user-card {% if request.endpoint == 'profile_settings' %}is-active{% endif %}">
+
+                    {% set avatar = session.get('profile_pic') %}
+
+                    {% if avatar %}
+                        <img
+                            src="{{ avatar }}"
+                            alt="Profile"
+                            class="salt-avatar"
+                        >
+                    {% else %}
+                        <div class="salt-avatar salt-avatar-fallback">
+                            {{ (session.get('name') or 'U')[:1]|upper }}
+                        </div>
+                    {% endif %}
+
+                    <span class="salt-user-meta">
+                        <strong>{{ session.get('name', 'User') }}</strong>
+                        <small>{{ session.get('role', 'Staff')|title }}</small>
+                    </span>
+
+                    <i class="fa-solid fa-chevron-right"></i>
+                </a>
+
+                <a href="{{ url_for('logout') }}"
+                   class="salt-nav-item salt-logout">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span>Sign out</span>
+                </a>
+
+            </div>
+        </aside>
+
+        <div class="salt-sidebar-overlay" id="saltSidebarOverlay"></div>
+
+        <!-- =========================================================
+             MAIN APPLICATION
+             ========================================================= -->
+        <main class="salt-main">
+
+            <header class="salt-topbar">
+
+                <div class="salt-topbar-left">
+
+                    <button
+                        type="button"
+                        class="salt-icon-button salt-menu-button"
+                        id="saltSidebarOpen"
+                        aria-label="Open navigation"
+                    >
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+
+                    <div class="salt-page-context">
+                        <span class="salt-eyebrow">SALT WORKFORCE</span>
+                        <h1>{% block page_heading %}Workplace{% endblock %}</h1>
+                    </div>
+
+                </div>
+
+                <div class="salt-topbar-right">
+
+                    <button
+                        type="button"
+                        class="salt-icon-button"
+                        id="saltTopNotifications"
+                        aria-label="Notifications"
+                        aria-controls="saltNotificationPanel"
+                        aria-expanded="false"
+                    >
+                        <i class="fa-regular fa-bell"></i>
+                        <span
+                            id="saltTopNotificationBadge"
+                            class="salt-notification-dot"
+                            hidden
+                        ></span>
+                    </button>
+
+                    <a
+                        href="{{ url_for('chat.messages') }}"
+                        class="salt-icon-button"
+                        aria-label="Chat"
+                    >
+                        <i class="fa-regular fa-comments"></i>
+                    </a>
+
+
+                    <button
+                        type="button"
+                        class="salt-theme-toggle salt-icon-button"
+                        id="saltThemeToggle"
+                        aria-label="Switch theme"
+                        title="Switch theme"
+                    >
+                        <i class="fa-solid fa-moon" id="saltThemeIcon"></i>
+                    </button>
+
+                    <a
+                        href="{{ url_for('profile_settings') }}"
+                        class="salt-topbar-profile"
+                    >
+                        {% set top_avatar = session.get('profile_pic') %}
+
+                        {% if top_avatar %}
+                            <img
+                                src="{{ top_avatar }}"
+                                alt="Profile"
+                                class="salt-avatar salt-avatar-sm"
+                            >
+                        {% else %}
+                            <span class="salt-avatar salt-avatar-sm salt-avatar-fallback">
+                                {{ (session.get('name') or 'U')[:1]|upper }}
+                            </span>
+                        {% endif %}
+
+                        <span class="salt-topbar-profile-name">
+                            {{ session.get('name', 'User') }}
+                        </span>
+                    </a>
+
+                </div>
+
+            </header>
+
+            <!-- =====================================================
+                 PAGE CONTENT
+                 ===================================================== -->
+            <section class="salt-page">
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="salt-flash-stack">
+
+                            {% for category, message in messages %}
+                                <div class="salt-flash salt-flash-{{ category|default('info') }}">
+
+                                    <span>{{ message }}</span>
+
+                                    <button
+                                        type="button"
+                                        class="salt-flash-close"
+                                        aria-label="Dismiss"
+                                    >
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+
+                                </div>
+                            {% endfor %}
+
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                {% block before_content %}{% endblock %}
+
+                {% block content %}{% endblock %}
+
+            </section>
+
+        </main>
+    </div>
+
+    <!-- =============================================================
+         MOBILE NAVIGATION
+         ============================================================= -->
+    <nav class="salt-mobile-nav" aria-label="Mobile navigation">
+
+        <a href="{{ url_for('dashboard') }}"
+           class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+            <i class="fa-solid fa-grid-2"></i>
+            <span>Home</span>
+        </a>
+
+        <a href="{{ url_for('tasks') }}"
+           class="{% if request.endpoint == 'tasks' %}active{% endif %}">
+            <i class="fa-solid fa-list-check"></i>
+            <span>Tasks</span>
+        </a>
+
+        <button
+            type="button"
+            id="saltMobileNotifications"
+            aria-label="Notifications"
+            aria-controls="saltNotificationPanel"
+            aria-expanded="false"
+        >
+            <i class="fa-solid fa-bell"></i>
+            <span>Alerts</span>
+        </button>
+
+        <a href="{{ url_for('chat.messages') }}"
+           class="{% if request.endpoint == 'chat.messages' %}active{% endif %}">
+            <i class="fa-solid fa-comments"></i>
+            <span>Chat</span>
+        </a>
+
+        <a href="{{ url_for('profile_settings') }}"
+           class="{% if request.endpoint == 'profile_settings' %}active{% endif %}">
+            <i class="fa-solid fa-user"></i>
+            <span>Profile</span>
+        </a>
+
+    </nav>
+
+    <!-- =============================================================
+         NOTIFICATION PANEL
+         ============================================================= -->
+    <div
+        class="salt-notification-panel"
+        id="saltNotificationPanel"
+        aria-hidden="true"
+    >
+
+        <div class="salt-notification-panel-header">
+
+            <div>
+                <span class="salt-eyebrow">UPDATES</span>
+                <h2>Notifications</h2>
+            </div>
+
+            <button
+                type="button"
+                class="salt-icon-button"
+                id="saltCloseNotifications"
+                aria-label="Close notifications"
+            >
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+        </div>
+
+        <div id="saltNotificationList" class="salt-notification-list">
+
+            <div class="salt-notification-empty">
+                <i class="fa-regular fa-bell-slash"></i>
+                <p>No new notifications</p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div
+        class="salt-notification-backdrop"
+        id="saltNotificationBackdrop"
+    ></div>
+
+    <!-- =============================================================
+         GLOBAL SHELL BEHAVIOUR
+         ============================================================= -->
+    <script>
+    (() => {
+        const sidebar = document.getElementById('saltSidebar');
+        const overlay = document.getElementById('saltSidebarOverlay');
+        const openBtn = document.getElementById('saltSidebarOpen');
+        const closeBtn = document.getElementById('saltSidebarClose');
+
+        const openSidebar = () => {
+            sidebar?.classList.add('is-open');
+            overlay?.classList.add('is-visible');
+            document.body.classList.add('salt-sidebar-open');
+        };
+
+        const closeSidebar = () => {
+            sidebar?.classList.remove('is-open');
+            overlay?.classList.remove('is-visible');
+            document.body.classList.remove('salt-sidebar-open');
+        };
+
+        openBtn?.addEventListener('click', openSidebar);
+        closeBtn?.addEventListener('click', closeSidebar);
+        overlay?.addEventListener('click', closeSidebar);
+
+        // Close mobile sidebar after selecting a link.
+        sidebar?.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 980) {
+                    closeSidebar();
+                }
+            });
+        });
+
+        // Flash messages.
+        document.querySelectorAll('.salt-flash-close').forEach(button => {
+            button.addEventListener('click', () => {
+                button.closest('.salt-flash')?.remove();
+            });
+        });
+
+        // Notifications.
+        const panel = document.getElementById('saltNotificationPanel');
+        const backdrop = document.getElementById('saltNotificationBackdrop');
+
+        const notificationTriggers = [
+            document.getElementById('saltNotificationsButton'),
+            document.getElementById('saltTopNotifications'),
+            document.getElementById('saltMobileNotifications')
+        ].filter(Boolean);
+
+        const setNotificationState = (open) => {
+            panel?.classList.toggle('is-open', open);
+            backdrop?.classList.toggle('is-visible', open);
+            panel?.setAttribute('aria-hidden', open ? 'false' : 'true');
+
+            notificationTriggers.forEach(button => {
+                button.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+
+            document.body.classList.toggle('salt-notifications-open', open);
+        };
+
+        notificationTriggers.forEach(button => {
+            button.addEventListener('click', () => {
+                const isOpen = panel?.classList.contains('is-open');
+                setNotificationState(!isOpen);
+            });
+        });
+
+        document.getElementById('saltCloseNotifications')
+            ?.addEventListener('click', () => setNotificationState(false));
+
+        backdrop?.addEventListener('click', () => setNotificationState(false));
+
+        // Escape key closes overlays.
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                closeSidebar();
+                setNotificationState(false);
+            }
+        });
+    })();
+    </script>
+
+<script id="salt-fixed-topbar-layout">
+(() => {
+    const topbar = document.querySelector('.salt-topbar');
+    const main = document.querySelector('.salt-main');
+    const sidebar = document.querySelector('.salt-sidebar');
+    if (!topbar || !main) return;
+
+    const syncTopbarLayout = () => {
+        const mobile = window.matchMedia('(max-width: 980px)').matches;
+        const sidebarRect = sidebar ? sidebar.getBoundingClientRect() : null;
+        const sidebarVisible = !mobile && sidebarRect && sidebarRect.width > 0;
+        const left = sidebarVisible ? Math.max(0, sidebarRect.right) : 0;
+        document.documentElement.style.setProperty('--salt-topbar-left', `${left}px`);
+
+        // Since the topbar is fixed and removed from normal flow, reserve its
+        // measured height at the start of the main content.
+        main.style.paddingTop = `${Math.ceil(topbar.getBoundingClientRect().height)}px`;
+    };
+
+    syncTopbarLayout();
+    window.addEventListener('resize', syncTopbarLayout, { passive: true });
+    window.addEventListener('load', syncTopbarLayout);
+    if ('ResizeObserver' in window) {
+        const observer = new ResizeObserver(syncTopbarLayout);
+        observer.observe(topbar);
+        if (sidebar) observer.observe(sidebar);
+    }
+})();
+</script>
+
+<script id="salt-page-transition-script">
+(() => {
+    const TRANSITION_MS = 280;
+    const ENTER_MS = 390;
+    const body = document.body;
+
+    const progress = document.createElement('div');
+    progress.className = 'salt-route-progress';
+    progress.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(progress);
+
+    let navigating = false;
+
+    function shouldTransition(link, event) {
+        if (!link || !link.href || navigating) return false;
+        if (event.defaultPrevented || event.button !== 0) return false;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+        if (link.target && link.target !== '_self') return false;
+        if (link.hasAttribute('download')) return false;
+        if (link.dataset.noTransition !== undefined) return false;
+
+        let url;
+        try {
+            url = new URL(link.href, window.location.href);
+        } catch (_) {
+            return false;
+        }
+
+        if (url.origin !== window.location.origin) return false;
+
+        // Let same-page anchors behave normally.
+        if (
+            url.pathname === window.location.pathname &&
+            url.search === window.location.search
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    function navigateWithTransition(url) {
+        navigating = true;
+
+        progress.classList.remove('is-active');
+        void progress.offsetWidth;
+        progress.classList.add('is-active');
+
+        body.classList.remove('salt-page-entering');
+        body.classList.add('salt-page-leaving');
+
+        window.setTimeout(() => {
+            window.location.assign(url);
+        }, TRANSITION_MS);
+    }
+
+    document.addEventListener('click', event => {
+        const link = event.target.closest('a');
+        if (!shouldTransition(link, event)) return;
+
+        event.preventDefault();
+        navigateWithTransition(link.href);
+    }, true);
+
+    function startEnter() {
+        body.classList.remove('salt-page-leaving');
+        body.classList.add('salt-page-entering');
+
+        window.setTimeout(() => {
+            body.classList.remove('salt-page-entering');
+        }, ENTER_MS);
+    }
+
+    window.addEventListener('pageshow', startEnter);
+    window.addEventListener('load', startEnter);
+
+    window.addEventListener('pagehide', () => {
+        body.classList.remove('salt-page-leaving');
+    });
+})();
+</script>
+
+
+<script id="salt-theme-script">
+(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const toggle = document.getElementById('saltThemeToggle');
+    const icon = document.getElementById('saltThemeIcon');
+    const storageKey = 'salt-workforce-theme';
+
+    function getInitialTheme() {
+        const saved = localStorage.getItem(storageKey);
+        if (saved === 'dark' || saved === 'light') return saved;
+        return window.matchMedia &&
+               window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+    }
+
+    function applyTheme(theme, animate = false) {
+        if (animate) body.classList.add('salt-theme-changing');
+
+        root.setAttribute('data-theme', theme);
+        body.setAttribute('data-theme', theme);
+        localStorage.setItem(storageKey, theme);
+
+        if (icon) {
+            icon.className = theme === 'dark'
+                ? 'fa-solid fa-sun'
+                : 'fa-solid fa-moon';
+        }
+
+        if (toggle) {
+            toggle.setAttribute(
+                'aria-label',
+                theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+            );
+            toggle.setAttribute(
+                'title',
+                theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+            );
+        }
+
+        window.dispatchEvent(new CustomEvent('salt-theme-changed', {
+            detail: { theme }
+        }));
+
+        if (animate) {
+            window.setTimeout(
+                () => body.classList.remove('salt-theme-changing'),
+                360
+            );
+        }
+    }
+
+    applyTheme(getInitialTheme());
+
+    toggle?.addEventListener('click', () => {
+        const current = root.getAttribute('data-theme') || 'light';
+        applyTheme(current === 'dark' ? 'light' : 'dark', true);
+    });
+
+    // Keep the theme consistent if the browser changes system preference
+    // and the user has not manually selected a theme.
+    window.matchMedia?.('(prefers-color-scheme: dark)')
+        .addEventListener?.('change', event => {
+            if (!localStorage.getItem(storageKey)) {
+                applyTheme(event.matches ? 'dark' : 'light');
+            }
+        });
+})();
+</script>
+
+    {% block scripts %}{% endblock %}
+    {% block extra_js %}{% endblock %}
+
+</body>
+</html>

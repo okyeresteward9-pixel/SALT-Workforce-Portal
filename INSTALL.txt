@@ -1,0 +1,13 @@
+SALT UI FOUNDATION — CORRECTED
+
+1. Replace templates/base.html with the included base.html.
+2. Replace your static folder contents with the included static folder, or copy its files into your project static folder.
+3. Restart Flask.
+
+IMPORTANT:
+- Do not delete your existing page templates.
+- Do not delete static/style.css. It is intentionally retained because it contains existing page/content styling.
+- The duplicate static/css/css folder is intentionally removed from this cleaned package.
+- base.html now supports both {% block head %} and {% block extra_css %}, so migrated pages that put their page-specific <style> inside block head will work.
+
+This is the CSS foundation fix before Step 5.

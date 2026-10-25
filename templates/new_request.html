@@ -175,6 +175,21 @@ function prepareRequestSubmit(event){
 
     return true;
 }
-document.getElementById('attachments').addEventListener('change',e=>{let box=document.getElementById('fileList');box.innerHTML='';[...e.target.files].forEach(f=>{let d=document.createElement('div');d.className='rq-attachment';d.innerHTML='<span>📎 '+f.name+'</span><span class="rq-muted">'+Math.max(1,Math.round(f.size/1024))+' KB</span>';box.appendChild(d)})});bindTotals();showStep(1);
+document.getElementById('attachments').addEventListener('change',function(e){
+  const box=document.getElementById('fileList');
+  box.replaceChildren();
+  Array.from(e.target.files || []).forEach(function(file){
+    const row=document.createElement('div');
+    row.className='rq-attachment';
+    const name=document.createElement('span');
+    name.textContent='📎 '+file.name;
+    const size=document.createElement('span');
+    size.className='rq-muted';
+    size.textContent=Math.max(1,Math.round(file.size/1024))+' KB';
+    row.append(name,size);
+    box.appendChild(row);
+  });
+});
+bindTotals();showStep(1);
 </script>{% endblock %}
 <script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>

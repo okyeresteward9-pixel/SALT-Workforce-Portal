@@ -1,6 +1,9 @@
 from gevent import monkey
 monkey.patch_all()
 
+from psycogreen.gevent import patch_psycopg
+patch_psycopg()
+
 from flask import Flask, render_template, request, redirect, session, jsonify, flash, url_for
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -10,6 +13,7 @@ from flask_socketio import SocketIO, join_room  # pyright: ignore[reportMissingM
 from werkzeug.utils import secure_filename
 import os
 import time
+import logging
 from flask import send_from_directory
 from datetime import date
 from openpyxl import Workbook
@@ -355,6 +359,25 @@ def init_db():
         c.execute("""
             ALTER TABLE tasks
             ADD COLUMN IF NOT EXISTS employee_deleted BOOLEAN DEFAULT FALSE
+        """)
+        # Task priority: safe, idempotent PostgreSQL migration.
+        # Existing tasks are backfilled to Medium; new tasks default to Medium.
+        c.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'Medium'
+        """)
+        c.execute("""
+            UPDATE tasks
+            SET priority = 'Medium'
+            WHERE priority IS NULL OR priority NOT IN ('High', 'Medium', 'Low')
+        """)
+        c.execute("""
+            ALTER TABLE tasks
+            ALTER COLUMN priority SET DEFAULT 'Medium'
+        """)
+        c.execute("""
+            CREATE INDEX IF NOT EXISTS idx_tasks_priority
+            ON tasks (priority)
         """)
 
         c.execute("""
@@ -847,17 +870,18 @@ def get_gamification_data(employee_id):
 # Create admin if not exists
 # -------------------------
 def create_admin():
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+
+    if not admin_password:
+        print("ADMIN_PASSWORD not set, skipping admin creation.")
+        return
+
     conn = get_db()
     c = conn.cursor()
 
     admin_email = "admin@salt.com"
-    hashed_password = generate_password_hash("Stgh2@&$%#3")
 
-    c.execute(
-        "SELECT id FROM employees WHERE email=%s",
-        (admin_email,)
-    )
-
+    c.execute("SELECT id FROM employees WHERE email=%s", (admin_email,))
     admin = c.fetchone()
 
     if not admin:
@@ -868,15 +892,13 @@ def create_admin():
         """, (
             "System Administrator",
             admin_email,
-            hashed_password,
+            generate_password_hash(admin_password),
             "admin",
             "light"
         ))
-
         conn.commit()
 
     conn.close()
-
 # -------------------------
 # Routes
 # -------------------------
@@ -3200,366 +3222,241 @@ def export_attendance():
 
     )
 
-@app.route('/admin/tasks')
+@app.route("/admin/tasks")
 def admin_tasks():
-
-    if 'role' not in session or session['role'] != 'admin':
-        return "Access Denied"
-
+    # =========================================================
+    # ACCESS CONTROL
+    # =========================================================
+    if "role" not in session or session["role"] != "admin":
+        return "Access Denied", 403
 
     conn = get_db()
-
-    c = conn.cursor(
-        cursor_factory=RealDictCursor
-    )
-
-
-    status = request.args.get("status")
-
-    # Employee filter
-    employee_id = request.args.get("employee_id")
-
-
-    # =========================================================
-    # LOAD EMPLOYEES FOR FILTER DROPDOWN
-    # =========================================================
-
-    c.execute("""
-        SELECT
-            id,
-            name
-        FROM employees
-        ORDER BY name ASC
-    """)
-
-    employees = c.fetchall()
-
-
-    # =========================================================
-    # LOAD ALL TASKS VISIBLE TO ADMIN
-    #
-    # We do NOT filter by task_scope.
-    #
-    # Self tasks
-    # Assigned tasks
-    # Admin-created tasks
-    # Employee-created tasks
-    #
-    # ALL can appear on the Admin Task Board.
-    #
-    # admin_deleted only controls whether the admin has
-    # removed the task from THEIR view.
-    # =========================================================
-
-    base_query = """
-
-        SELECT
-
-            tasks.id,
-            tasks.title,
-            tasks.description,
-            tasks.note,
-            tasks.reply,
-            tasks.admin_reply,
-            tasks.deadline,
-            tasks.status,
-            tasks.created_by,
-            tasks.assigned_to,
-            tasks.carried_forward,
-            tasks.task_scope,
-            tasks.created_at,
-
-            tasks.admin_deleted,
-            tasks.employee_deleted,
-
-            employees.name AS employee_name
-
-        FROM tasks
-
-        LEFT JOIN employees
-
-            ON tasks.assigned_to = employees.id
-
-        WHERE COALESCE(
-            tasks.admin_deleted,
-            FALSE
-        ) = FALSE
-
-    """
-
-
-    params = []
-
-
-    # =========================================================
-    # EMPLOYEE NAME FILTER
-    # =========================================================
-
-    if employee_id:
-
-        base_query += """
-
-            AND tasks.assigned_to = %s
-
-        """
-
-        params.append(employee_id)
-
-
-    # =========================================================
-    # STATUS FILTER
-    # =========================================================
-
-    if status:
-
-        base_query += """
-
-            AND tasks.status = %s
-
-        """
-
-        params.append(status)
-
-
-    # =========================================================
-    # ORDER
-    # =========================================================
-
-    base_query += """
-
-        ORDER BY tasks.id DESC
-
-    """
-
-
-    c.execute(
-        base_query,
-        params
-    )
-
-
-    tasks = c.fetchall()
-
-
-    # =========================================================
-    # NORMALIZE DEADLINES
-    # =========================================================
-
-    for task in tasks:
-
-        deadline = task.get("deadline")
-
-
-        if deadline:
-
-            if isinstance(
-                deadline,
-                datetime
-            ):
-
-                task["deadline_date"] = (
-                    deadline.date()
-                )
-
-
-            elif isinstance(
-                deadline,
-                date
-            ):
-
-                task["deadline_date"] = deadline
-
-
-            elif isinstance(
-                deadline,
-                str
-            ):
-
-                try:
-
-                    task["deadline_date"] = (
-                        datetime.strptime(
-                            deadline[:10],
-                            "%Y-%m-%d"
-                        ).date()
-                    )
-
-                except (
-                    ValueError,
-                    TypeError
-                ):
-
-                    task["deadline_date"] = None
-
-
-            else:
-
-                task["deadline_date"] = None
+    c = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        # =====================================================
+        # FILTERS
+        # =====================================================
+        status = request.args.get("status", "").strip() or None
+        employee_id = request.args.get("employee_id", "").strip() or None
+
+        period = request.args.get("period", "").strip()
+
+        # Accept only supported date filters.
+        if period not in ("this_week", "last_week"):
+            period = ""
+
+        # Use Monday as the first day of the week.
+        today = date.today()
+        this_monday = today - timedelta(days=today.weekday())
+        next_monday = this_monday + timedelta(days=7)
+
+        if period == "this_week":
+            period_start = this_monday
+            period_end = today + timedelta(days=1)
+
+        elif period == "last_week":
+            period_start = this_monday - timedelta(days=7)
+            period_end = this_monday
 
         else:
+            period_start = None
+            period_end = None
 
-            task["deadline_date"] = None
-
-
-    # =========================================================
-    # COMMENTS / DISCUSSIONS
-    # =========================================================
-
-    for task in tasks:
-
+        # =====================================================
+        # LOAD EMPLOYEES
+        # =====================================================
         c.execute("""
+            SELECT id, name
+            FROM employees
+            ORDER BY name ASC
+        """)
 
-            SELECT *
+        employees = c.fetchall()
 
-            FROM task_comments
+        # =====================================================
+        # LOAD TASKS
+        # =====================================================
+        base_query = """
+            SELECT
+                tasks.id,
+                tasks.title,
+                tasks.description,
+                tasks.note,
+                tasks.reply,
+                tasks.admin_reply,
+                tasks.deadline,
+                tasks.status,
+                COALESCE(tasks.priority, 'Medium') AS priority,
+                tasks.created_by,
+                tasks.assigned_to,
+                tasks.carried_forward,
+                tasks.task_scope,
+                tasks.created_at,
+                tasks.admin_deleted,
+                tasks.employee_deleted,
+                employees.name AS employee_name
 
-            WHERE task_id = %s
+            FROM tasks
 
-            ORDER BY created_at ASC
+            LEFT JOIN employees
+                ON tasks.assigned_to = employees.id
 
-        """,
-        (
-            task["id"],
-        ))
-
-
-        comments = c.fetchall()
-
-
-        task["comments"] = (
-            build_comment_tree(
-                comments
-            )
-        )
-
-
-    # =========================================================
-    # STATISTICS
-    #
-    # Statistics follow the selected employee filter.
-    # Status buttons continue to filter the task list.
-    #
-    # We intentionally DO NOT apply the status filter here,
-    # so the three cards show Pending/In Progress/Completed
-    # for the selected employee.
-    # =========================================================
-
-    stats_params = []
-
-
-    stats_where = """
-
-        WHERE COALESCE(
-            admin_deleted,
-            FALSE
-        ) = FALSE
-
-    """
-
-
-    if employee_id:
-
-        stats_where += """
-
-            AND assigned_to = %s
-
+            WHERE COALESCE(tasks.admin_deleted, FALSE) = FALSE
         """
 
-        stats_params.append(employee_id)
+        params = []
 
+        # Employee filter
+        if employee_id:
+            base_query += """
+                AND tasks.assigned_to = %s
+            """
+            params.append(employee_id)
 
-    c.execute(f"""
+        # Date filter
+        if period:
+            base_query += """
+                AND tasks.created_at >= %s
+                AND tasks.created_at < %s
+            """
+            params.extend([period_start, period_end])
 
-        SELECT COUNT(*) AS count
+        # Status filter
+        if status:
+            base_query += """
+                AND tasks.status = %s
+            """
+            params.append(status)
 
-        FROM tasks
+        base_query += """
+            ORDER BY tasks.id DESC
+        """
 
-        {stats_where}
+        c.execute(base_query, params)
+        tasks = c.fetchall()
 
-        AND status = 'Pending'
+        # =====================================================
+        # NORMALIZE DEADLINES
+        # =====================================================
+        for task in tasks:
+            deadline = task.get("deadline")
 
-    """,
-    stats_params)
+            if isinstance(deadline, datetime):
+                task["deadline_date"] = deadline.date()
 
+            elif isinstance(deadline, date):
+                task["deadline_date"] = deadline
 
-    pending_count = (
-        c.fetchone()["count"]
-    )
+            elif isinstance(deadline, str):
+                try:
+                    task["deadline_date"] = datetime.strptime(
+                        deadline[:10], "%Y-%m-%d"
+                    ).date()
+                except (ValueError, TypeError):
+                    task["deadline_date"] = None
 
+            else:
+                task["deadline_date"] = None
 
-    c.execute(f"""
+        # =====================================================
+        # LOAD DISCUSSIONS AND BUILD NESTED REPLIES
+        # =====================================================
+        for task in tasks:
+            c.execute("""
+                SELECT *
+                FROM task_comments
+                WHERE task_id = %s
+                ORDER BY created_at ASC, id ASC
+            """, (task["id"],))
 
-        SELECT COUNT(*) AS count
+            comments = c.fetchall()
 
-        FROM tasks
+            task["comments"] = build_comment_tree(comments)
 
-        {stats_where}
+        # =====================================================
+        # STATISTICS
+        #
+        # Follow employee and date filters.
+        # Do not apply the selected status filter to the cards.
+        # =====================================================
+        stats_where = """
+            WHERE COALESCE(admin_deleted, FALSE) = FALSE
+        """
 
-        AND status = 'In Progress'
+        stats_params = []
 
-    """,
-    stats_params)
+        if employee_id:
+            stats_where += """
+                AND assigned_to = %s
+            """
+            stats_params.append(employee_id)
 
+        if period:
+            stats_where += """
+                AND created_at >= %s
+                AND created_at < %s
+            """
+            stats_params.extend([period_start, period_end])
 
-    progress_count = (
-        c.fetchone()["count"]
-    )
+        c.execute(f"""
+            SELECT COUNT(*) AS count
+            FROM tasks
+            {stats_where}
+            AND status = 'Pending'
+        """, stats_params)
 
+        pending_count = c.fetchone()["count"]
 
-    c.execute(f"""
+        c.execute(f"""
+            SELECT COUNT(*) AS count
+            FROM tasks
+            {stats_where}
+            AND status = 'In Progress'
+        """, stats_params)
 
-        SELECT COUNT(*) AS count
+        progress_count = c.fetchone()["count"]
 
-        FROM tasks
+        c.execute(f"""
+            SELECT COUNT(*) AS count
+            FROM tasks
+            {stats_where}
+            AND status = 'Completed'
+        """, stats_params)
 
-        {stats_where}
+        completed_count = c.fetchone()["count"]
 
-        AND status = 'Completed'
+        c.execute(f"""
+            SELECT COUNT(*) AS count
+            FROM tasks
+            {stats_where}
+            AND status != 'Completed'
+            AND deadline IS NOT NULL
+            AND deadline < %s
+        """, stats_params + [today])
 
-    """,
-    stats_params)
+        overdue_count = c.fetchone()["count"]
 
+        # =====================================================
+        # RENDER
+        # =====================================================
+        return render_template(
+            "admin_tasks.html",
+            tasks=tasks,
+            employees=employees,
+            selected_employee=employee_id,
+            selected_status=status,
+            selected_period=period,
+            pending_count=pending_count,
+            progress_count=progress_count,
+            completed_count=completed_count,
+            overdue_count=overdue_count,
+            today=today
+        )
 
-    completed_count = (
-        c.fetchone()["count"]
-    )
-
-
-    conn.close()
-
-
-    # =========================================================
-    # TODAY
-    # =========================================================
-
-    today = date.today()
-
-
-    # =========================================================
-    # RENDER
-    # =========================================================
-
-    return render_template(
-
-        "admin_tasks.html",
-
-        tasks=tasks,
-
-        employees=employees,
-
-        selected_employee=employee_id,
-
-        selected_status=status,
-
-        pending_count=pending_count,
-
-        progress_count=progress_count,
-
-        completed_count=completed_count,
-
-        today=today
-
-    )
+    finally:
+        c.close()
+        conn.close()
 
 
 @app.route('/admin/reply_task/<int:id>', methods=['POST'])
@@ -3880,112 +3777,104 @@ def delete_task_route(task_id):
 
         }), 500
 
-@app.route('/admin/assign_task', methods=['GET','POST'])
+@app.route('/admin/assign_task', methods=['GET', 'POST'])
 def assign_task():
 
     if 'role' not in session or session['role'] != 'admin':
         return "Access Denied"
 
-
     conn = get_db()
-
     c = conn.cursor(cursor_factory=RealDictCursor)
 
-
-
-    if request.method == 'POST':
-
-        title = request.form['title']
-
-        description = request.form['description']
-
-        note = request.form['note']
-
-        assigned_to = request.form['assigned_to']
-
-        deadline = request.form.get('deadline') or None
-
-
-
-        created_at = datetime.now()
-
-
-
+    try:
+        # Load employees first: needed for the form AND to validate the posted ids
         c.execute("""
-            INSERT INTO tasks
-            (
-                title,
-                description,
-                note,
-                assigned_to,
-                deadline,
-                status,
-                created_by,
-                task_scope,
-                created_at
-            )
+            SELECT id, name
+            FROM employees
+            ORDER BY name ASC
+        """)
+        employees = c.fetchall()
 
-            VALUES
-            (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s
-            )
+        if request.method == 'POST':
 
-        """,
-        (
-            title,
-            description,
-            note,
-            assigned_to,
-            deadline,
-            "Pending",
-            session['user_id'],
-            "admin_board",
-            created_at
-        ))
+            title = request.form.get('title', '').strip()
+            description = request.form.get('description', '').strip()
+            note = request.form.get('note', '').strip()
+            priority = request.form.get('priority', 'Medium').strip().title()
+            if priority not in {'High', 'Medium', 'Low'}:
+                priority = 'Medium'
+            deadline_raw = request.form.get('deadline') or None
 
+            # Unique ids, original order, only real employees
+            employee_lookup = {str(e['id']): e['id'] for e in employees}
+            assignee_ids = [
+                employee_lookup[rid]
+                for rid in dict.fromkeys(request.form.getlist('assigned_to'))
+                if rid in employee_lookup
+            ]
 
+            # Validation
+            form_error = None
+            deadline = None
 
-        conn.commit()
+            if not title or not description:
+                form_error = "Please enter a task title and description."
+            elif not assignee_ids:
+                form_error = "Choose at least one employee."
+            elif deadline_raw:
+                try:
+                    deadline = datetime.strptime(deadline_raw, "%Y-%m-%d").date()
+                    if deadline < date.today():
+                        form_error = "The deadline cannot be in the past."
+                except ValueError:
+                    form_error = "The deadline is not a valid date."
 
+            if form_error:
+                return render_template(
+                    "assign_task.html",
+                    employees=employees,
+                    form_error=form_error
+                ), 400
+
+            # One task per employee, all in a single transaction
+            created_at = datetime.now()
+
+            try:
+                for emp_id in assignee_ids:
+                    c.execute("""
+                        INSERT INTO tasks
+                        (
+                            title, description, note, assigned_to, deadline,
+                            status, created_by, task_scope, created_at, priority
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        title, description, note, emp_id, deadline,
+                        "Pending", session['user_id'], "admin_board", created_at, priority
+                    ))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                logging.exception("Assign task failed")
+                return render_template(
+                    "assign_task.html",
+                    employees=employees,
+                    form_error="Something went wrong while saving. No tasks were created."
+                ), 500
+
+            # 🔔 Notify each employee. A failed notification must not break the others.
+            for emp_id in assignee_ids:
+                try:
+                    create_notification(emp_id, f"New Task Assigned: {title}")
+                except Exception:
+                    logging.exception("Notification failed for employee %s", emp_id)
+
+            return redirect('/admin/tasks')
+
+        return render_template("assign_task.html", employees=employees)
+
+    finally:
         conn.close()
-
-        # 🔔 Persistent + real-time notification
-        create_notification(
-            assigned_to,
-            f"New Task Assigned: {title}"
-        )
-
-        return redirect('/admin/tasks')
-
-
-
-    # Load employees
-
-    c.execute("""
-        SELECT id, name
-        FROM employees
-        ORDER BY name ASC
-    """)
-
-
-    employees = c.fetchall()
-
-
-    conn.close()
-
-
-    return render_template(
-        "assign_task.html",
-        employees=employees
-    )
 
 @app.route('/admin/employees')
 def admin_employees():
@@ -5768,6 +5657,7 @@ def tasks():
             admin_reply,
             deadline,
             status,
+            COALESCE(priority, 'Medium') AS priority,
             created_by,
             assigned_to,
             carried_forward,
@@ -6414,6 +6304,10 @@ def create_task():
         ""
     ).strip()
 
+    priority = request.form.get("priority", "Medium").strip().title()
+    if priority not in {"High", "Medium", "Low"}:
+        priority = "Medium"
+
     deadline = request.form.get(
         "deadline"
     ) or None
@@ -6433,10 +6327,12 @@ def create_task():
             created_by,
             created_at,
             original_deadline,
-            carried_forward
+            carried_forward,
+            priority
         )
         VALUES
         (
+            %s,
             %s,
             %s,
             %s,
@@ -6456,7 +6352,8 @@ def create_task():
         session["user_id"],
         datetime.now(),
         deadline,
-        False
+        False,
+        priority
     ))
 
     conn.commit()
@@ -6522,22 +6419,17 @@ def delete_task(id):
         return redirect('/')
 
     conn = get_db()
-
     c = conn.cursor()
 
+    # Only hide the task from the employee's own list
     c.execute("""
-
-        DELETE FROM tasks
-
+        UPDATE tasks
+        SET employee_deleted = TRUE
         WHERE id=%s
-
-    """,
-    (
-        id,
-    ))
+        AND assigned_to=%s
+    """, (id, session['user_id']))
 
     conn.commit()
-
     conn.close()
 
     return redirect('/tasks')

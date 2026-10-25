@@ -1,9 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_from_directory, abort, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_from_directory, abort, jsonify, send_file
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import os
 import uuid
 import json
+from io import BytesIO
+from urllib.request import Request as URLRequest, urlopen
+from urllib.error import URLError, HTTPError
 
 import cloudinary
 import cloudinary.uploader
@@ -1651,7 +1654,41 @@ def attachment(request_id, attachment_id):
             return "Attachment not found", 404
 
         if att.get("cloudinary_url"):
-            return redirect(att["cloudinary_url"])
+            # Proxy the file through Flask so the browser receives a reliable
+            # Content-Disposition attachment header and the original filename
+            # (especially important for .xls/.xlsx files).
+            remote_url = att["cloudinary_url"]
+            try:
+                remote_request = URLRequest(
+                    remote_url,
+                    headers={"User-Agent": "SALT-Workforce-Portal/1.0"}
+                )
+                with urlopen(remote_request, timeout=45) as remote_response:
+                    file_bytes = remote_response.read()
+                    remote_type = remote_response.headers.get(
+                        "Content-Type", "application/octet-stream"
+                    ).split(";", 1)[0]
+
+                original_name = secure_filename(att.get("original_name") or "attachment")
+                if not original_name:
+                    original_name = "attachment"
+
+                # Office documents should be downloaded as files, not rendered
+                # inline by the browser.
+                return send_file(
+                    BytesIO(file_bytes),
+                    mimetype=remote_type or "application/octet-stream",
+                    as_attachment=True,
+                    download_name=original_name,
+                    max_age=0
+                )
+            except (HTTPError, URLError, TimeoutError, OSError) as exc:
+                print("REQUEST ATTACHMENT DOWNLOAD ERROR:", repr(exc))
+                return (
+                    "The attachment could not be downloaded from storage. "
+                    "Please try again or contact the portal administrator.",
+                    502
+                )
 
         # Legacy local-file fallback for attachments uploaded before Cloudinary.
         stored_name = att.get("stored_name")
@@ -1670,8 +1707,8 @@ def attachment(request_id, attachment_id):
         return send_from_directory(
             upload_folder,
             filename,
-            as_attachment=False,
-            download_name=att["original_name"]
+            as_attachment=True,
+            download_name=secure_filename(att["original_name"]) or "attachment"
         )
     finally:
         conn.close()

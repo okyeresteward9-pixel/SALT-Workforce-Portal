@@ -1,4296 +1,1128 @@
-<!DOCTYPE html>
-
-<html lang="en">
-
-<head>
-
-
-<meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
-
-<title>Task Management - SALT Workforce Portal</title>
-
-<link
-    rel="icon"
-    href="{{ url_for('static', filename='salt-logo.png') }}"
->
-
-<link
-    rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}"
->
-
-<script src="https://cdn.tailwindcss.com"></script>
-
-<link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
->
-
-
-<style>
-
-    :root {
-        --salt-navy: #0f2b5b;
-        --salt-navy-dark: #0b2147;
-        --salt-blue: #1558b0;
-        --salt-blue-dark: #0f4b99;
-        --salt-blue-soft: #eaf2ff;
-        --salt-border: #dbe4f0;
-        --salt-bg: #f5f7fb;
-        --salt-text: #172033;
-        --salt-muted: #6b7280;
-    }
-
-
-    * {
-        box-sizing: border-box;
-    }
-
-
-    html,
-    body {
-        margin: 0;
-        min-height: 100%;
-    }
-
-
-    body {
-        background: var(--salt-bg);
-        color: var(--salt-text);
-
-        font-family:
-            Inter,
-            ui-sans-serif,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
-    }
-
-
-    /* =====================================================
-       FIXED SIDEBAR
-       ===================================================== */
-
-    .salt-sidebar {
-
-        position: fixed;
-
-        left: 0;
-        top: 0;
-
-        width: 260px;
-        min-width: 260px;
-
-        height: 100vh;
-        min-height: 100vh;
-
-        overflow-y: auto;
-        overflow-x: hidden;
-
-        color: white;
-
-        background:
-            linear-gradient(
-                180deg,
-                var(--salt-navy) 0%,
-                #12366f 100%
-            );
-
-        display: flex;
-        flex-direction: column;
-
-        z-index: 1000;
-
-        transition:
-            width .25s ease,
-            min-width .25s ease,
-            left .25s ease;
-    }
-
-
-    /* Sidebar scrollbar */
-
-    .salt-sidebar::-webkit-scrollbar {
-        width: 5px;
-    }
-
-    .salt-sidebar::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .salt-sidebar::-webkit-scrollbar-thumb {
-        background: rgba(255,255,255,.18);
-        border-radius: 10px;
-    }
-
-
-    /* =====================================================
-       SIDEBAR BRAND
-       ===================================================== */
-
-    .sidebar-brand {
-
-        padding: 22px 20px;
-
-        border-bottom:
-            1px solid rgba(255,255,255,.10);
-
-    }
-
-
-    .brand-logo {
-
-        width: 44px;
-        height: 44px;
-
-        border-radius: 12px;
-
-        background:
-            rgba(255,255,255,.10);
-
-        border:
-            1px solid rgba(255,255,255,.10);
-
-        display: flex;
-
-        align-items: center;
-        justify-content: center;
-
-        flex-shrink: 0;
-    }
-
-
-    .brand-logo img {
-
-        width: 32px;
-        height: 32px;
-
-        object-fit: contain;
-    }
-
-
-    /* =====================================================
-       SIDEBAR LINKS
-       ===================================================== */
-
-    .sidebar-link {
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 12px;
-
-        padding: 11px 14px;
-
-        margin-bottom: 5px;
-
-        border-radius: 12px;
-
-        color: #dbeafe;
-
-        text-decoration: none;
-
-        transition:
-            background .2s ease,
-            transform .2s ease,
-            color .2s ease;
-    }
-
-
-    .sidebar-link:hover {
-
-        background:
-            rgba(255,255,255,.09);
-
-        color: white;
-
-        transform:
-            translateX(2px);
-    }
-
-
-    .sidebar-link.active {
-
-        color: white;
-
-        background:
-            rgba(255,255,255,.16);
-
-        box-shadow:
-            inset 3px 0 0 #60a5fa;
-    }
-
-
-    .sidebar-icon {
-
-        width: 38px;
-        height: 38px;
-
-        flex-shrink: 0;
-
-        border-radius: 10px;
-
-        background:
-            rgba(255,255,255,.09);
-
-        display: flex;
-
-        align-items: center;
-        justify-content: center;
-    }
-
-
-    /* =====================================================
-       MAIN CONTENT
-       ===================================================== */
-
-    .portal-main {
-
-        margin-left: 260px;
-
-        width:
-            calc(100% - 260px);
-
-        min-width: 0;
-
-        min-height: 100vh;
-
-        transition:
-            margin-left .25s ease,
-            width .25s ease;
-    }
-
-
-    .main-inner {
-
-        max-width: 1500px;
-
-        margin: 0 auto;
-
-        padding:
-            28px 30px 40px;
-    }
-
-
-    /* =====================================================
-       TOP BAR
-       ===================================================== */
-
-    .topbar {
-
-        height: 58px;
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: space-between;
-
-        margin-bottom: 26px;
-    }
-
-
-    .menu-button {
-
-        width: 42px;
-        height: 42px;
-
-        border:
-            1px solid var(--salt-border);
-
-        border-radius: 11px;
-
-        background: white;
-
-        color: #475569;
-
-        box-shadow:
-            0 3px 10px rgba(15,43,91,.06);
-
-        cursor: pointer;
-
-        transition: .2s ease;
-    }
-
-
-    .menu-button:hover {
-
-        background: #f8fafc;
-
-        color: var(--salt-blue);
-    }
-
-
-    .admin-pill {
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 9px;
-
-        padding:
-            9px 15px;
-
-        border:
-            1px solid var(--salt-border);
-
-        border-radius: 12px;
-
-        background: white;
-
-        color: #475569;
-
-        font-size: 13px;
-
-        font-weight: 700;
-
-        box-shadow:
-            0 3px 12px rgba(15,43,91,.05);
-    }
-
-
-    .admin-pill i {
-        color: var(--salt-blue);
-    }
-
-
-    /* =====================================================
-       PAGE HEADER
-       ===================================================== */
-
-    .page-header {
-
-        display: flex;
-
-        align-items: flex-end;
-
-        justify-content: space-between;
-
-        gap: 20px;
-
-        margin-bottom: 22px;
-    }
-
-
-    .page-badge {
-
-        display: inline-flex;
-
-        align-items: center;
-
-        gap: 8px;
-
-        color: var(--salt-blue);
-
-        font-size: 13px;
-
-        font-weight: 800;
-
-        margin-bottom: 8px;
-
-        letter-spacing: .04em;
-    }
-
-
-    .page-title {
-
-        margin: 0;
-
-        color: #172033;
-
-        font-size:
-            clamp(28px, 3vw, 38px);
-
-        line-height: 1.15;
-
-        font-weight: 800;
-
-        letter-spacing: -.025em;
-    }
-
-
-    .page-subtitle {
-
-        margin-top: 8px;
-
-        color: var(--salt-muted);
-
-        font-size: 14px;
-    }
-
-
-    /* =====================================================
-       BUTTONS
-       ===================================================== */
-
-    .header-actions {
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 10px;
-    }
-
-
-    .btn-primary {
-
-        display: inline-flex;
-
-        align-items: center;
-
-        justify-content: center;
-
-        gap: 8px;
-
-        padding:
-            12px 17px;
-
-        border-radius: 11px;
-
-        background:
-            linear-gradient(
-                135deg,
-                var(--salt-blue),
-                var(--salt-blue-dark)
-            );
-
-        color: white;
-
-        font-size: 14px;
-
-        font-weight: 700;
-
-        text-decoration: none;
-
-        box-shadow:
-            0 6px 16px rgba(21,88,176,.18);
-
-        transition:
-            transform .2s ease,
-            box-shadow .2s ease;
-    }
-
-
-    .btn-primary:hover {
-
-        color: white;
-
-        transform:
-            translateY(-1px);
-
-        box-shadow:
-            0 9px 20px rgba(21,88,176,.25);
-    }
-
-
-    .btn-secondary {
-
-        display: inline-flex;
-
-        align-items: center;
-
-        justify-content: center;
-
-        gap: 8px;
-
-        padding:
-            11px 16px;
-
-        border:
-            1px solid var(--salt-border);
-
-        border-radius: 11px;
-
-        background: white;
-
-        color: #475569;
-
-        font-size: 14px;
-
-        font-weight: 700;
-
-        text-decoration: none;
-
-        transition:
-            background .2s ease,
-            border-color .2s ease;
-    }
-
-
-    .btn-secondary:hover {
-
-        background: #f8fafc;
-
-        border-color: #bdcadd;
-    }
-
-
-    /* =====================================================
-       WELCOME BAR
-       ===================================================== */
-
-    .welcome-bar {
-
-        display: flex;
-
-        align-items: flex-start;
-
-        gap: 13px;
-
-        padding:
-            15px 18px;
-
-        margin-bottom: 24px;
-
-        border:
-            1px solid #cfe0fb;
-
-        border-radius: 14px;
-
-        background:
-            var(--salt-blue-soft);
-
-        color: #31527f;
-    }
-
-
-    .welcome-icon {
-
-        width: 38px;
-        height: 38px;
-
-        flex-shrink: 0;
-
-        display: flex;
-
-        align-items: center;
-        justify-content: center;
-
-        border-radius: 10px;
-
-        background:
-            rgba(21,88,176,.10);
-
-        color:
-            var(--salt-blue);
-    }
-
-
-    .welcome-title {
-
-        color: #263f67;
-
-        font-size: 14px;
-
-        font-weight: 800;
-    }
-
-
-    .welcome-text {
-
-        margin-top: 2px;
-
-        font-size: 13px;
-
-        line-height: 1.55;
-    }
-
-
-    /* =====================================================
-       STATISTICS
-       ===================================================== */
-
-    .stats-grid {
-
-        display: grid;
-
-        grid-template-columns:
-            repeat(3, minmax(0, 1fr));
-
-        gap: 16px;
-
-        margin-bottom: 22px;
-    }
-
-
-    .stat-card {
-
-        position: relative;
-
-        overflow: hidden;
-
-        background: white;
-
-        border:
-            1px solid var(--salt-border);
-
-        border-radius: 16px;
-
-        padding: 19px;
-
-        box-shadow:
-            0 6px 22px rgba(15,43,91,.05);
-    }
-
-
-    .stat-card::after {
-
-        content: "";
-
-        position: absolute;
-
-        width: 100px;
-        height: 100px;
-
-        right: -35px;
-        top: -40px;
-
-        border-radius: 50%;
-
-        background:
-            rgba(21,88,176,.035);
-    }
-
-
-    .stat-top {
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: space-between;
-    }
-
-
-    .stat-label {
-
-        color: var(--salt-muted);
-
-        font-size: 12px;
-
-        font-weight: 700;
-
-        text-transform: uppercase;
-
-        letter-spacing: .05em;
-    }
-
-
-    .stat-value {
-
-        margin-top: 5px;
-
-        color: #172033;
-
-        font-size: 30px;
-
-        line-height: 1;
-
-        font-weight: 800;
-    }
-
-
-    .stat-icon {
-
-        width: 46px;
-        height: 46px;
-
-        border-radius: 12px;
-
-        background:
-            var(--salt-blue-soft);
-
-        color:
-            var(--salt-blue);
-
-        display: flex;
-
-        align-items: center;
-        justify-content: center;
-    }
-
-
-    /* =====================================================
-       TOOLBAR
-       ===================================================== */
-
-    .toolbar {
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: space-between;
-
-        gap: 15px;
-
-        padding:
-            14px 16px;
-
-        margin-bottom: 14px;
-
-        border:
-            1px solid var(--salt-border);
-
-        border-radius: 14px;
-
-        background: white;
-    }
-
-
-    .filter-label {
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 8px;
-
-        color: #334155;
-
-        font-size: 13px;
-
-        font-weight: 700;
-    }
-
-
-    .filter-label i {
-        color: var(--salt-blue);
-    }
-
-
-    .filter-buttons {
-
-        display: flex;
-
-        flex-wrap: wrap;
-
-        gap: 7px;
-    }
-
-
-    .filter-btn {
-
-        display: inline-flex;
-
-        align-items: center;
-
-        gap: 6px;
-
-        padding:
-            8px 13px;
-
-        border:
-            1px solid #d9e2ee;
-
-        border-radius: 9px;
-
-        background: white;
-
-        color: #64748b;
-
-        font-size: 12px;
-
-        font-weight: 700;
-
-        text-decoration: none;
-
-        transition: .2s ease;
-    }
-
-
-    .filter-btn:hover {
-
-        background: #f8fafc;
-
-        border-color: #b9c8da;
-
-        color: var(--salt-blue);
-    }
-
-
-    /* =====================================================
-       TABLE
-       ===================================================== */
-
-    .table-card {
-
-        background: white;
-
-        border:
-            1px solid var(--salt-border);
-
-        border-radius: 17px;
-
-        overflow: hidden;
-
-        box-shadow:
-            0 8px 28px rgba(15,43,91,.055);
-    }
-
-
-    .table-header {
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: space-between;
-
-        gap: 15px;
-
-        padding:
-            17px 20px;
-
-        border-bottom:
-            1px solid var(--salt-border);
-    }
-
-
-    .table-heading {
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 10px;
-    }
-
-
-    .table-heading-icon {
-
-        width: 36px;
-        height: 36px;
-
-        border-radius: 9px;
-
-        display: flex;
-
-        align-items: center;
-        justify-content: center;
-
-        background:
-            var(--salt-blue-soft);
-
-        color:
-            var(--salt-blue);
-    }
-
-
-    .table-heading h2 {
-
-        margin: 0;
-
-        color: #26344d;
-
-        font-size: 15px;
-
-        font-weight: 800;
-    }
-
-
-    .table-heading p {
-
-        margin:
-            2px 0 0;
-
-        color: #94a3b8;
-
-        font-size: 11px;
-    }
-
-
-    .table-scroll {
-
-        width: 100%;
-
-        overflow-x: auto;
-
-        overflow-y: visible;
-
-        -webkit-overflow-scrolling: touch;
-    }
-
-
-    .table-scroll::-webkit-scrollbar {
-        height: 8px;
-    }
-
-
-    .table-scroll::-webkit-scrollbar-track {
-        background: #f1f5f9;
-    }
-
-
-    .table-scroll::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 20px;
-    }
-
-
-    table {
-
-        width: 100%;
-
-        min-width: 1180px;
-
-        border-collapse: collapse;
-    }
-
-
-    thead {
-        background: #f7f9fc;
-    }
-
-
-    th {
-
-        padding:
-            12px 15px;
-
-        color: #64748b;
-
-        font-size: 10px;
-
-        font-weight: 800;
-
-        text-align: left;
-
-        text-transform: uppercase;
-
-        letter-spacing: .055em;
-
-        border-bottom:
-            1px solid var(--salt-border);
-
-        white-space: nowrap;
-    }
-
-
-    td {
-
-        padding:
-            16px 15px;
-
-        border-bottom:
-            1px solid #edf1f6;
-
-        vertical-align: top;
-    }
-
-
-    tbody tr {
-
-        transition:
-            background .15s ease,
-            opacity .25s ease,
-            transform .25s ease;
-    }
-
-
-    tbody tr:hover {
-
-        background: #fbfdff;
-    }
-
-
-    tbody tr:last-child td {
-        border-bottom: none;
-    }
-
-
-    /* =====================================================
-       TASK
-       ===================================================== */
-
-    .task-id {
-
-        display: inline-flex;
-
-        padding:
-            5px 8px;
-
-        border-radius: 7px;
-
-        background: #f1f5f9;
-
-        color: #64748b;
-
-        font-size: 11px;
-
-        font-weight: 800;
-    }
-
-
-    .task-title {
-
-        color: #1e293b;
-
-        font-size: 13px;
-
-        font-weight: 800;
-    }
-
-
-    .task-description {
-
-        max-width: 260px;
-
-        margin-top: 4px;
-
-        color: #64748b;
-
-        font-size: 12px;
-
-        line-height: 1.5;
-    }
-
-
-    /* =====================================================
-       EMPLOYEE
-       ===================================================== */
-
-    .employee-cell {
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 9px;
-
-        min-width: 150px;
-    }
-
-
-    .employee-avatar {
-
-        width: 34px;
-        height: 34px;
-
-        flex-shrink: 0;
-
-        border-radius: 10px;
-
-        background:
-            var(--salt-blue-soft);
-
-        color:
-            var(--salt-blue);
-
-        display: flex;
-
-        align-items: center;
-        justify-content: center;
-
-        font-size: 12px;
-
-        font-weight: 800;
-    }
-
-
-    .employee-name {
-
-        color: #334155;
-
-        font-size: 12px;
-
-        font-weight: 700;
-    }
-
-
-    /* =====================================================
-       STATUS
-       ===================================================== */
-
-    .status-badge {
-
-        display: inline-flex;
-
-        align-items: center;
-
-        gap: 6px;
-
-        padding:
-            6px 9px;
-
-        border-radius: 999px;
-
-        font-size: 10px;
-
-        font-weight: 800;
-
-        white-space: nowrap;
-    }
-
-
-    .status-pending {
-
-        background: #fff7df;
-
-        color: #a16207;
-    }
-
-
-    .status-progress {
-
-        background:
-            var(--salt-blue-soft);
-
-        color:
-            var(--salt-blue);
-    }
-
-
-    .status-completed {
-
-        background: #eaf8f0;
-
-        color: #15803d;
-    }
-
-
-    .status-overdue {
-
-        background: #fff0f0;
-
-        color: #dc2626;
-    }
-
-
-    /* =====================================================
-       DISCUSSION
-       ===================================================== */
-
-    .discussion-cell {
-
-        width: 390px;
-
-        min-width: 390px;
-    }
-
-
-    .discussion-stack {
-
-        display: flex;
-
-        flex-direction: column;
-
-        gap: 8px;
-    }
-
-
-    .comment {
-
-        padding: 10px;
-
-        border:
-            1px solid #e4eaf2;
-
-        border-radius: 10px;
-
-        background: #fbfcfe;
-    }
-
-
-    .comment.admin-comment {
-
-        border-left:
-            3px solid #7c3aed;
-    }
-
-
-    .comment.employee-comment {
-
-        border-left:
-            3px solid #16a34a;
-    }
-
-
-    .comment-head {
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: space-between;
-
-        gap: 10px;
-    }
-
-
-    .comment-role {
-
-        font-size: 10px;
-
-        font-weight: 800;
-
-        text-transform: uppercase;
-    }
-
-
-    .comment-admin {
-        color: #7c3aed;
-    }
-
-
-    .comment-employee {
-        color: #15803d;
-    }
-
-
-    .comment-date {
-
-        color: #94a3b8;
-
-        font-size: 9px;
-    }
-
-
-    .comment-message {
-
-        margin-top: 5px;
-
-        color: #475569;
-
-        font-size: 11px;
-
-        line-height: 1.45;
-    }
-
-
-    .reply-form textarea {
-
-        width: 100%;
-
-        min-height: 48px;
-
-        resize: vertical;
-
-        padding:
-            8px 9px;
-
-        border:
-            1px solid #d8e1ec;
-
-        border-radius: 8px;
-
-        outline: none;
-
-        font-size: 11px;
-    }
-
-
-    .reply-form textarea:focus {
-
-        border-color:
-            var(--salt-blue);
-
-        box-shadow:
-            0 0 0 2px rgba(21,88,176,.10);
-    }
-
-
-    .reply-button {
-
-        margin-top: 5px;
-
-        border: none;
-
-        border-radius: 7px;
-
-        padding:
-            5px 9px;
-
-        background:
-            #eef2f7;
-
-        color:
-            #475569;
-
-        font-size: 10px;
-
-        font-weight: 700;
-
-        cursor: pointer;
-    }
-
-
-    .reply-button:hover {
-        background: #e2e8f0;
-    }
-
-
-    .empty-discussion {
-
-        color: #94a3b8;
-
-        font-size: 11px;
-
-        font-style: italic;
-    }
-
-
-    /* =====================================================
-       DISCUSSION UPGRADE
-       ===================================================== */
-
-    .discussion-header {
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:8px;
-        margin-bottom:8px;
-        padding-bottom:7px;
-        border-bottom:1px solid #edf1f6;
-    }
-
-    .discussion-title {
-        display:flex;
-        align-items:center;
-        gap:6px;
-        color:#334155;
-        font-size:10px;
-        font-weight:800;
-        text-transform:uppercase;
-        letter-spacing:.045em;
-    }
-
-    .discussion-title i { color:var(--salt-blue); }
-
-    .discussion-count {
-        min-width:20px;
-        padding:3px 6px;
-        border-radius:999px;
-        background:var(--salt-blue-soft);
-        color:var(--salt-blue);
-        font-size:9px;
-        font-weight:800;
-        text-align:center;
-    }
-
-    .comment-wrap { position:relative; }
-
-    .comment-wrap[data-level="1"],
-    .comment-wrap[data-level="2"],
-    .comment-wrap[data-level="3"] {
-        border-left:2px solid #e4ebf5;
-        padding-left:8px;
-    }
-
-    .comment:hover {
-        border-color:#cbd8e8;
-        background:#f8fbff;
-    }
-
-    .discussion-composer {
-        margin-top:10px;
-        padding:10px;
-        border:1px solid #dbe7f7;
-        border-radius:11px;
-        background:linear-gradient(135deg,#f8fbff,#f1f7ff);
-    }
-
-    .discussion-composer-label {
-        display:flex;
-        align-items:center;
-        gap:6px;
-        margin-bottom:6px;
-        color:#31527f;
-        font-size:10px;
-        font-weight:800;
-    }
-
-    .discussion-composer-label i { color:var(--salt-blue); }
-
-    .discussion-composer .reply-form { margin-top:0; }
-
-    .discussion-composer .reply-button {
-        background:var(--salt-blue-soft);
-        color:var(--salt-blue);
-    }
-
-    .discussion-composer .reply-button:hover { background:#dceaff; }
-
-    /* =====================================================
-       ACTIONS
-       ===================================================== */
-
-    .action-stack {
-
-        display: flex;
-
-        flex-direction: column;
-
-        gap: 7px;
-
-        min-width: 90px;
-    }
-
-
-    .delete-button {
-
-        display: inline-flex;
-
-        align-items: center;
-
-        justify-content: center;
-
-        gap: 6px;
-
-        width: 100%;
-
-        border:
-            1px solid #fecaca;
-
-        border-radius: 9px;
-
-        padding:
-            8px 10px;
-
-        background:
-            #fff5f5;
-
-        color:
-            #dc2626;
-
-        font-size: 11px;
-
-        font-weight: 700;
-
-        cursor: pointer;
-
-        text-decoration: none;
-
-        transition: .2s ease;
-    }
-
-
-    .delete-button:hover {
-
-        background: #fee2e2;
-
-        border-color: #fca5a5;
-
-        color: #b91c1c;
-    }
-
-
-    /* =====================================================
-       EMPTY STATE
-       ===================================================== */
-
-    .empty-state {
-
-        padding:
-            70px 20px;
-
-        text-align: center;
-    }
-
-
-    .empty-icon {
-
-        width: 64px;
-        height: 64px;
-
-        margin:
-            0 auto 15px;
-
-        border-radius: 16px;
-
-        display: flex;
-
-        align-items: center;
-        justify-content: center;
-
-        background:
-            var(--salt-blue-soft);
-
-        color:
-            #8fb6e8;
-
-        font-size: 26px;
-    }
-
-
-    .empty-state h2 {
-
-        margin: 0;
-
-        color: #334155;
-
-        font-size: 19px;
-
-        font-weight: 800;
-    }
-
-
-    .empty-state p {
-
-        margin-top: 5px;
-
-        color: #94a3b8;
-
-        font-size: 13px;
-    }
-
-
-    /* =====================================================
-       FOOTER
-       ===================================================== */
-
-    .page-footer {
-
-        padding:
-            18px 0 5px;
-
-        text-align: center;
-
-        color: #9aa7b8;
-
-        font-size: 11px;
-    }
-
-
-    /* =====================================================
-       COLLAPSED DESKTOP SIDEBAR
-       ===================================================== */
-
-    .salt-sidebar.collapsed {
-
-        width: 78px;
-
-        min-width: 78px;
-    }
-
-
-    .salt-sidebar.collapsed
-    .brand-text,
-
-    .salt-sidebar.collapsed
-    .sidebar-label {
-
-        display: none;
-    }
-
-
-    .salt-sidebar.collapsed
-    .sidebar-link {
-
-        justify-content: center;
-    }
-
-
-    .salt-sidebar.collapsed
-    .sidebar-icon {
-
-        margin: 0;
-    }
-
-
-    .salt-sidebar.collapsed
-    + .portal-main {
-
-        margin-left: 78px;
-
-        width:
-            calc(100% - 78px);
-    }
-
-
-    /* =====================================================
-       RESPONSIVE
-       ===================================================== */
-
-    @media (max-width: 1100px) {
-
-        .stats-grid {
-
-            grid-template-columns:
-                repeat(3, minmax(0, 1fr));
-        }
-
-    }
-
-
-    @media (max-width: 850px) {
-
-        .salt-sidebar {
-
-            left: -270px;
-
-            width: 260px;
-
-            min-width: 260px;
-
-            box-shadow:
-                10px 0 30px rgba(0,0,0,.12);
-        }
-
-
-        .salt-sidebar.mobile-open {
-
-            left: 0;
-        }
-
-
-        .portal-main {
-
-            margin-left: 0;
-
-            width: 100%;
-        }
-
-
-        .salt-sidebar.collapsed
-        + .portal-main {
-
-            margin-left: 0;
-
-            width: 100%;
-        }
-
-
-        .main-inner {
-
-            padding:
-                20px 16px 30px;
-        }
-
-
-        .page-header {
-
-            align-items:
-                flex-start;
-
-            flex-direction:
-                column;
-        }
-
-
-        .header-actions {
-
-            width: 100%;
-        }
-
-
-        .header-actions a {
-
-            flex: 1;
-        }
-
-
-        .toolbar {
-
-            align-items:
-                flex-start;
-
-            flex-direction:
-                column;
-        }
-
-
-        .stats-grid {
-
-            grid-template-columns:
-                1fr;
-        }
-
-    }
-
-
-    @media (max-width: 520px) {
-
-        .filter-controls {
-            width: 100%;
-            align-items: stretch;
-            flex-direction: column;
-        }
-
-        .employee-filter-form {
-            width: 100%;
-        }
-
-        .employee-select-wrapper select {
-            width: 100%;
-        }
-
-        .filter-buttons {
-            width: 100%;
-        }
-
-
-        .topbar {
-
-            margin-bottom: 18px;
-        }
-
-
-        .admin-pill {
-
-            display: none;
-        }
-
-
-        .page-title {
-
-            font-size: 28px;
-        }
-
-
-        .header-actions {
-
-            flex-direction:
-                column;
-        }
-
-
-        .header-actions a {
-
-            width: 100%;
-        }
-
-
-        .filter-buttons {
-
-            width: 100%;
-        }
-
-
-        .filter-btn {
-
-            flex: 1;
-
-            justify-content: center;
-        }
-
-    }
-
-
-
-/* =====================================================
-   EMPLOYEE NAME FILTER
-   ===================================================== */
-
-.filter-controls {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 10px;
+{% extends "base.html" %}
+
+{% block title %}Task Management · SALT Workforce Portal{% endblock %}
+{% block page_heading %}Task Management{% endblock %}
+
+{% block extra_css %}
+<style id="salt-step6a-task-page-css">
+/* Fallbacks only apply if base.html does not define the tokens (zero specificity). */
+:where(:root) {
+    --salt-blue: #1558b0;
+    --salt-blue-dark: #0f4590;
+    --salt-blue-soft: #eaf2ff;
+    --salt-border: #e3e9f1;
+    --salt-muted: #64748b;
 }
 
-.employee-filter-form {
-    margin: 0;
+/* ===== Helpers (replace Tailwind dependencies) ===== */
+#task-page-content .mr-1 { margin-right: 4px; }
+.scroll-hint { color: #94a3b8; font-size: 12px; white-space: nowrap; }
+.no-deadline { color: #94a3b8; font-size: 12px; }
+
+/* ===== Page header ===== */
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+.page-badge { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--salt-blue); font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+.page-title { margin: 0; color: #172033; font-size: clamp(28px, 3vw, 38px); line-height: 1.15; font-weight: 800; letter-spacing: -.025em; }
+.page-subtitle { margin-top: 8px; max-width: 62ch; color: var(--salt-muted); font-size: 14px; line-height: 1.6; }
+.header-actions { display: flex; align-items: center; gap: 10px; }
+
+/* ===== Buttons ===== */
+.btn-primary, .btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 11px; font-size: 14px; font-weight: 700; text-decoration: none; transition: transform .2s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease; }
+.btn-primary { padding: 12px 17px; background: linear-gradient(135deg, var(--salt-blue), var(--salt-blue-dark)); color: #fff; box-shadow: 0 6px 16px rgba(21,88,176,.18); }
+.btn-primary:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 9px 20px rgba(21,88,176,.25); }
+.btn-secondary { padding: 11px 16px; border: 1px solid var(--salt-border); background: #fff; color: #475569; }
+.btn-secondary:hover { background: #f8fafc; border-color: #bdcadd; }
+
+/* ===== Welcome bar ===== */
+.welcome-bar { display: flex; align-items: flex-start; gap: 13px; padding: 15px 18px; margin-bottom: 24px; border: 1px solid #cfe0fb; border-radius: 14px; background: var(--salt-blue-soft); color: #31527f; }
+.welcome-icon { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(21,88,176,.10); color: var(--salt-blue); }
+.welcome-title { color: #263f67; font-size: 14px; font-weight: 800; }
+.welcome-text { margin-top: 3px; color: #536b8d; font-size: 13px; line-height: 1.55; }
+
+/* ===== Stats ===== */
+.stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+.stat-card { position: relative; overflow: hidden; padding: 19px; border: 1px solid var(--salt-border); border-radius: 16px; background: #fff; box-shadow: 0 6px 22px rgba(15,43,91,.05); }
+.stat-card::after { content: ""; position: absolute; width: 100px; height: 100px; right: -35px; top: -40px; border-radius: 50%; background: rgba(21,88,176,.035); }
+.stat-top { display: flex; align-items: center; justify-content: space-between; }
+.stat-label { color: var(--salt-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.stat-value { margin-top: 5px; color: #172033; font-size: 30px; line-height: 1; font-weight: 800; }
+.stat-icon { width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--salt-blue-soft); color: var(--salt-blue); }
+
+/* ===== Toolbar / filters ===== */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 16px; margin-bottom: 14px; border: 1px solid var(--salt-border); border-radius: 14px; background: #fff; }
+.filter-label { display: flex; align-items: center; gap: 8px; color: #334155; font-size: 13px; font-weight: 700; }
+.filter-label i { color: var(--salt-blue); }
+.filter-controls { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
+.employee-filter-form { margin: 0; }
+.employee-select-wrapper { position: relative; display: flex; align-items: center; }
+.employee-select-wrapper i { position: absolute; left: 12px; z-index: 2; color: var(--salt-blue); font-size: 12px; pointer-events: none; }
+.employee-select-wrapper select { min-width: 190px; padding: 9px 34px; appearance: none; border: 1px solid #d9e2ee; border-radius: 9px; background-color: #fff; background-image: linear-gradient(45deg, transparent 50%, #64748b 50%), linear-gradient(135deg, #64748b 50%, transparent 50%); background-position: calc(100% - 15px) 15px, calc(100% - 10px) 15px; background-size: 5px 5px; background-repeat: no-repeat; color: #475569; font: inherit; font-size: 12px; font-weight: 700; outline: none; cursor: pointer; transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
+.employee-select-wrapper select:hover { border-color: #b9c8da; background-color: #f8fafc; }
+.employee-select-wrapper select:focus { border-color: var(--salt-blue); box-shadow: 0 0 0 3px rgba(21,88,176,.10); }
+.filter-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+.filter-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border: 1px solid #d9e2ee; border-radius: 9px; background: #fff; color: #64748b; font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer; transition: background .2s ease, border-color .2s ease, color .2s ease; }
+.filter-btn:hover { background: #f8fafc; border-color: #b9c8da; color: var(--salt-blue); }
+.filter-btn.active { background: var(--salt-blue); border-color: var(--salt-blue); color: #fff; box-shadow: 0 4px 10px rgba(21,88,176,.15); }
+.filter-btn.active:hover { background: var(--salt-blue-dark); color: #fff; }
+
+/* ===== Operations centre controls ===== */
+.ops-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:14px 16px; margin-bottom:14px; border:1px solid var(--salt-border); border-radius:14px; background:#fff; }
+.ops-search { flex:1 1 230px; position:relative; min-width:180px; }
+.ops-search i { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:#8da0b8; }
+.ops-search input { width:100%; padding:11px 12px 11px 37px; border:1px solid #d9e2ee; border-radius:10px; outline:none; font:inherit; font-size:13px; color:#334155; background:#fff; }
+.ops-search input:focus { border-color:var(--salt-blue); box-shadow:0 0 0 3px rgba(21,88,176,.10); }
+.ops-select { padding:10px 12px; border:1px solid #d9e2ee; border-radius:10px; background:#fff; color:#475569; font:inherit; font-size:12px; font-weight:700; }
+.priority-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:999px; font-size:10px; font-weight:800; white-space:nowrap; }
+.priority-high { background:#fff0f0; color:#c62828; }
+.priority-medium { background:#fff7df; color:#9a6700; }
+.priority-low { background:#eaf8f0; color:#15803d; }
+.priority-control { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.priority-control select { max-width:125px; padding:6px 8px; border:1px solid #d9e2ee; border-radius:8px; background:#fff; color:#475569; font:inherit; font-size:11px; font-weight:700; }
+.discussion-open-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 12px; border:1px solid #d5e3f6; border-radius:10px; background:#f6faff; color:var(--salt-blue); font:inherit; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
+.discussion-open-button:hover { background:var(--salt-blue-soft); border-color:#b9d1f3; }
+.discussion-open-button .discussion-count { display:inline-flex; }
+.discussion-cell { width:auto; min-width:130px; }
+.discussion-cell > .discussion-stack { display:none; }
+.task-hidden { display:none !important; }
+
+/* ===== Table ===== */
+.table-card { overflow: hidden; border: 1px solid var(--salt-border); border-radius: 17px; background: #fff; box-shadow: 0 8px 28px rgba(15,43,91,.055); }
+.table-header { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 17px 20px; border-bottom: 1px solid var(--salt-border); }
+.table-heading { display: flex; align-items: center; gap: 10px; }
+.table-heading-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: var(--salt-blue-soft); color: var(--salt-blue); }
+.table-heading h2 { margin: 0; color: #26344d; font-size: 15px; font-weight: 800; }
+.table-heading p { margin: 2px 0 0; color: #7b8aa0; font-size: 12px; }
+.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll::-webkit-scrollbar { height: 8px; }
+.table-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+.table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
+table { width: 100%; min-width: 1050px; border-collapse: collapse; }
+thead { background: #f7f9fc; }
+th { padding: 12px 15px; border-bottom: 1px solid var(--salt-border); color: #64748b; font-size: 11px; font-weight: 800; text-align: left; text-transform: uppercase; letter-spacing: .055em; white-space: nowrap; }
+td { padding: 16px 15px; border-bottom: 1px solid #edf1f6; vertical-align: top; }
+tbody tr { transition: background .15s ease, opacity .25s ease, transform .25s ease; }
+tbody tr:hover { background: #fbfdff; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr.is-removing { opacity: 0; transform: translateX(18px); }
+
+/* ===== Task ===== */
+.task-id { display: inline-flex; padding: 5px 8px; border-radius: 7px; background: #f1f5f9; color: #64748b; font-size: 11px; font-weight: 800; }
+.task-title { color: #1e293b; font-size: 14px; font-weight: 800; line-height: 1.45; }
+.task-description { max-width: 260px; margin-top: 4px; color: #64748b; font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.task-description.is-empty { color: #94a3b8; font-style: italic; }
+
+/* ===== Employee ===== */
+.employee-cell { display: flex; align-items: center; gap: 9px; min-width: 150px; }
+.employee-avatar { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--salt-blue-soft); color: var(--salt-blue); font-size: 12px; font-weight: 800; }
+.employee-name { color: #334155; font-size: 13px; font-weight: 700; }
+
+/* ===== Deadline ===== */
+.deadline { display: flex; align-items: center; gap: 6px; color: #475569; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.deadline i { color: var(--salt-blue); }
+.overdue-wrap { margin-top: 8px; }
+
+/* ===== Badges ===== */
+.status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.status-pending { background: #fff7df; color: #a16207; }
+.status-progress { background: var(--salt-blue-soft); color: var(--salt-blue); }
+.status-completed { background: #eaf8f0; color: #15803d; }
+.status-overdue { background: #fff0f0; color: #dc2626; }
+.type-self { background: #e6f9fc; color: #0e7490; }
+.type-assigned { background: #f3eefe; color: #7c3aed; }
+
+/* ===== Discussion (shared by the in-table stack and the drawer) ===== */
+.discussion-stack { display: flex; flex-direction: column; gap: 9px; }
+.discussion-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 7px; border-bottom: 1px solid #edf1f6; }
+.discussion-title { display: flex; align-items: center; gap: 7px; color: #334155; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.discussion-title i { color: var(--salt-blue); }
+.discussion-count { min-width: 22px; padding: 3px 7px; border-radius: 999px; background: var(--salt-blue-soft); color: var(--salt-blue); font-size: 11px; font-weight: 800; text-align: center; }
+.discussion-preview { padding: 9px 11px; border: 1px solid #e4ebf3; border-radius: 10px; background: #fafcff; }
+.discussion-preview-label { margin-bottom: 3px; color: #94a3b8; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.discussion-preview-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: #64748b; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.discussion-toggle { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 10px; border: 1px solid #dbe5f0; border-radius: 9px; background: #f8fbff; color: var(--salt-blue); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; transition: background .2s ease, border-color .2s ease; }
+.discussion-toggle:hover { background: var(--salt-blue-soft); border-color: #c9dbf2; }
+
+.discussion-body { display: none; flex-direction: column; gap: 8px; max-height: 380px; padding-right: 4px; overflow-y: auto; }
+.discussion-body.is-open { display: flex; }
+
+.comment-node { display: flex; flex-direction: column; gap: 7px; }
+.comment-children { display: flex; flex-direction: column; gap: 7px; margin-left: 12px; padding-left: 10px; border-left: 2px solid #e4ebf5; }
+.comment-children.is-flat { margin-left: 0; padding-left: 0; border-left: none; }
+
+.comment { padding: 10px 12px; border: 1px solid #e4eaf2; border-radius: 10px; background: #fbfcfe; transition: border-color .15s ease, background .15s ease; }
+.comment:hover { border-color: #cbd8e8; background: #f8fbff; }
+.comment.admin-comment { border-left: 3px solid #7c3aed; }
+.comment.employee-comment { border-left: 3px solid #16a34a; }
+.comment-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.comment-role { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.comment-admin { color: #7c3aed; }
+.comment-employee { color: #15803d; }
+.comment-date { color: #94a3b8; font-size: 10px; white-space: nowrap; }
+.comment-message { margin-top: 6px; color: #475569; font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-line; }
+.progress-note { margin-top: 7px; padding: 8px 10px; border-radius: 9px; background: #eef6ff; color: #31527f; font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-line; }
+.progress-note-label { margin-bottom: 3px; color: var(--salt-blue); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.reply-trigger { display: inline-flex; align-items: center; gap: 6px; margin-top: 7px; padding: 4px 8px; border: none; border-radius: 7px; background: transparent; color: #64748b; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: background .15s ease, color .15s ease; }
+.reply-trigger:hover { background: var(--salt-blue-soft); color: var(--salt-blue); }
+.inline-reply { display: none; margin-top: 8px; }
+.inline-reply.is-open { display: block; }
+.inline-reply-form { padding: 10px; border: 1px solid #d7e4f3; border-radius: 10px; background: #f8fbff; }
+.comment-reply-target { margin-bottom: 8px; padding: 6px 9px; border-left: 3px solid var(--salt-blue); border-radius: 0 7px 7px 0; background: #eaf2ff; color: #31527f; font-size: 11px; }
+.quoted-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 3px; color: #536b8d; font-style: italic; overflow-wrap: anywhere; }
+.reply-textarea, .reply-form textarea { display: block; width: 100%; min-height: 56px; padding: 8px 10px; resize: vertical; border: 1px solid #d8e1ec; border-radius: 8px; background: #fff; color: #334155; outline: none; font: inherit; font-size: 12px; }
+.reply-textarea:focus, .reply-form textarea:focus { border-color: var(--salt-blue); box-shadow: 0 0 0 2px rgba(21,88,176,.10); }
+.inline-reply-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 7px; }
+.cancel-reply, .send-reply, .reply-button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: none; border-radius: 7px; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.cancel-reply { background: #eef2f7; color: #475569; }
+.cancel-reply:hover { background: #e2e8f0; }
+.send-reply { background: var(--salt-blue); color: #fff; }
+.send-reply:hover { background: var(--salt-blue-dark); }
+.send-reply:disabled, .reply-button:disabled { opacity: .65; cursor: not-allowed; }
+.comment-highlight > .comment-wrap > .comment { animation: commentFlash 1.8s ease; }
+@keyframes commentFlash { 0%, 60% { background: #e6f0ff; border-color: #9dc0f2; } 100% { background: #fbfcfe; } }
+.empty-discussion { padding: 10px; color: #94a3b8; font-size: 12px; font-style: italic; }
+
+.discussion-composer { padding: 10px; border: 1px solid #dbe7f7; border-radius: 11px; background: linear-gradient(135deg, #f8fbff, #f1f7ff); }
+.discussion-composer-label { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; color: #31527f; font-size: 11px; font-weight: 800; }
+.discussion-composer-label i { color: var(--salt-blue); }
+.discussion-composer .reply-button { margin-top: 7px; background: var(--salt-blue-soft); color: var(--salt-blue); }
+.discussion-composer .reply-button:hover { background: #dceaff; transform: translateY(-1px); }
+
+/* ===== Actions ===== */
+.action-stack { display: flex; flex-direction: column; gap: 7px; min-width: 96px; }
+.delete-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 8px 10px; border: 1px solid #fecaca; border-radius: 9px; background: #fff5f5; color: #dc2626; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .2s ease, border-color .2s ease, color .2s ease; }
+.delete-button:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+.delete-button:disabled { opacity: .65; cursor: not-allowed; }
+
+/* ===== Empty state ===== */
+.empty-state { padding: 70px 20px; text-align: center; }
+.empty-icon { width: 64px; height: 64px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; border-radius: 16px; background: var(--salt-blue-soft); color: #8fb6e8; font-size: 26px; }
+.empty-state h2 { margin: 0; color: #334155; font-size: 19px; font-weight: 800; }
+.empty-state p { margin: 5px 0 0; color: #94a3b8; font-size: 13px; }
+.empty-state .btn-primary { margin-top: 20px; }
+
+/* ===== Footer / loading / toast ===== */
+.page-footer { padding: 18px 0 5px; text-align: center; color: #8d9bb0; font-size: 11px; }
+#task-page-content { transition: opacity .16s ease; }
+#task-page-content.is-loading { opacity: .58; pointer-events: none; }
+.salt-toast { position: fixed; right: 22px; bottom: 22px; z-index: 99999; display: flex; align-items: center; gap: 9px; max-width: 380px; padding: 13px 16px; border-radius: 12px; background: #1558b0; color: #fff; box-shadow: 0 12px 32px rgba(15,43,91,.22); font-size: 13px; font-weight: 700; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
+.salt-toast.show { opacity: 1; transform: none; }
+.salt-toast.error { background: #dc2626; }
+
+html.salt-dark .ops-toolbar { background:#111b2d; border-color:#2a3b56; color:#c2d0e2; }
+html.salt-dark .ops-search input, html.salt-dark .ops-select, html.salt-dark .priority-control select { background:#0f192a; border-color:#334967; color:#c5d2e3; }
+html.salt-dark .discussion-open-button { background:#172943; border-color:#2c4568; color:#9fc4ff; }
+
+/* ===== Accessibility ===== */
+.filter-btn:focus-visible, .discussion-toggle:focus-visible, .reply-trigger:focus-visible, .delete-button:focus-visible,
+.btn-primary:focus-visible, .btn-secondary:focus-visible, .send-reply:focus-visible, .cancel-reply:focus-visible,
+.reply-button:focus-visible, .discussion-open-button:focus-visible, .discussion-panel-close:focus-visible { outline: 2px solid var(--salt-blue); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ===== Responsive ===== */
+@media (max-width: 850px) {
+    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ops-toolbar { align-items:stretch; }
+    .ops-search { flex-basis:100%; }
+    .page-header { align-items: flex-start; flex-direction: column; }
+    .header-actions { width: 100%; }
+    .header-actions a { flex: 1; }
+    .toolbar { align-items: stretch; flex-direction: column; }
+    .filter-controls { justify-content: flex-start; }
+}
+@media (max-width: 640px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .discussion-open-button { width:100%; }
+    .scroll-hint { display: none; }
+    .page-title { font-size: 28px; }
+    .page-subtitle { font-size: 13px; }
+    .header-actions { flex-direction: column; }
+    .header-actions a { width: 100%; }
+    .filter-controls, .employee-filter-form, .filter-buttons { width: 100%; }
+    .filter-controls { flex-direction: column; align-items: stretch; }
+    .employee-select-wrapper select { width: 100%; }
+    .filter-btn { flex: 1; justify-content: center; }
+    .welcome-bar { padding: 12px; gap: 10px; }
+    .salt-toast { left: 12px; right: 12px; max-width: none; }
 }
 
-.employee-select-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
+/* ===== Dark mode ===== */
+html.salt-dark .page-title, html.salt-dark .stat-value, html.salt-dark .welcome-title,
+html.salt-dark .table-heading h2, html.salt-dark .task-title, html.salt-dark .employee-name,
+html.salt-dark .empty-state h2, html.salt-dark .discussion-title, html.salt-dark .discussion-composer-label { color: #e8f0fb; }
+
+html.salt-dark .page-subtitle, html.salt-dark .stat-label, html.salt-dark .table-heading p,
+html.salt-dark .task-description, html.salt-dark .comment-message, html.salt-dark .discussion-preview-text,
+html.salt-dark .welcome-text, html.salt-dark .empty-state p { color: #9fb0c8; }
+
+html.salt-dark .stat-card, html.salt-dark .toolbar, html.salt-dark .table-card,
+html.salt-dark .welcome-bar { background: #111b2d; border-color: #2a3b56; color: #c2d0e2; }
+
+html.salt-dark .filter-label, html.salt-dark th, html.salt-dark .deadline { color: #c5d2e3; }
+html.salt-dark thead { background: #162238; }
+html.salt-dark td, html.salt-dark th, html.salt-dark .table-header, html.salt-dark .discussion-header { border-color: #263852; }
+html.salt-dark tbody tr:hover { background: #13203a; }
+html.salt-dark .task-id { background: #1a2a44; color: #9fb0c8; }
+html.salt-dark .filter-btn, html.salt-dark .btn-secondary, html.salt-dark .employee-select-wrapper select { background-color: #0f192a; border-color: #334967; color: #b8c7da; }
+html.salt-dark .filter-btn.active { background: var(--salt-blue); border-color: var(--salt-blue); color: #fff; }
+html.salt-dark .discussion-preview, html.salt-dark .comment, html.salt-dark .inline-reply-form,
+html.salt-dark .reply-textarea, html.salt-dark .reply-form textarea { background: #0f192a; border-color: #2b405e; color: #c5d2e3; }
+html.salt-dark .comment:hover { background: #12203a; }
+html.salt-dark .discussion-toggle, html.salt-dark .cancel-reply { background: #1a2a44; border-color: #2a3b56; color: #b8c7da; }
+html.salt-dark .discussion-composer { background: linear-gradient(135deg, #111f34, #0f1a2b); border-color: #2a3b56; }
+html.salt-dark .progress-note, html.salt-dark .comment-reply-target { background: #14284a; color: #b6cbea; }
+html.salt-dark .comment-children { border-color: #2b405e; }
+html.salt-dark .delete-button { background: #2a1519; border-color: #5b2a31; color: #f87171; }
+
+/* ===== Discussion drawer: single source of truth =====
+   The script measures the real top bar and sets --salt-discussion-topbar,
+   so the drawer always starts exactly below it (64px is only the fallback). */
+:root { --salt-discussion-topbar: 64px; }
+
+.discussion-overlay { position: fixed; top: var(--salt-discussion-topbar); right: 0; bottom: 0; left: 0; z-index: 9000; background: rgba(12,24,44,.46); backdrop-filter: blur(2px); opacity: 0; visibility: hidden; transition: opacity .22s ease, visibility .22s ease; }
+.discussion-overlay.is-open { opacity: 1; visibility: visible; }
+
+.discussion-panel { position: fixed; top: var(--salt-discussion-topbar); right: 0; bottom: 0; z-index: 9001; display: flex; flex-direction: column; width: min(540px, 100vw); max-height: calc(100vh - var(--salt-discussion-topbar)); max-height: calc(100dvh - var(--salt-discussion-topbar)); min-height: 0; overflow: hidden; border-left: 1px solid #dce6f3; border-radius: 16px 0 0 0; background: #f7faff; box-shadow: -18px 0 48px rgba(15,35,70,.16); transform: translateX(105%); visibility: hidden; transition: transform .25s ease, visibility .25s ease; }
+.discussion-panel.is-open { transform: none; visibility: visible; }
+
+.discussion-panel-header { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 16px 10px; border-bottom: 1px solid #e2eaf5; background: rgba(255,255,255,.97); box-shadow: 0 3px 12px rgba(15,43,91,.035); }
+.discussion-panel-eyebrow { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #eaf2ff; color: var(--salt-blue); font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.discussion-panel-title { margin: 6px 0 0; max-width: 420px; color: #172033; font-size: 17px; font-weight: 850; line-height: 1.3; overflow-wrap: anywhere; }
+.discussion-panel-subtitle { margin-top: 3px; color: #718198; font-size: 12px; line-height: 1.4; }
+.discussion-panel-close { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid #dbe5f0; border-radius: 10px; background: #fff; color: #475569; font-size: 15px; cursor: pointer; transition: background .18s ease, border-color .18s ease, color .18s ease; }
+.discussion-panel-close:hover { background: #edf4ff; border-color: #c6d9f3; color: var(--salt-blue); }
+
+.discussion-panel-body { flex: 1 1 auto; display: flex; min-height: 0; overflow: hidden; padding: 10px 12px 0; background: linear-gradient(180deg, #f7faff 0%, #f3f7fd 100%); }
+.discussion-panel-body > .discussion-stack { flex: 1 1 auto; display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; min-height: 0; }
+.discussion-panel-body .discussion-header,
+.discussion-panel-body .discussion-preview,
+.discussion-panel-body .discussion-toggle { display: none; }
+
+.discussion-panel-body .discussion-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; max-height: none; padding: 1px 4px 8px 1px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #c4d3e7 transparent; }
+.discussion-panel-body .discussion-body::-webkit-scrollbar { width: 6px; }
+.discussion-panel-body .discussion-body::-webkit-scrollbar-thumb { background: #c4d3e7; border-radius: 99px; }
+.discussion-panel-body .comment-node { gap: 5px; }
+.discussion-panel-body .comment-children { margin-left: 13px; padding-left: 10px; border-left-color: #d7e4f5; }
+.discussion-panel-body .comment { padding: 9px 11px; border-color: #e0e8f3; border-radius: 12px; background: #fff; box-shadow: 0 2px 7px rgba(20,48,86,.025); }
+.discussion-panel-body .comment:hover { border-color: #c9d9ee; background: #fff; }
+.discussion-panel-body .comment-message { margin-top: 6px; color: #3e506b; font-size: 13px; line-height: 1.5; }
+.discussion-panel-body .reply-trigger { margin-top: 4px; padding: 4px 7px; font-size: 11px; }
+
+.discussion-panel-body .discussion-composer { position: relative; z-index: 2; flex: 0 0 auto; margin: 0 -12px; padding: 10px 12px max(12px, env(safe-area-inset-bottom)); border: 0; border-top: 1px solid #d5e3f6; border-radius: 14px 14px 0 0; background: rgba(255,255,255,.98); box-shadow: 0 -5px 16px rgba(15,43,91,.08); }
+.discussion-panel-body .discussion-composer-label { margin-bottom: 6px; font-size: 12px; }
+.discussion-panel-body .reply-form textarea { min-height: 56px; max-height: 120px; padding: 8px 10px; border-color: #d5e0ee; border-radius: 10px; background: #fbfdff; font-size: 13px; line-height: 1.5; }
+.discussion-panel-body .reply-form textarea:focus { background: #fff; }
+.discussion-panel-body .reply-button { margin-top: 6px; padding: 8px 12px; border-radius: 9px; background: var(--salt-blue); color: #fff; font-size: 12px; }
+.discussion-panel-body .reply-button:hover { background: var(--salt-blue-dark); }
+.discussion-panel-empty { align-self: center; width: 100%; padding: 30px 20px; border: 1px dashed #cbd9eb; border-radius: 14px; background: rgba(255,255,255,.72); color: #8b9ab0; font-size: 13px; text-align: center; }
+
+html.salt-dark .discussion-panel { background: #0f192a; border-color: #2a3b56; }
+html.salt-dark .discussion-panel-header,
+html.salt-dark .discussion-panel-body .discussion-composer { background: #111b2d; border-color: #2a3b56; }
+html.salt-dark .discussion-panel-title { color: #e8f0fb; }
+html.salt-dark .discussion-panel-close { background: #0f192a; border-color: #334967; color: #c5d2e3; }
+html.salt-dark .discussion-panel-body { background: linear-gradient(180deg, #0f192a 0%, #101d31 100%); }
+html.salt-dark .discussion-panel-body .comment { background: #142238; border-color: #2a3b56; }
+html.salt-dark .discussion-panel-body .comment-message { color: #c5d2e3; }
+html.salt-dark .discussion-panel-body .reply-form textarea { background: #0f192a; border-color: #334967; color: #d6e1f0; }
+
+@media (max-width: 640px) {
+    :root { --salt-discussion-topbar: 56px; }
+    .discussion-panel { width: 100vw; border-radius: 0; }
+    .discussion-panel-header { padding: 10px 12px 9px; }
+    .discussion-panel-title { font-size: 15px; }
+    .discussion-panel-body { padding: 8px 8px 0; }
+    .discussion-panel-body .discussion-composer { margin: 0 -8px; padding: 8px 8px max(10px, env(safe-area-inset-bottom)); }
+    .discussion-panel-body .reply-form textarea { min-height: 48px; }
 }
-
-.employee-select-wrapper i {
-    position: absolute;
-    left: 12px;
-    z-index: 2;
-    color: var(--salt-blue);
-    font-size: 12px;
-    pointer-events: none;
-}
-
-.employee-select-wrapper select {
-    min-width: 190px;
-    appearance: none;
-    padding: 9px 34px 9px 34px;
-    border: 1px solid #d9e2ee;
-    border-radius: 9px;
-    background: white;
-    color: #475569;
-    font-size: 12px;
-    font-weight: 700;
-    outline: none;
-    cursor: pointer;
-    transition: .2s ease;
-
-    background-image:
-        linear-gradient(45deg, transparent 50%, #64748b 50%),
-        linear-gradient(135deg, #64748b 50%, transparent 50%);
-    background-position:
-        calc(100% - 15px) 14px,
-        calc(100% - 10px) 14px;
-    background-size:
-        5px 5px,
-        5px 5px;
-    background-repeat: no-repeat;
-}
-
-.employee-select-wrapper select:hover {
-    border-color: #b9c8da;
-    background-color: #f8fafc;
-}
-
-.employee-select-wrapper select:focus {
-    border-color: var(--salt-blue);
-    box-shadow: 0 0 0 3px rgba(21,88,176,.10);
-}
-
-.filter-btn.active {
-    background: var(--salt-blue);
-    border-color: var(--salt-blue);
-    color: white;
-    box-shadow: 0 4px 10px rgba(21,88,176,.15);
-}
-
-.filter-btn.active:hover {
-    background: var(--salt-blue-dark);
-    color: white;
-}
-
-/* =====================================================
-   COLLAPSIBLE DISCUSSION + REPLY TARGET
-   ===================================================== */
-
-.discussion-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 9px;
-}
-
-.discussion-title {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: #334155;
-    font-size: 10px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: .055em;
-}
-
-.discussion-title i {
-    color: #1558b0;
-}
-
-.discussion-count {
-    min-width: 22px;
-    height: 20px;
-    padding: 0 7px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background: #eaf2ff;
-    color: #1558b0;
-    font-size: 9px;
-    font-weight: 900;
-}
-
-.discussion-preview {
-    margin-bottom: 8px;
-    padding: 8px 10px;
-    border: 1px solid #e4ebf3;
-    border-radius: 9px;
-    background: #fafcff;
-    color: #64748b;
-    font-size: 10px;
-    line-height: 1.45;
-}
-
-.discussion-preview-label {
-    margin-bottom: 3px;
-    color: #94a3b8;
-    font-size: 8px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-}
-
-.discussion-preview-text {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.discussion-toggle {
-    width: 100%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 7px 10px;
-    border: 1px solid #dbe5f0;
-    border-radius: 9px;
-    background: #f8fbff;
-    color: #1558b0;
-    font-size: 9px;
-    font-weight: 900;
-    cursor: pointer;
-    transition: .2s ease;
-}
-
-.discussion-toggle:hover {
-    background: #eaf2ff;
-    border-color: #c9dbf2;
-}
-
-.discussion-toggle i {
-    transition: transform .2s ease;
-}
-
-.discussion-toggle.is-open i {
-    transform: rotate(180deg);
-}
-
-.discussion-body {
-    display: none;
-    margin-top: 9px;
-}
-
-.discussion-body.is-open {
-    display: block;
-}
-
-.comment-node {
-    position: relative;
-}
-
-.comment-wrap {
-    position: relative;
-}
-
-.comment-reply-target {
-    margin-top: 8px;
-    padding: 8px 10px;
-    border-left: 3px solid #1558b0;
-    border-radius: 7px;
-    background: #f4f8ff;
-    color: #526985;
-    font-size: 9px;
-    line-height: 1.45;
-}
-
-.comment-reply-target strong {
-    display: block;
-    margin-bottom: 3px;
-    color: #1558b0;
-    font-size: 8px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-}
-
-.comment-reply-target .quoted-text {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    font-style: italic;
-}
-
-.reply-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    margin-top: 7px;
-    padding: 5px 8px;
-    border: 0;
-    border-radius: 7px;
-    background: #eef2f7;
-    color: #526276;
-    font-size: 9px;
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.reply-trigger:hover {
-    background: #eaf2ff;
-    color: #1558b0;
-}
-
-.inline-reply {
-    display: none;
-    margin-top: 8px;
-}
-
-.inline-reply.is-open {
-    display: block;
-}
-
-.inline-reply-form {
-    padding: 9px;
-    border: 1px solid #d7e4f3;
-    border-radius: 10px;
-    background: #f8fbff;
-}
-
-.inline-reply-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 7px;
-    margin-top: 6px;
-}
-
-.cancel-reply {
-    padding: 6px 9px;
-    border: 1px solid #dbe3ec;
-    border-radius: 7px;
-    background: #fff;
-    color: #64748b;
-    font-size: 9px;
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.cancel-reply:hover {
-    background: #f1f5f9;
-}
-
-.send-reply {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 10px;
-    border: 0;
-    border-radius: 7px;
-    background: #1558b0;
-    color: #fff;
-    font-size: 9px;
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.send-reply:hover {
-    background: #0f4b99;
-}
-
-.comment-highlight {
-    animation: replyHighlight 1.8s ease;
-}
-
-@keyframes replyHighlight {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(21, 88, 176, 0);
-    }
-    25%, 65% {
-        box-shadow: 0 0 0 3px rgba(21, 88, 176, .13);
-    }
-}
-
-.start-discussion,
-.discussion-composer {
-    margin-top: 10px;
-}
-
-.start-discussion-label,
-.discussion-composer-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-    color: #526985;
-    font-size: 9px;
-    font-weight: 900;
-}
-
-.start-discussion-label i,
-.discussion-composer-label i {
-    color: #1558b0;
-}
-
-.discussion-body .reply-form {
-    display: none;
-}
-
 </style>
-```
+{% endblock %}
 
+{% block content %}
 
-    <!-- SALT Workforce PWA -->
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#0b3d91">
-    <meta name="application-name" content="SALT Workforce">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="SALT Workforce">
-    <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
-
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
-</head>
-
-<body>
-
-<div class="portal-wrapper">
-
-
-<!-- =====================================================
-     FIXED SIDEBAR
-     ===================================================== -->
-
-<aside
-    class="salt-sidebar"
-    id="sidebar"
->
-
-
-    <!-- BRAND -->
-
-    <div class="sidebar-brand">
-
-        <div class="flex items-center gap-3">
-
-            <div class="brand-logo">
-
-                <img
-                    src="{{ url_for('static', filename='salt-logo.png') }}"
-                    alt="SALT"
-                >
-
-            </div>
-
-
-            <div class="brand-text">
-
-                <h2
-                    class="text-lg font-bold tracking-tight"
-                >
-                    SALT Portal
-                </h2>
-
-                <p
-                    class="text-xs text-blue-200"
-                >
-                    Task Board
-                </p>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- NAVIGATION -->
-
-    <nav class="flex-1 p-4">
-
-
-        <!-- DASHBOARD -->
-
-        <a
-            href="/dashboard"
-            class="sidebar-link"
-        >
-
-            <span class="sidebar-icon">
-                <i class="fas fa-home"></i>
-            </span>
-
-            <span class="sidebar-label">
-                Dashboard
-            </span>
-
-        </a>
-
-
-        <!-- EMPLOYEES -->
-
-        <a
-            href="/admin/employees"
-            class="sidebar-link"
-        >
-
-            <span class="sidebar-icon">
-                <i class="fas fa-users"></i>
-            </span>
-
-            <span class="sidebar-label">
-                Employees
-            </span>
-
-        </a>
-
-
-        <!-- TASK BOARD -->
-
-        <a
-            href="/admin/tasks"
-            class="sidebar-link active"
-        >
-
-            <span class="sidebar-icon">
-                <i class="fas fa-list-check"></i>
-            </span>
-
-            <span class="sidebar-label">
-                Task Board
-            </span>
-
-        </a>
-
-
-        <!-- ASSIGN TASK -->
-
-        <a
-            href="/admin/assign_task"
-            class="sidebar-link"
-        >
-
-            <span class="sidebar-icon">
-                <i class="fas fa-plus"></i>
-            </span>
-
-            <span class="sidebar-label">
-                Assign Task
-            </span>
-
-        </a>
-
-
-        <!-- ANNOUNCEMENTS -->
-
-        <a
-            href="/admin/announcements"
-            class="sidebar-link"
-        >
-
-            <span class="sidebar-icon">
-                <i class="fas fa-bullhorn"></i>
-            </span>
-
-            <span class="sidebar-label">
-                Announcements
-            </span>
-
-        </a>
-
-
-        <!-- ATTENDANCE -->
-
-        <a
-            href="/attendance"
-            class="sidebar-link"
-        >
-
-            <span class="sidebar-icon">
-                <i class="fas fa-calendar-check"></i>
-            </span>
-
-            <span class="sidebar-label">
-                Attendance
-            </span>
-
-        </a>
-
-
-        <!-- MY TASKS -->
-
-        <a
-            href="/tasks"
-            class="sidebar-link"
-        >
-
-            <span class="sidebar-icon">
-                <i class="fas fa-clipboard-list"></i>
-            </span>
-
-            <span class="sidebar-label">
-                My Tasks
-            </span>
-
-        </a>
-
-    </nav>
-
-
-    <!-- LOGOUT -->
-
-    <div
-        class="p-4 border-t border-white/10"
-    >
-
-        <a
-            href="/logout"
-            class="sidebar-link !bg-red-500/90
-                   hover:!bg-red-600"
-        >
-
-            <span class="sidebar-icon">
-
-                <i
-                    class="fas fa-right-from-bracket"
-                ></i>
-
-            </span>
-
-            <span class="sidebar-label">
-                Logout
-            </span>
-
-        </a>
-
-    </div>
-
-</aside>
-
-
-<!-- =====================================================
-     MAIN CONTENT
-     ===================================================== -->
-
-<main class="portal-main">
-
-    <div class="main-inner">
-
-
-        <!-- TOP BAR -->
-
-        <div class="topbar">
-
-            <button
-                id="toggle-btn"
-                class="menu-button"
-                type="button"
-                aria-label="Toggle sidebar"
-            >
-
-                <i class="fas fa-bars"></i>
-
-            </button>
-
-
-            <div class="admin-pill">
-
-                <i class="fas fa-shield-halved"></i>
-
-                Admin Task Board
-
-            </div>
-
-        </div>
-
-
-        <!-- PAGE HEADER -->
-
-        <section class="page-header">
-
-            <div>
-
-                <div class="page-badge">
-
-                    <i class="fas fa-list-check"></i>
-
-                    TASK MANAGEMENT
-
-                </div>
-
-
-                <h1 class="page-title">
-                    Task Board
-                </h1>
-
-
-                <p class="page-subtitle">
-                    Manage employee tasks, monitor progress,
-                    and keep team discussions organized.
-                </p>
-
-            </div>
-
-
-            <div class="header-actions">
-
-                <a
-                    href="/dashboard"
-                    class="btn-secondary"
-                >
-
-                    <i class="fas fa-arrow-left"></i>
-
-                    Dashboard
-
-                </a>
-
-
-                <a
-                    href="/admin/assign_task"
-                    class="btn-primary"
-                >
-
-                    <i class="fas fa-plus"></i>
-
-                    Assign Task
-
-                </a>
-
-            </div>
-
-        </section>
-
-
-        <!-- WELCOME BAR -->
-
-        <div class="welcome-bar">
-
-            <div class="welcome-icon">
-
-                <i class="fas fa-circle-info"></i>
-
-            </div>
-
-
-            <div>
-
-                <div class="welcome-title">
-
-                    Welcome to Task Management
-
-                </div>
-
-
-                <div class="welcome-text">
-
-                    Review assigned work, track task progress,
-                    respond to employee discussions, and keep
-                    outstanding work moving toward completion.
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <!-- STATISTICS -->
-
-        <div class="stats-grid">
-
-
-            <div class="stat-card">
-
-                <div class="stat-top">
-
-                    <div>
-
-                        <div class="stat-label">
-                            Pending Tasks
-                        </div>
-
-                        <div class="stat-value">
-                            {{ pending_count }}
-                        </div>
-
-                    </div>
-
-
-                    <div class="stat-icon">
-
-                        <i class="fas fa-clock"></i>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <div class="stat-card">
-
-                <div class="stat-top">
-
-                    <div>
-
-                        <div class="stat-label">
-                            In Progress
-                        </div>
-
-                        <div class="stat-value">
-                            {{ progress_count }}
-                        </div>
-
-                    </div>
-
-
-                    <div class="stat-icon">
-
-                        <i class="fas fa-spinner"></i>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <div class="stat-card">
-
-                <div class="stat-top">
-
-                    <div>
-
-                        <div class="stat-label">
-                            Completed
-                        </div>
-
-                        <div class="stat-value">
-                            {{ completed_count }}
-                        </div>
-
-                    </div>
-
-
-                    <div class="stat-icon">
-
-                        <i class="fas fa-check-circle"></i>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <!-- FILTERS -->
-
-        <div class="toolbar">
-
-            <div class="filter-label">
-                <i class="fas fa-filter"></i>
-                Filter tasks
-            </div>
-
-            <div class="filter-controls">
-
-                <!-- EMPLOYEE NAME FILTER -->
-
-                <form
-                    method="GET"
-                    action="/admin/tasks"
-                    class="employee-filter-form"
-                >
-
-                    {% if selected_status %}
-                        <input
-                            type="hidden"
-                            name="status"
-                            value="{{ selected_status }}"
-                        >
-                    {% endif %}
-
-                    <div class="employee-select-wrapper">
-
-                        <i class="fas fa-user"></i>
-
-                        <select
-                            name="employee_id"
-                            id="employeeFilter"
-                            onchange="this.form.submit()"
-                        >
-
-                            <option value="">
-                                All Employees
-                            </option>
-
-                            {% for employee in employees %}
-
-                                <option
-                                    value="{{ employee.id }}"
-                                    {% if selected_employee|string == employee.id|string %}
-                                        selected
-                                    {% endif %}
-                                >
-                                    {{ employee.name }}
-                                </option>
-
-                            {% endfor %}
-
-                        </select>
-
-                    </div>
-
-                </form>
-
-
-                <!-- STATUS FILTERS -->
-
-                <div class="filter-buttons">
-
-                    <a
-                        href="/admin/tasks{% if selected_employee %}?employee_id={{ selected_employee }}{% endif %}"
-                        class="filter-btn {% if not selected_status %}active{% endif %}"
-                    >
-                        <i class="fas fa-layer-group"></i>
-                        All
-                    </a>
-
-                    <a
-                        href="/admin/tasks?{% if selected_employee %}employee_id={{ selected_employee }}&{% endif %}status=Pending"
-                        class="filter-btn {% if selected_status == 'Pending' %}active{% endif %}"
-                    >
-                        <i class="fas fa-clock"></i>
-                        Pending
-                    </a>
-
-                    <a
-                        href="/admin/tasks?{% if selected_employee %}employee_id={{ selected_employee }}&{% endif %}status=In%20Progress"
-                        class="filter-btn {% if selected_status == 'In Progress' %}active{% endif %}"
-                    >
-                        <i class="fas fa-spinner"></i>
-                        In Progress
-                    </a>
-
-                    <a
-                        href="/admin/tasks?{% if selected_employee %}employee_id={{ selected_employee }}&{% endif %}status=Completed"
-                        class="filter-btn {% if selected_status == 'Completed' %}active{% endif %}"
-                    >
-                        <i class="fas fa-check"></i>
-                        Completed
-                    </a>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <!-- TASK TABLE -->
-
-        <div class="table-card">
-
-
-            <div class="table-header">
-
-                <div class="table-heading">
-
-                    <div class="table-heading-icon">
-
-                        <i class="fas fa-table-list"></i>
-
-                    </div>
-
-
-                    <div>
-
-                        <h2>
-                            Employee Tasks
-                        </h2>
-
-                        <p>
-                            Current assignments and discussions
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div
-                    class="text-xs text-slate-400"
-                >
-
-                    <i
-                        class="fas fa-arrows-left-right mr-1"
-                    ></i>
-
-                    Scroll table horizontally if needed
-
-                </div>
-
-            </div>
-
-
-            {% if tasks %}
-
-            <div class="table-scroll">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>ID</th>
-
-                            <th>Task</th>
-
-                            <th>Employee</th>
-
-                            <th>Deadline</th>
-
-                            <th>Status</th>
-
-                            <th>Type</th>
-
-                            <th>Discussion</th>
-
-                            <th>Actions</th>
-
-                        </tr>
-
-                    </thead>
-
-
-                    <tbody>
-
-
-                    {% for task in tasks %}
-
-                    <tr id="task-row-{{ task.id }}">
-
-
-                        <!-- ID -->
-
-                        <td>
-
-                            <span class="task-id">
-
-                                #{{ task.id }}
-
-                            </span>
-
-                        </td>
-
-
-                        <!-- TASK -->
-
-                        <td>
-
-                            <div class="task-title">
-
-                                {{ task.title }}
-
-                            </div>
-
-
-                            <div class="task-description">
-
-                                {{ task.description }}
-
-                            </div>
-
-                        </td>
-
-
-                        <!-- EMPLOYEE -->
-
-                        <td>
-
-                            <div class="employee-cell">
-
-                                <div class="employee-avatar">
-
-                                    {% if task.employee_name %}
-                                        {{ task.employee_name[0]|upper }}
-                                    {% elif task.created_by == task.assigned_to %}
-                                        A
-                                    {% else %}
-                                        ?
-                                    {% endif %}
-
-                                </div>
-
-
-                                <div>
-
-                                    <div class="employee-name">
-
-                                        {% if task.employee_name %}
-                                            {{ task.employee_name }}
-                                        {% elif task.created_by == task.assigned_to %}
-                                            Self
-                                        {% else %}
-                                            Unassigned
-                                        {% endif %}
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </td>
-
-
-                        <!-- DEADLINE -->
-
-                        <td>
-
-                            {% if task.deadline %}
-
-                                <div
-                                    class="text-xs font-semibold
-                                           text-slate-600"
-                                >
-
-                                    <i
-                                        class="fas fa-calendar-days
-                                               text-blue-500 mr-1"
-                                    ></i>
-
-                                    {{ task.deadline }}
-
-                                </div>
-
-
-                                {% if
-                                    task.status != "Completed"
-                                    and task.deadline_date
-                                    and task.deadline_date < today
-                                %}
-
-                                    <div class="mt-2">
-
-                                        <span
-                                            class="status-badge
-                                                   status-overdue"
-                                        >
-
-                                            <i
-                                                class="fas
-                                                   fa-triangle-exclamation"
-                                            ></i>
-
-                                            Overdue
-
-                                        </span>
-
-                                    </div>
-
-                                {% endif %}
-
-                            {% else %}
-
-                                <span
-                                    class="text-xs text-slate-400"
-                                >
-                                    No deadline
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-
-                        <!-- STATUS -->
-
-                        <td>
-
-                            {% if task.status == "Pending" %}
-
-                                <span
-                                    class="status-badge
-                                           status-pending"
-                                >
-
-                                    <i class="fas fa-clock"></i>
-
-                                    Pending
-
-                                </span>
-
-                            {% elif task.status == "In Progress" %}
-
-                                <span
-                                    class="status-badge
-                                           status-progress"
-                                >
-
-                                    <i class="fas fa-spinner"></i>
-
-                                    In Progress
-
-                                </span>
-
-                            {% else %}
-
-                                <span
-                                    class="status-badge
-                                           status-completed"
-                                >
-
-                                    <i class="fas fa-check"></i>
-
-                                    Completed
-
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-
-                        <!-- TYPE -->
-
-<td>
-
-                            {% if
-                                task.created_by
-                                == task.assigned_to
-                            %}
-
-                                <span
-                                    class="
-                                    status-badge
-                                    bg-cyan-50
-                                    text-cyan-700"
-                                >
-
-                                    <i
-                                        class="fas fa-user"
-                                    ></i>
-
-                                    Self
-
-                                </span>
-
-                            {% else %}
-
-                                <span
-                                    class="
-                                    status-badge
-                                    bg-purple-50
-                                    text-purple-700"
-                                >
-
-                                    <i
-                                        class="
-                                        fas
-                                        fa-user-plus"
-                                    ></i>
-
-                                    Assigned
-
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-
-                        <!-- DISCUSSION -->
-
-                                <td class="discussion-cell">
-
-    <div class="discussion-stack" data-task-discussion="{{ task.id }}">
-
-        <div class="discussion-header">
-
-            <div class="discussion-title">
-                <i class="far fa-comments"></i>
-                Discussion
-            </div>
-
-            <span class="discussion-count">
-                {{ task.comments|length }}
-            </span>
-
-        </div>
-
-        <div class="discussion-preview">
-
-            <div class="discussion-preview-label">
-                Latest conversation
-            </div>
-
-            <div class="discussion-preview-text">
-                {% if task.comments|length > 0 %}
-                    {{ task.comments[0].message }}
-                {% else %}
-                    No discussion yet.
-                {% endif %}
-            </div>
-
-        </div>
-
-        <button
-            type="button"
-            class="discussion-toggle"
-        >
-            <i class="fas fa-chevron-down"></i>
-            <span class="toggle-text">Show Discussion</span>
-        </button>
-
-        <div class="discussion-body">
-
-            {% macro render_comment(comment, level=0) %}
-
+{% macro render_comment(comment, task_id, level=0) %}
 <div class="comment-node" data-comment-id="{{ comment.id }}">
-
-    <div
-        class="comment-wrap comment-level-{{ [level, 3]|min }}"
-        style="{% if level < 3 %}margin-left: {{ level * 16 }}px;{% endif %}"
-    >
-
-        <div class="comment
-            {% if comment.sender_role == 'admin' %}
-                admin-comment
-            {% else %}
-                employee-comment
-            {% endif %}"
-        >
+    <div class="comment-wrap">
+        <div class="comment {{ 'admin-comment' if comment.sender_role == 'admin' else 'employee-comment' }}">
 
             <div class="comment-head">
-
-                <div class="comment-role
+                <div class="comment-role {{ 'comment-admin' if comment.sender_role == 'admin' else 'comment-employee' }}">
                     {% if comment.sender_role == 'admin' %}
-                        comment-admin
+                        <i class="fas fa-shield-halved mr-1"></i>Admin
                     {% else %}
-                        comment-employee
-                    {% endif %}"
-                >
-
-                    {% if comment.sender_role == 'admin' %}
-                        <i class="fas fa-shield-halved mr-1"></i>
-                        Admin
-                    {% else %}
-                        <i class="fas fa-user mr-1"></i>
-                        Employee
+                        <i class="fas fa-user mr-1"></i>Employee
                     {% endif %}
-
                 </div>
-
                 <div class="comment-date">
-
                     {% if comment.created_at %}
-
                         {% if comment.created_at.strftime is defined %}
-
-                            {{
-                                comment.created_at.strftime(
-                                    '%d %b %Y, %I:%M %p'
-                                )
-                            }}
-
+                            {{ comment.created_at.strftime('%d %b %Y, %I:%M %p') }}
                         {% else %}
-
                             {{ comment.created_at }}
-
                         {% endif %}
-
                     {% else %}
-
                         —
-
                     {% endif %}
-
                 </div>
-
             </div>
 
             {% if comment.comment_type == 'note' %}
-
                 <div class="progress-note">
-
-                    <div class="progress-note-label">
-                        <i class="fas fa-chart-line mr-1"></i>
-                        Progress Update
-                    </div>
-
+                    <div class="progress-note-label"><i class="fas fa-chart-line mr-1"></i>Progress update</div>
                     {{ comment.message }}
-
                 </div>
-
             {% else %}
-
-                <div class="comment-message">
-                    {{ comment.message }}
-                </div>
-
+                <div class="comment-message">{{ comment.message }}</div>
             {% endif %}
 
-
-            <button
-                type="button"
-                class="reply-trigger"
-            >
-                <i class="fas fa-reply"></i>
-                Reply
-            </button>
-
+            <button type="button" class="reply-trigger"><i class="fas fa-reply"></i> Reply</button>
 
             <div class="inline-reply">
-
-                <form
-                    method="POST"
-                    action="/admin/reply_task/{{ task.id }}"
-                    class="inline-reply-form"
-                >
-
-                    <input
-                        type="hidden"
-                        name="parent_comment_id"
-                        value="{{ comment.id }}"
-                    >
+                <form method="POST" action="/admin/reply_task/{{ task_id }}" class="inline-reply-form">
+                    <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
 
                     <div class="comment-reply-target">
-
-                        <strong>
-                            <i class="fas fa-reply mr-1"></i>
-                            Replying to the author
-                        </strong>
-
-                        <div class="quoted-text">
-                            “{{ comment.message }}”
-                        </div>
-
+                        <strong><i class="fas fa-reply mr-1"></i>Replying to this comment</strong>
+                        <div class="quoted-text">“{{ comment.message }}”</div>
                     </div>
 
-                    <textarea
-                        name="admin_reply"
-                        rows="2"
-                        placeholder="Write your reply..."
-                        required
-                        class="reply-textarea"
-                    ></textarea>
+                    <textarea name="admin_reply" rows="2" placeholder="Write your reply…" required class="reply-textarea"></textarea>
 
                     <div class="inline-reply-actions">
-
-                        <button
-                            type="button"
-                            class="cancel-reply"
-                        >
-                            Cancel
-                        </button>
-
-                        <button
-                            type="submit"
-                            class="send-reply"
-                        >
-                            <i class="fas fa-paper-plane"></i>
-                            Send Reply
-                        </button>
-
+                        <button type="button" class="cancel-reply">Cancel</button>
+                        <button type="submit" class="send-reply"><i class="fas fa-paper-plane"></i> Send reply</button>
                     </div>
-
                 </form>
-
             </div>
-
         </div>
-
     </div>
-
 
     {% if comment.children %}
-
-        <div class="comment-children">
-
+        <div class="comment-children{{ ' is-flat' if level >= 2 else '' }}">
             {% for child in comment.children %}
-
-                {{
-                    render_comment(
-                        child,
-                        level + 1
-                    )
-                }}
-
+                {% if child.visibility != 'private' %}
+                    {{ render_comment(child, task_id, level + 1) }}
+                {% endif %}
             {% endfor %}
-
         </div>
-
     {% endif %}
-
 </div>
-
 {% endmacro %}
 
+{# Counts a comment plus all of its visible replies. A namespace is required:
+   a plain {% set %} inside a for-loop would not survive the loop. #}
+{% macro count_visible_comment(comment) -%}
+    {%- set ns = namespace(total=1) -%}
+    {%- if comment.children -%}
+        {%- for child in comment.children if child.visibility != 'private' -%}
+            {%- set ns.total = ns.total + (count_visible_comment(child)|int) -%}
+        {%- endfor -%}
+    {%- endif -%}
+    {{- ns.total -}}
+{%- endmacro %}
 
-{% for comment in task.comments %}
+<div id="task-page-content" data-task-content="true">
 
-    {% if comment.visibility != 'private' %}
-
-        {{
-            render_comment(
-                comment,
-                0
-            )
-        }}
-
-    {% endif %}
-
-{% endfor %}
-
-
-            {% if task.comments|length == 0 %}
-
-                <div class="empty-discussion">
-                    <i class="far fa-comment-dots mr-1"></i>
-                    No discussion yet. Start the conversation below.
-                </div>
-
-            {% endif %}
-
+    <section class="page-header">
+        <div>
+            <div class="page-badge"><i class="fas fa-list-check"></i> TASK MANAGEMENT</div>
+            <h1 class="page-title">Task Board</h1>
+            <p class="page-subtitle">Manage employee tasks, monitor progress, and keep team discussions organized.</p>
         </div>
 
-        <div class="discussion-composer">
+        <div class="header-actions">
+            <a href="/dashboard" class="btn-secondary"><i class="fas fa-arrow-left"></i> Dashboard</a>
+            <a href="/admin/assign_task" class="btn-primary"><i class="fas fa-plus"></i> Assign task</a>
+        </div>
+    </section>
 
-            <div class="discussion-composer-label">
-                <i class="fas fa-message"></i>
-
-                {% if task.comments|length == 0 %}
-                    Start Discussion
-                {% else %}
-                    Add to Discussion
-                {% endif %}
-
+    <div class="welcome-bar">
+        <div class="welcome-icon"><i class="fas fa-circle-info"></i></div>
+        <div>
+            <div class="welcome-title">Welcome to Task Management</div>
+            <div class="welcome-text">
+                Review assigned work, track task progress, respond to employee discussions,
+                and keep outstanding work moving toward completion.
             </div>
-
-            <form
-                method="POST"
-                action="/admin/reply_task/{{ task.id }}"
-                class="reply-form"
-            >
-
-                <textarea
-                    name="admin_reply"
-                    rows="2"
-                    placeholder="Write an update, response, instruction, or clarification..."
-                    required
-                ></textarea>
-
-                <button
-                    type="submit"
-                    class="reply-button"
-                >
-                    <i class="fas fa-paper-plane mr-1"></i>
-                    Post to Discussion
-                </button>
-
-            </form>
-
         </div>
-
     </div>
 
-</td>
+    <!-- STATS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div>
+                    <div class="stat-label">Pending tasks</div>
+                    <div class="stat-value">{{ pending_count }}</div>
+                </div>
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+            </div>
+        </div>
 
-                        <!-- ACTIONS -->
+        <div class="stat-card">
+            <div class="stat-top">
+                <div>
+                    <div class="stat-label">In progress</div>
+                    <div class="stat-value">{{ progress_count }}</div>
+                </div>
+                <div class="stat-icon"><i class="fas fa-spinner"></i></div>
+            </div>
+        </div>
 
-                        <td>
+        <div class="stat-card">
+            <div class="stat-top">
+                <div>
+                    <div class="stat-label">Completed</div>
+                    <div class="stat-value">{{ completed_count }}</div>
+                </div>
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-top">
+                <div><div class="stat-label">Overdue</div><div class="stat-value">{{ overdue_count|default(0) }}</div></div>
+                <div class="stat-icon" style="background:#fff0f0;color:#dc2626"><i class="fas fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
+    </div>
 
-                            <div class="action-stack">
+    <!-- FILTERS — no page navigation; JS handles everything -->
+    <div class="toolbar">
+        <div class="filter-label"><i class="fas fa-filter"></i> Filter tasks</div>
 
-                                <button
-                                    type="button"
-                                    class="delete-button"
-                                    data-task-id="{{ task.id }}"
-                                    
-                                >
-                                    <i class="fas fa-trash-alt"></i>
-                                    Delete
-                                </button>
+        <div class="filter-controls">
 
-                            </div>
+            <div class="employee-select-wrapper">
+                <i class="fas fa-user"></i>
+                <select id="employeeFilter" aria-label="Filter by employee">
+                    <option value="">All employees</option>
+                    {% for employee in employees %}
+                        <option value="{{ employee.id }}" {% if selected_employee|string == employee.id|string %}selected{% endif %}>
+                            {{ employee.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-                        </td>
+            <div class="filter-buttons">
+                <button type="button" class="filter-btn {% if not selected_status %}active{% endif %}" data-status="">
+                    <i class="fas fa-layer-group"></i> All
+                </button>
+                <button type="button" class="filter-btn {% if selected_status == 'Pending' %}active{% endif %}" data-status="Pending">
+                    <i class="fas fa-clock"></i> Pending
+                </button>
+                <button type="button" class="filter-btn {% if selected_status == 'In Progress' %}active{% endif %}" data-status="In Progress">
+                    <i class="fas fa-spinner"></i> In progress
+                </button>
+                <button type="button" class="filter-btn {% if selected_status == 'Completed' %}active{% endif %}" data-status="Completed">
+                    <i class="fas fa-check"></i> Completed
+                </button>
+            </div>
+        </div>
+    </div>
 
+    <div class="ops-toolbar" aria-label="Task operations controls">
+        <label class="ops-search"><i class="fas fa-search"></i><input id="taskSearch" type="search" placeholder="Search task, employee, description or ID…" autocomplete="off" aria-label="Search tasks"></label>
+        <select class="ops-select" id="priorityFilter" aria-label="Filter by priority">
+            <option value="">All priorities</option><option value="high">High priority</option><option value="medium">Medium priority</option><option value="low">Low priority</option>
+        </select>
+        <select class="ops-select" id="dateFilter" aria-label="Filter tasks by creation date">
+            <option value="" {% if not selected_period %}selected{% endif %}>Any time</option>
+            <option value="this_week" {% if selected_period == 'this_week' %}selected{% endif %}>This week</option>
+            <option value="last_week" {% if selected_period == 'last_week' %}selected{% endif %}>Last week</option>
+        </select>
+        <span class="scroll-hint"><i class="fas fa-sliders mr-1"></i> Search and refine your task queue</span>
+    </div>
 
+    <!-- TASK TABLE -->
+    <div class="table-card">
+
+        <div class="table-header">
+            <div class="table-heading">
+                <div class="table-heading-icon"><i class="fas fa-table-list"></i></div>
+                <div>
+                    <h2>Employee tasks</h2>
+                    <p>Current assignments and discussions</p>
+                </div>
+            </div>
+            <div class="scroll-hint"><i class="fas fa-arrows-left-right mr-1"></i> Scroll the table horizontally if needed</div>
+        </div>
+
+        {% if tasks %}
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Task</th>
+                        <th>Employee</th>
+                        <th>Deadline</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Type</th>
+                        <th>Discussion</th>
+                        <th>Actions</th>
                     </tr>
+                </thead>
 
+                <tbody>
+                {% for task in tasks %}
+                    {% set visible_comments = task.comments|rejectattr('visibility', 'equalto', 'private')|list %}
+                    {% set comment_total = namespace(value=0) %}
+                    {% for visible_comment in visible_comments %}
+                        {% set comment_total.value = comment_total.value + (count_visible_comment(visible_comment)|int) %}
                     {% endfor %}
 
+                    <tr id="task-row-{{ task.id }}" data-status="{{ task.status|default('', true)|lower }}" data-priority="{{ task.priority|default('Medium', true)|lower }}" data-search="{{ (task.title ~ ' ' ~ (task.description|default('', true)) ~ ' ' ~ (task.employee_name|default('', true)) ~ ' ' ~ task.id)|lower|e }}">
 
-                    </tbody>
+                        <td><span class="task-id">#{{ task.id }}</span></td>
 
-                </table>
+                        <td>
+                            <div class="task-title">{{ task.title }}</div>
+                            {% if task.description %}
+                                <div class="task-description">{{ task.description }}</div>
+                            {% else %}
+                                <div class="task-description is-empty">No description provided.</div>
+                            {% endif %}
+                        </td>
 
-            </div>
+                        <td>
+                            <div class="employee-cell">
+                                <div class="employee-avatar">
+                                    {% if task.employee_name %}{{ task.employee_name[0]|upper }}{% elif task.created_by == task.assigned_to %}A{% else %}?{% endif %}
+                                </div>
+                                <div class="employee-name">
+                                    {% if task.employee_name %}{{ task.employee_name }}{% elif task.created_by == task.assigned_to %}Self{% else %}Unassigned{% endif %}
+                                </div>
+                            </div>
+                        </td>
 
+                        <td>
+                            {% if task.deadline %}
+                                <div class="deadline"><i class="fas fa-calendar-days"></i> {{ task.deadline }}</div>
 
-            {% else %}
+                                {% if task.status != "Completed" and task.deadline_date and task.deadline_date < today %}
+                                    <div class="overdue-wrap">
+                                        <span class="status-badge status-overdue">
+                                            <i class="fas fa-triangle-exclamation"></i> Overdue
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <span class="no-deadline">No deadline</span>
+                            {% endif %}
+                        </td>
 
+                        <td>
+                            {% if task.status == "Pending" %}
+                                <span class="status-badge status-pending"><i class="fas fa-clock"></i> Pending</span>
+                            {% elif task.status == "In Progress" %}
+                                <span class="status-badge status-progress"><i class="fas fa-spinner"></i> In progress</span>
+                            {% else %}
+                                <span class="status-badge status-completed"><i class="fas fa-check"></i> Completed</span>
+                            {% endif %}
+                        </td>
 
-            <!-- EMPTY STATE -->
+                        <td>
+                            {% set task_priority = task.priority|default('Medium', true) %}
+                            <span class="priority-badge priority-{{ task_priority|lower }}"><i class="fas fa-flag"></i> {{ task_priority }}</span>
+                        </td>
 
-            <div class="empty-state">
+                        <td>
+                            {% if task.created_by == task.assigned_to %}
+                                <span class="status-badge type-self"><i class="fas fa-user"></i> Self</span>
+                            {% else %}
+                                <span class="status-badge type-assigned"><i class="fas fa-user-plus"></i> Assigned</span>
+                            {% endif %}
+                        </td>
 
-                <div class="empty-icon">
+                        <td class="discussion-cell">
+                            <button type="button" class="discussion-open-button" data-open-discussion="{{ task.id }}" data-task-title="{{ task.title|e }}" data-task-employee="{{ task.employee_name|default('Unassigned', true)|e }}">
+                                <i class="far fa-comments"></i> Open discussion <span class="discussion-count" data-comment-count="{{ task.id }}">{{ comment_total.value }}</span>
+                            </button>
+                            <div class="discussion-stack" data-task-discussion="{{ task.id }}">
 
-                    <i
-                        class="fas fa-folder-open"
-                    ></i>
+                                <div class="discussion-header">
+                                    <div class="discussion-title"><i class="far fa-comments"></i> Discussion</div>
+                                    <span class="discussion-count" data-comment-count="{{ task.id }}">{{ comment_total.value }}</span>
+                                </div>
 
-                </div>
+                                <div class="discussion-preview">
+                                    <div class="discussion-preview-label">Latest conversation</div>
+                                    <div class="discussion-preview-text">
+                                        {% if visible_comments|length > 0 %}{{ visible_comments[0].message }}{% else %}No discussion yet.{% endif %}
+                                    </div>
+                                </div>
 
+                                <button type="button" class="discussion-toggle" aria-expanded="false">
+                                    <i class="fas fa-chevron-down"></i>
+                                    <span class="toggle-text">Show discussion</span>
+                                </button>
 
-                <h2>
-                    No Tasks Available
-                </h2>
+                                <div class="discussion-body">
+                                    {% for comment in visible_comments %}
+                                        {{ render_comment(comment, task.id, 0) }}
+                                    {% endfor %}
 
+                                    {% if visible_comments|length == 0 %}
+                                        <div class="empty-discussion">
+                                            <i class="far fa-comment-dots mr-1"></i>
+                                            No discussion yet. Start the conversation below.
+                                        </div>
+                                    {% endif %}
+                                </div>
 
-                <p>
-                    No tasks were found for the selected filter.
-                </p>
+                                <div class="discussion-composer">
+                                    <div class="discussion-composer-label">
+                                        <i class="fas fa-message"></i>
+                                        {% if visible_comments|length == 0 %}Start a discussion{% else %}Add to the discussion{% endif %}
+                                    </div>
 
+                                    <form method="POST" action="/admin/reply_task/{{ task.id }}" class="reply-form">
+                                        <textarea name="admin_reply" rows="2" placeholder="Write an update, response, instruction, or clarification…" required></textarea>
+                                        <button type="submit" class="reply-button">
+                                            <i class="fas fa-paper-plane"></i> Post to discussion
+                                        </button>
+                                    </form>
+                                </div>
 
-                <a
-                    href="/admin/assign_task"
-                    class="btn-primary mt-5"
-                >
+                            </div>
+                        </td>
 
-                    <i class="fas fa-plus"></i>
+                        <td>
+                            <div class="action-stack">
+                                <button type="button" class="delete-button" data-task-id="{{ task.id }}">
+                                    <i class="fas fa-trash-alt"></i> Delete
+                                </button>
+                            </div>
+                        </td>
 
-                    Assign New Task
-
-                </a>
-
-            </div>
-
-
-            {% endif %}
-
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
 
+        {% else %}
 
-        <!-- FOOTER -->
-
-        <div class="page-footer">
-
-            <i
-                class="fas fa-lock mr-1"
-            ></i>
-
-            SALT Workforce Portal · Admin Task Management
-
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-folder-open"></i></div>
+            <h2>No tasks available</h2>
+            <p>No tasks were found for the selected filter.</p>
+            <a href="/admin/assign_task" class="btn-primary"><i class="fas fa-plus"></i> Assign new task</a>
         </div>
 
-
+        {% endif %}
     </div>
 
-</main>
-
-
+    <div class="page-footer">
+        <i class="fas fa-lock mr-1"></i>
+        SALT Workforce Portal · Admin Task Management
+    </div>
 </div>
 
-<!-- =========================================================
-     SIDEBAR JAVASCRIPT
-     ========================================================= -->
+<!-- Discussion drawer lives OUTSIDE #task-page-content so a refresh never replaces it,
+     and the script moves it to <body> so no parent element can clip or trap it. -->
+<div class="discussion-overlay" id="discussionOverlay" aria-hidden="true"></div>
+<aside class="discussion-panel" id="discussionPanel" role="dialog" aria-modal="true" aria-labelledby="discussionPanelTitle" aria-hidden="true">
+    <div class="discussion-panel-header">
+        <div>
+            <div class="discussion-panel-eyebrow"><i class="fas fa-comments"></i> Task conversation</div>
+            <h2 class="discussion-panel-title" id="discussionPanelTitle">Discussion</h2>
+            <div class="discussion-panel-subtitle" id="discussionPanelSubtitle">Review updates and reply to the team.</div>
+        </div>
+        <button type="button" class="discussion-panel-close" id="discussionPanelClose" aria-label="Close discussion panel"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="discussion-panel-body" id="discussionPanelBody"><div class="discussion-panel-empty">Choose a task to view its discussion.</div></div>
+</aside>
+{% endblock %}
 
+{% block scripts %}
 <script>
 (function () {
     "use strict";
 
-    /* =========================================================
-       HELPERS
-       ========================================================= */
+    let toastTimer = null;
 
     function showToast(message, type) {
-        type = type || "success";
+        let toast = document.getElementById("salt-task-toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "salt-task-toast";
+            toast.setAttribute("role", "status");
+            toast.setAttribute("aria-live", "polite");
+            toast.innerHTML = '<i class="fas"></i><span></span>';
+            document.body.appendChild(toast);
+        }
 
-        const oldToast = document.getElementById("salt-task-toast");
-        if (oldToast) oldToast.remove();
-
-        const toast = document.createElement("div");
-        toast.id = "salt-task-toast";
-
-        toast.style.cssText = `
-            position: fixed;
-            right: 22px;
-            bottom: 22px;
-            z-index: 99999;
-            max-width: 380px;
-            padding: 13px 16px;
-            border-radius: 12px;
-            color: #fff;
-            background: ${type === "error" ? "#dc2626" : "#1558b0"};
-            box-shadow: 0 12px 32px rgba(15,43,91,.22);
-            font-size: 13px;
-            font-weight: 700;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: opacity .2s ease, transform .2s ease;
-        `;
-
-        const icon = type === "error"
-            ? "fa-circle-exclamation"
-            : "fa-circle-check";
-
-        toast.innerHTML = `
-            <i class="fas ${icon} mr-2"></i>
-            <span></span>
-        `;
-
+        const isError = type === "error";
+        toast.className = "salt-toast" + (isError ? " error" : "");
+        toast.querySelector("i").className = "fas " + (isError ? "fa-circle-exclamation" : "fa-circle-check");
         toast.querySelector("span").textContent = message;
-        document.body.appendChild(toast);
 
-        requestAnimationFrame(function () {
-            toast.style.opacity = "1";
-            toast.style.transform = "translateY(0)";
-        });
+        requestAnimationFrame(function () { toast.classList.add("show"); });
 
-        setTimeout(function () {
-            toast.style.opacity = "0";
-            toast.style.transform = "translateY(10px)";
-
-            setTimeout(function () {
-                toast.remove();
-            }, 220);
-        }, 2800);
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 3000);
     }
 
-
     async function jsonFetch(url, options) {
-        const response = await fetch(url, {
-            credentials: "same-origin",
-            ...options
-        });
+        const response = await fetch(url, { credentials: "same-origin", ...options });
 
-        const contentType =
-            response.headers.get("content-type") || "";
-
-        if (!contentType.includes("application/json")) {
-            throw new Error(
-                "The server returned a page instead of JSON. Please check the Flask route."
-            );
+        if (!(response.headers.get("content-type") || "").includes("application/json")) {
+            throw new Error("The server returned a page instead of JSON. Please check the Flask route.");
         }
 
         const data = await response.json();
 
         if (!response.ok || data.status !== "success") {
-            throw new Error(
-                data.message || "The request could not be completed."
-            );
+            throw new Error(data.message || "The request could not be completed.");
         }
-
         return data;
     }
 
-
-    /* =========================================================
-       MOBILE / DESKTOP SIDEBAR
-       ========================================================= */
-
-    function setupSidebar() {
-        const toggleBtn =
-            document.getElementById("toggle-btn");
-
-        const sidebar =
-            document.getElementById("sidebar");
-
-        if (!toggleBtn || !sidebar) return;
-
-        if (toggleBtn.dataset.ready === "1") return;
-
-        toggleBtn.dataset.ready = "1";
-
-        toggleBtn.addEventListener("click", function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            if (window.innerWidth <= 850) {
-                sidebar.classList.toggle("mobile-open");
+    /* Build /admin/tasks?... while preserving other filters */
+    function buildTasksUrl(overrides) {
+        const params = new URLSearchParams(window.location.search);
+        Object.keys(overrides || {}).forEach(function (key) {
+            const value = overrides[key];
+            if (value === null || value === undefined || value === "") {
+                params.delete(key);
             } else {
-                sidebar.classList.toggle("collapsed");
+                params.set(key, value);
             }
         });
+        const query = params.toString();
+        return "/admin/tasks" + (query ? "?" + query : "");
+    }
 
-        document.addEventListener("click", function (event) {
-            if (window.innerWidth > 850) return;
+    function setDiscussionOpen(stack, open) {
+        const body = stack.querySelector(".discussion-body");
+        const toggle = stack.querySelector(".discussion-toggle");
+        if (!body || !toggle) return;
 
-            if (
-                sidebar.contains(event.target) ||
-                toggleBtn.contains(event.target)
-            ) {
-                return;
-            }
+        body.classList.toggle("is-open", open);
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        toggle.querySelector(".toggle-text").textContent = open ? "Hide discussion" : "Show discussion";
+        toggle.querySelector("i").className = open ? "fas fa-chevron-up" : "fas fa-chevron-down";
+    }
 
-            sidebar.classList.remove("mobile-open");
+    function resetReplyTrigger(composer) {
+        const trigger = composer.closest(".comment-node")?.querySelector(".reply-trigger");
+        if (trigger) trigger.innerHTML = '<i class="fas fa-reply"></i> Reply';
+    }
+
+    /* Where does the app's top bar end? Measured, so the drawer never hides under it.
+       If it ever picks the wrong element, set TOPBAR_SELECTOR to your bar's own selector. */
+    const TOPBAR_SELECTOR = "header, .topbar, .salt-topbar, .portal-topbar, [class*='topbar'], [class*='top-bar'], [id*='topbar']";
+
+    function measureTopbarBottom() {
+        let bottom = 0;
+        document.querySelectorAll(TOPBAR_SELECTOR).forEach(function (el) {
+            if (el.closest("#discussionPanel, #discussionOverlay, #task-page-content")) return;
+            const style = getComputedStyle(el);
+            if (style.display === "none" || style.visibility === "hidden") return;
+            const rect = el.getBoundingClientRect();
+            if (rect.height < 24 || rect.width < window.innerWidth * 0.5) return;
+            if (rect.top > 8 || rect.bottom <= 0) return; /* must sit at the very top of the screen */
+            bottom = Math.max(bottom, rect.bottom);
+        });
+        return Math.round(bottom);
+    }
+
+    function syncTopbarOffset() {
+        const bottom = measureTopbarBottom();
+        if (bottom > 0) document.documentElement.style.setProperty("--salt-discussion-topbar", bottom + "px");
+    }
+
+    function openDiscussion(taskId, trigger) {
+        const page = document.getElementById("task-page-content");
+        const source = page?.querySelector('.discussion-stack[data-task-discussion="' + CSS.escape(String(taskId)) + '"]');
+        const panel = document.getElementById("discussionPanel");
+        const overlay = document.getElementById("discussionOverlay");
+        const body = document.getElementById("discussionPanelBody");
+        if (!source || !panel || !overlay || !body) return;
+        body.replaceChildren(source.cloneNode(true));
+        const rowCount = page.querySelector('[data-comment-count="' + CSS.escape(String(taskId)) + '"]');
+        const panelCount = body.querySelector('.discussion-count');
+        if (rowCount && panelCount) panelCount.textContent = rowCount.textContent.trim();
+        const clonedComments = body.querySelector(".discussion-body");
+        if (clonedComments) clonedComments.scrollTop = 0;
+        const title = trigger?.dataset.taskTitle || source.closest("tr")?.querySelector(".task-title")?.textContent?.trim() || ("Task #" + taskId);
+        const employee = trigger?.dataset.taskEmployee || source.closest("tr")?.querySelector(".employee-name")?.textContent?.trim() || "Employee";
+        document.getElementById("discussionPanelTitle").textContent = title;
+        document.getElementById("discussionPanelSubtitle").textContent = "Task #" + taskId + " · " + employee;
+        panel.dataset.taskId = String(taskId);
+        syncTopbarOffset();
+        panel.classList.add("is-open"); overlay.classList.add("is-open");
+        panel.setAttribute("aria-hidden", "false"); overlay.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        const conversation = body.querySelector(".discussion-body");
+        if (conversation) {
+            requestAnimationFrame(function () {
+                conversation.scrollTop = conversation.scrollHeight;
+            });
+        }
+        panel.querySelector("textarea")?.focus({ preventScroll: true });
+    }
+
+    function closeDiscussion() {
+        const panel = document.getElementById("discussionPanel");
+        const overlay = document.getElementById("discussionOverlay");
+        if (!panel || !overlay) return;
+        panel.classList.remove("is-open"); overlay.classList.remove("is-open");
+        panel.setAttribute("aria-hidden", "true"); overlay.setAttribute("aria-hidden", "true");
+        panel.dataset.taskId = "";
+        document.body.style.overflow = "";
+    }
+
+    function applyClientFilters() {
+        const query = (document.getElementById("taskSearch")?.value || "").trim().toLowerCase();
+        const priority = document.getElementById("priorityFilter")?.value || "";
+        document.querySelectorAll("#task-page-content tbody tr[id^=task-row-]").forEach(function (row) {
+            const matchesQuery = !query || (row.dataset.search || row.textContent.toLowerCase()).includes(query);
+            const matchesPriority = !priority || (row.dataset.priority || "medium") === priority;
+            row.classList.toggle("task-hidden", !(matchesQuery && matchesPriority));
         });
     }
 
+    async function loadView(url, options) {
+        options = options || {};
 
-    /* =========================================================
-       TASK COUNTS
-       ========================================================= */
+        const current = document.getElementById("task-page-content");
+        if (!current) return;
 
-    function updateTaskCounts() {
-        const rows =
-            document.querySelectorAll(
-                "table tbody tr[id^='task-row-']"
-            );
+        const scrollHost = current.closest(".salt-page") || current.parentElement;
+        const hostTop = scrollHost ? scrollHost.scrollTop : 0;
+        const windowTop = window.scrollY;
 
-        let pending = 0;
-        let progress = 0;
-        let completed = 0;
+        const panel = document.getElementById("discussionPanel");
+        const panelTaskId = panel?.classList.contains("is-open") ? panel.dataset.taskId : "";
+        const openIds = new Set(
+            Array.from(current.querySelectorAll(".discussion-stack"))
+                .filter(function (stack) { return stack.querySelector(".discussion-body.is-open"); })
+                .map(function (stack) { return stack.dataset.taskDiscussion; })
+        );
+        if (options.openTaskId) openIds.add(String(options.openTaskId));
 
-        rows.forEach(function (row) {
-            const badge =
-                row.querySelector(".status-badge");
+        current.classList.add("is-loading");
 
-            if (!badge) return;
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                credentials: "same-origin",
+                cache: "no-store",
+                headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "text/html" }
+            });
+            if (!response.ok) throw new Error("Unable to load the selected tasks.");
 
-            const status =
-                badge.textContent
-                    .trim()
-                    .toLowerCase();
+            const doc = new DOMParser().parseFromString(await response.text(), "text/html");
+            const incoming = doc.getElementById("task-page-content");
+            if (!incoming) throw new Error("Task content was not found in the response.");
 
-            if (status.includes("pending")) {
-                pending++;
-            } else if (status.includes("in progress")) {
-                progress++;
-            } else if (status.includes("completed")) {
-                completed++;
+            current.replaceWith(incoming);
+
+            if (options.push) window.history.pushState({}, "", url);
+
+            if (scrollHost) scrollHost.scrollTop = hostTop;
+            window.scrollTo(0, windowTop);
+
+            incoming.querySelectorAll(".discussion-stack").forEach(function (stack) {
+                if (openIds.has(stack.dataset.taskDiscussion)) setDiscussionOpen(stack, true);
+            });
+            if (panelTaskId) {
+                const trigger = incoming.querySelector('[data-open-discussion="' + CSS.escape(panelTaskId) + '"]');
+                if (trigger) openDiscussion(panelTaskId, trigger); else closeDiscussion();
             }
-        });
-
-        const values =
-            document.querySelectorAll(".stat-value");
-
-        if (values.length >= 3) {
-            values[0].textContent = pending;
-            values[1].textContent = progress;
-            values[2].textContent = completed;
+            applyClientFilters();
+        } catch (error) {
+            console.error("Task view error:", error);
+            current.classList.remove("is-loading");
+            showToast(error.message || "Unable to load tasks.", "error");
         }
     }
 
+    /* ========== CLICKS ========== */
+    document.addEventListener("click", function (event) {
+        const target = event.target;
 
-    function showNoTasksMessage() {
-        const tableCard =
-            document.querySelector(".table-card");
+        /* Status filter buttons — never navigate */
+        const statusBtn = target.closest(".filter-buttons .filter-btn");
+        if (statusBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+            const status = statusBtn.getAttribute("data-status") || "";
+            loadView(buildTasksUrl({ status: status || null }), { push: true });
+            return;
+        }
 
-        if (!tableCard) return;
+        const openDiscussionButton = target.closest("[data-open-discussion]");
+        if (openDiscussionButton) { openDiscussion(openDiscussionButton.dataset.openDiscussion, openDiscussionButton); return; }
+        if (target.closest("#discussionPanelClose") || target.closest("#discussionOverlay")) { closeDiscussion(); return; }
 
-        const tableScroll =
-            tableCard.querySelector(".table-scroll");
+        const toggle = target.closest(".discussion-toggle");
+        if (toggle) {
+            const stack = toggle.closest(".discussion-stack");
+            const isOpen = stack.querySelector(".discussion-body").classList.contains("is-open");
+            setDiscussionOpen(stack, !isOpen);
+            return;
+        }
 
-        if (!tableScroll) return;
+        const replyTrigger = target.closest(".reply-trigger");
+        if (replyTrigger) {
+            const node = replyTrigger.closest(".comment-node");
+            const composer = node?.querySelector(".inline-reply");
+            if (!composer) return;
 
-        tableScroll.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">
-                    <i class="fas fa-folder-open"></i>
-                </div>
-
-                <h2>No Tasks Available</h2>
-
-                <p>
-                    All tasks in the current view have been removed.
-                </p>
-
-                <a
-                    href="/admin/assign_task"
-                    class="btn-primary mt-5"
-                >
-                    <i class="fas fa-plus"></i>
-                    Assign New Task
-                </a>
-            </div>
-        `;
-    }
-
-
-    /* =========================================================
-       DELETE
-       - No form submission
-       - No page reload
-       - Removes only the Admin view
-       ========================================================= */
-
-    function setupDeleteButtons() {
-        document.querySelectorAll(".delete-button").forEach(function (button) {
-            if (button.dataset.ready === "1") return;
-
-            button.dataset.ready = "1";
-
-            button.addEventListener("click", async function (event) {
-                event.preventDefault();
-                event.stopPropagation();
-
-                const taskId =
-                    button.dataset.taskId;
-
-                if (!taskId) {
-                    showToast(
-                        "Task ID is missing.",
-                        "error"
-                    );
-                    return;
-                }
-
-                const confirmed = window.confirm(
-                    "Remove this task from the Admin Task Board?\n\nThe task will remain available to the employee."
-                );
-
-                if (!confirmed) return;
-
-                const originalHTML =
-                    button.innerHTML;
-
-                button.disabled = true;
-                button.innerHTML = `
-                    <i class="fas fa-spinner fa-spin"></i>
-                    Removing...
-                `;
-
-                try {
-                    const data = await jsonFetch(
-                        `/delete_task/${taskId}`,
-                        {
-                            method: "POST",
-                            headers: {
-                                "X-Requested-With":
-                                    "XMLHttpRequest",
-                                "Accept":
-                                    "application/json"
-                            }
-                        }
-                    );
-
-                    const row =
-                        document.getElementById(
-                            `task-row-${taskId}`
-                        );
-
-                    if (row) {
-                        row.style.transition =
-                            "opacity .25s ease, transform .25s ease";
-
-                        row.style.opacity = "0";
-                        row.style.transform =
-                            "translateX(18px)";
-
-                        setTimeout(function () {
-                            row.remove();
-                            updateTaskCounts();
-
-                            if (
-                                document.querySelectorAll(
-                                    "table tbody tr[id^='task-row-']"
-                                ).length === 0
-                            ) {
-                                showNoTasksMessage();
-                            }
-                        }, 250);
-                    }
-
-                    showToast(
-                        data.message ||
-                        "Task removed from the Admin Task Board.",
-                        "success"
-                    );
-
-                } catch (error) {
-                    console.error(
-                        "Admin task delete error:",
-                        error
-                    );
-
-                    showToast(
-                        error.message ||
-                        "Unable to remove task.",
-                        "error"
-                    );
-
-                    button.disabled = false;
-                    button.innerHTML = originalHTML;
+            document.querySelectorAll(".inline-reply.is-open").forEach(function (other) {
+                if (other !== composer) {
+                    other.classList.remove("is-open");
+                    resetReplyTrigger(other);
                 }
             });
-        });
-    }
 
+            const open = composer.classList.toggle("is-open");
 
-    /* =========================================================
-       DISCUSSION SHOW / HIDE
-       ========================================================= */
+            if (open) {
+                replyTrigger.innerHTML = '<i class="fas fa-xmark"></i> Cancel reply';
+                node.classList.add("comment-highlight");
+                setTimeout(function () { node.classList.remove("comment-highlight"); }, 1800);
+                composer.querySelector("textarea")?.focus();
+            } else {
+                replyTrigger.innerHTML = '<i class="fas fa-reply"></i> Reply';
+            }
+            return;
+        }
 
-    function setupDiscussionToggles() {
-        document.querySelectorAll(".discussion-toggle")
-            .forEach(function (button) {
+        const cancelReply = target.closest(".cancel-reply");
+        if (cancelReply) {
+            const composer = cancelReply.closest(".inline-reply");
+            if (!composer) return;
+            composer.classList.remove("is-open");
+            resetReplyTrigger(composer);
+            const textarea = composer.querySelector("textarea");
+            if (textarea) textarea.value = "";
+            return;
+        }
 
-                if (button.dataset.ready === "1") return;
+        const deleteButton = target.closest(".delete-button");
+        if (deleteButton) handleDelete(deleteButton);
+    });
 
-                button.dataset.ready = "1";
+    document.addEventListener("input", function (event) {
+        if (event.target.matches("#taskSearch")) applyClientFilters();
+    });
 
-                button.addEventListener("click", function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
+    document.addEventListener("change", function (event) {
+        if (event.target.matches("#priorityFilter")) {
+            applyClientFilters();
+            return;
+        }
 
-                    const stack =
-                        button.closest(".discussion-stack");
+        /* Date period filter — AJAX only */
+        if (event.target.matches("#dateFilter")) {
+            event.preventDefault();
+            const period = event.target.value || null;
+            loadView(buildTasksUrl({ period: period }), { push: true });
+            return;
+        }
 
-                    if (!stack) return;
+        /* Employee filter — AJAX only (no form, no navigation) */
+        if (event.target.matches("#employeeFilter") || event.target.closest("#employeeFilter")) {
+            event.preventDefault();
+            const select = event.target.matches("#employeeFilter") ? event.target : event.target.closest("#employeeFilter");
+            const employeeId = select.value || null;
+            loadView(buildTasksUrl({ employee_id: employeeId }), { push: true });
+            return;
+        }
+    });
 
-                    const body =
-                        stack.querySelector(".discussion-body");
+    document.addEventListener("keydown", function (event) { if (event.key === "Escape") closeDiscussion(); });
 
-                    if (!body) return;
+    window.addEventListener("popstate", function () {
+        loadView(window.location.href, { push: false });
+    });
 
-                    const open =
-                        body.classList.toggle("is-open");
+    async function handleDelete(button) {
+        const taskId = button.dataset.taskId;
+        if (!taskId) {
+            showToast("Task ID is missing.", "error");
+            return;
+        }
 
-                    button.classList.toggle(
-                        "is-open",
-                        open
-                    );
+        if (!window.confirm("Remove this task from the Admin Task Board?\n\nThe task will remain available to the employee.")) return;
 
-                    const text =
-                        button.querySelector(".toggle-text");
+        const originalHTML = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Removing…';
 
-                    const icon =
-                        button.querySelector("i");
-
-                    if (text) {
-                        text.textContent =
-                            open
-                                ? "Hide Discussion"
-                                : "Show Discussion";
-                    }
-
-                    if (icon) {
-                        icon.className =
-                            open
-                                ? "fas fa-chevron-up"
-                                : "fas fa-chevron-down";
-                    }
-                });
+        try {
+            const data = await jsonFetch("/delete_task/" + encodeURIComponent(taskId), {
+                method: "POST",
+                headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" }
             });
+
+            document.getElementById("task-row-" + taskId)?.classList.add("is-removing");
+            showToast(data.message || "Task removed from the Admin Task Board.", "success");
+
+            setTimeout(function () { loadView(window.location.href, { push: false }); }, 260);
+        } catch (error) {
+            console.error("Admin task delete error:", error);
+            showToast(error.message || "Unable to remove task.", "error");
+            button.disabled = false;
+            button.innerHTML = originalHTML;
+        }
     }
 
+    document.addEventListener("submit", async function (event) {
+        const form = event.target;
+        if (!form.matches(".reply-form, .inline-reply-form")) return;
 
-    /* =========================================================
-       REPLY COMPOSERS
-       ========================================================= */
+        event.preventDefault();
 
-    function setupReplyButtons() {
-        document.querySelectorAll(".reply-trigger")
-            .forEach(function (button) {
+        const textarea = form.querySelector("textarea");
+        if (!textarea || !textarea.value.trim()) return;
 
-                if (button.dataset.ready === "1") return;
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalHTML = submitButton ? submitButton.innerHTML : "";
+        const taskId = form.closest(".discussion-stack")?.dataset.taskDiscussion;
 
-                button.dataset.ready = "1";
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+        }
 
-                button.addEventListener("click", function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    const node =
-                        button.closest(".comment-node");
-
-                    if (!node) return;
-
-                    const composer =
-                        node.querySelector(
-                            ":scope > .comment-wrap .inline-reply"
-                        ) ||
-                        node.querySelector(".inline-reply");
-
-                    if (!composer) return;
-
-                    const body =
-                        button.closest(".discussion-body");
-
-                    if (body && !body.classList.contains("is-open")) {
-                        body.classList.add("is-open");
-
-                        const stack =
-                            body.closest(".discussion-stack");
-
-                        const toggle =
-                            stack?.querySelector(
-                                ".discussion-toggle"
-                            );
-
-                        if (toggle) {
-                            toggle.classList.add("is-open");
-
-                            const toggleText =
-                                toggle.querySelector(
-                                    ".toggle-text"
-                                );
-
-                            if (toggleText) {
-                                toggleText.textContent =
-                                    "Hide Discussion";
-                            }
-
-                            const icon =
-                                toggle.querySelector("i");
-
-                            if (icon) {
-                                icon.className =
-                                    "fas fa-chevron-up";
-                            }
-                        }
-                    }
-
-                    const isOpen =
-                        composer.classList.toggle("is-open");
-
-                    button.innerHTML = isOpen
-                        ? '<i class="fas fa-times"></i> Close Reply'
-                        : '<i class="fas fa-reply"></i> Reply';
-
-                    if (isOpen) {
-                        const textarea =
-                            composer.querySelector("textarea");
-
-                        if (textarea) {
-                            setTimeout(function () {
-                                textarea.focus();
-                            }, 50);
-                        }
-                    }
-                });
+        try {
+            const data = await jsonFetch(form.action, {
+                method: "POST",
+                headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
+                body: new FormData(form)
             });
-    }
 
-
-    function setupCancelReplyButtons() {
-        document.querySelectorAll(".cancel-reply")
-            .forEach(function (button) {
-
-                if (button.dataset.ready === "1") return;
-
-                button.dataset.ready = "1";
-
-                button.addEventListener("click", function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    const composer =
-                        button.closest(".inline-reply");
-
-                    if (!composer) return;
-
-                    composer.classList.remove("is-open");
-
-                    const node =
-                        composer.closest(".comment-node");
-
-                    const replyButton =
-                        node?.querySelector(".reply-trigger");
-
-                    if (replyButton) {
-                        replyButton.innerHTML =
-                            '<i class="fas fa-reply"></i> Reply';
-                    }
-
-                    const textarea =
-                        composer.querySelector("textarea");
-
-                    if (textarea) {
-                        textarea.value = "";
-                    }
-                });
-            });
-    }
-
-
-    /* =========================================================
-       ADD DISCUSSION / REPLY
-       - Intercept all admin reply forms
-       - No redirect
-       - Preserve scroll position
-       ========================================================= */
-
-    function setupDiscussionForms() {
-        document.querySelectorAll(
-            ".inline-reply-form, .discussion-composer .reply-form"
-        ).forEach(function (form) {
-
-            if (form.dataset.ready === "1") return;
-
-            form.dataset.ready = "1";
-
-            form.addEventListener("submit", async function (event) {
-                event.preventDefault();
-                event.stopPropagation();
-
-                const textarea =
-                    form.querySelector("textarea");
-
-                if (!textarea || !textarea.value.trim()) {
-                    return;
-                }
-
-                const submitButton =
-                    form.querySelector(
-                        'button[type="submit"]'
-                    );
-
-                const message =
-                    textarea.value.trim();
-
-                const scrollPosition =
-                    window.scrollY;
-
-                const originalHTML =
-                    submitButton
-                        ? submitButton.innerHTML
-                        : "";
-
-                if (submitButton) {
-                    submitButton.disabled = true;
-                    submitButton.innerHTML = `
-                        <i class="fas fa-spinner fa-spin"></i>
-                        Sending...
-                    `;
-                }
-
-                try {
-                    const data = await jsonFetch(
-                        form.action,
-                        {
-                            method: "POST",
-                            headers: {
-                                "X-Requested-With":
-                                    "XMLHttpRequest",
-                                "Accept":
-                                    "application/json"
-                            },
-                            body: new FormData(form)
-                        }
-                    );
-
-                    /*
-                     * We deliberately do not reload the page.
-                     * Add the new comment to the visible discussion.
-                     */
-                    const stack =
-                        form.closest(".discussion-stack");
-
-                    const body =
-                        stack?.querySelector(".discussion-body");
-
-                    if (body) {
-                        const empty =
-                            body.querySelector(
-                                ".empty-discussion"
-                            );
-
-                        if (empty) empty.remove();
-
-                        const node =
-                            document.createElement(
-                                "div"
-                            );
-
-                        node.className =
-                            "comment-node";
-
-                        node.dataset.commentId =
-                            data.comment_id || "";
-
-                        node.innerHTML = `
-                            <div class="comment-wrap">
-                                <div class="comment admin-comment">
-                                    <div class="comment-head">
-                                        <div class="comment-role comment-admin">
-                                            <i class="fas fa-shield-halved mr-1"></i>
-                                            Admin
-                                        </div>
-
-                                        <div class="comment-date">
-                                            Just now
-                                        </div>
-                                    </div>
-
-                                    <div class="comment-message"></div>
-
-                                    <button
-                                        type="button"
-                                        class="reply-trigger"
-                                    >
-                                        <i class="fas fa-reply"></i>
-                                        Reply
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-
-                        node.querySelector(
-                            ".comment-message"
-                        ).textContent = message;
-
-                        body.appendChild(node);
-
-                        body.classList.add("is-open");
-
-                        const toggle =
-                            stack.querySelector(
-                                ".discussion-toggle"
-                            );
-
-                        if (toggle) {
-                            toggle.classList.add("is-open");
-
-                            const toggleText =
-                                toggle.querySelector(
-                                    ".toggle-text"
-                                );
-
-                            if (toggleText) {
-                                toggleText.textContent =
-                                    "Hide Discussion";
-                            }
-
-                            const icon =
-                                toggle.querySelector("i");
-
-                            if (icon) {
-                                icon.className =
-                                    "fas fa-chevron-up";
-                            }
-                        }
-
-                        const count =
-                            stack.querySelector(
-                                ".discussion-count"
-                            );
-
-                        if (count) {
-                            count.textContent =
-                                body.querySelectorAll(
-                                    ".comment-node"
-                                ).length;
-                        }
-
-                        const preview =
-                            stack.querySelector(
-                                ".discussion-preview-text"
-                            );
-
-                        if (preview) {
-                            preview.textContent =
-                                message;
-                        }
-
-                        /*
-                         * Re-enable Reply on the newly-created node.
-                         */
-                        setupReplyButtons();
-                    }
-
-                    textarea.value = "";
-
-                    showToast(
-                        data.message ||
-                        "Discussion posted successfully.",
-                        "success"
-                    );
-
-                    requestAnimationFrame(function () {
-                        window.scrollTo(
-                            0,
-                            scrollPosition
-                        );
-                    });
-
-                } catch (error) {
-                    console.error(
-                        "Discussion error:",
-                        error
-                    );
-
-                    showToast(
-                        error.message ||
-                        "Unable to post discussion.",
-                        "error"
-                    );
-
-                } finally {
-                    if (submitButton) {
-                        submitButton.disabled = false;
-                        submitButton.innerHTML =
-                            originalHTML;
-                    }
-                }
-            });
-        });
-    }
-
-
-    /* =========================================================
-       FILTER BUTTONS
-       - No full page navigation
-       - Replace only the task/stat sections
-       ========================================================= */
-
-    function setupAjaxFilters() {
-        document.querySelectorAll(
-            '.filter-buttons a[href*="/admin/tasks"]'
-        ).forEach(function (link) {
-
-            if (link.dataset.ready === "1") return;
-
-            link.dataset.ready = "1";
-
-            link.addEventListener("click", async function (event) {
-                event.preventDefault();
-                event.stopPropagation();
-
-                const url = link.href;
-                const scrollPosition = window.scrollY;
-
-                try {
-                    const response = await fetch(
-                        url,
-                        {
-                            method: "GET",
-                            credentials: "same-origin",
-                            headers: {
-                                "X-Requested-With":
-                                    "XMLHttpRequest",
-                                "Accept":
-                                    "text/html"
-                            }
-                        }
-                    );
-
-                    if (!response.ok) {
-                        throw new Error(
-                            "Unable to load the selected tasks."
-                        );
-                    }
-
-                    const html =
-                        await response.text();
-
-                    const doc =
-                        new DOMParser().parseFromString(
-                            html,
-                            "text/html"
-                        );
-
-                    const currentTable =
-                        document.querySelector(
-                            ".table-card"
-                        );
-
-                    const newTable =
-                        doc.querySelector(
-                            ".table-card"
-                        );
-
-                    if (currentTable && newTable) {
-                        currentTable.replaceWith(
-                            newTable
-                        );
-                    }
-
-                    const currentStats =
-                        document.querySelector(
-                            ".stats-grid"
-                        );
-
-                    const newStats =
-                        doc.querySelector(
-                            ".stats-grid"
-                        );
-
-                    if (currentStats && newStats) {
-                        currentStats.replaceWith(
-                            newStats
-                        );
-                    }
-
-                    /*
-                     * Update active filter state.
-                     */
-                    document.querySelectorAll(
-                        ".filter-buttons a"
-                    ).forEach(function (item) {
-                        item.classList.remove("active");
-                    });
-
-                    const matchingLink =
-                        document.querySelector(
-                            `.filter-buttons a[href="${new URL(url, window.location.origin).pathname}${new URL(url, window.location.origin).search}"]`
-                        );
-
-                    if (matchingLink) {
-                        matchingLink.classList.add("active");
-                    }
-
-                    /*
-                     * Reconnect listeners because the table
-                     * has been replaced.
-                     */
-                    setupDeleteButtons();
-                    setupDiscussionToggles();
-                    setupReplyButtons();
-                    setupCancelReplyButtons();
-                    setupDiscussionForms();
-
-                    window.history.pushState(
-                        {},
-                        "",
-                        url
-                    );
-
-                    requestAnimationFrame(function () {
-                        window.scrollTo(
-                            0,
-                            scrollPosition
-                        );
-                    });
-
-                } catch (error) {
-                    console.error(
-                        "Task filter error:",
-                        error
-                    );
-
-                    showToast(
-                        error.message ||
-                        "Unable to load tasks.",
-                        "error"
-                    );
-                }
-            });
-        });
-    }
-
-
-    /* =========================================================
-       INITIALIZE
-       ========================================================= */
-
-    function initializeTaskBoard() {
-        setupSidebar();
-        setupDeleteButtons();
-        setupDiscussionToggles();
-        setupReplyButtons();
-        setupCancelReplyButtons();
-        setupDiscussionForms();
-        setupAjaxFilters();
-    }
-
-
-    if (document.readyState === "loading") {
-        document.addEventListener(
-            "DOMContentLoaded",
-            initializeTaskBoard
-        );
-    } else {
-        initializeTaskBoard();
-    }
-
+            showToast(data.message || "Posted to the discussion.", "success");
+            await loadView(window.location.href, { push: false, openTaskId: taskId });
+        } catch (error) {
+            console.error("Discussion error:", error);
+            showToast(error.message || "Unable to post to the discussion.", "error");
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalHTML;
+            }
+        }
+    });
+
+    /* Move the drawer to <body> so no parent (transform, overflow, z-index) can trap or clip it. */
+    ["discussionOverlay", "discussionPanel"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el && el.parentElement !== document.body) document.body.appendChild(el);
+    });
+
+    window.addEventListener("resize", function () {
+        if (document.getElementById("discussionPanel")?.classList.contains("is-open")) syncTopbarOffset();
+    });
+
+    applyClientFilters();
 })();
 </script>
 
-
 <script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
-</body>
-
-</html>
+{% endblock %}

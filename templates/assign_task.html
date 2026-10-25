@@ -1,1130 +1,774 @@
-<!DOCTYPE html>
+{% extends "base.html" %}
 
-<html lang="en">
+{% block title %}Assign Task · SALT Workforce Portal{% endblock %}
+{% block page_heading %}Assign Task{% endblock %}
 
-<head>
-
-
-<meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
-
-<title>Tasks Management - SALT Workforce Portal</title>
-
-<link
-    rel="icon"
-    href="{{ url_for('static', filename='salt-logo.png') }}"
->
-
-<!-- Tailwind CSS -->
+{% block head %}
 <script src="https://cdn.tailwindcss.com"></script>
-
-<!-- Font Awesome -->
-<link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
->
-
-<style>
-
-    :root {
-        --salt-navy: #0f2b5b;
-        --salt-navy-dark: #0b2147;
-        --salt-blue: #1558b0;
-        --salt-blue-light: #eaf2ff;
-        --salt-border: #dbe4f0;
-        --salt-bg: #f5f7fb;
-        --salt-text: #172033;
-        --salt-muted: #6b7280;
-    }
-
-    * {
-        box-sizing: border-box;
-    }
-
-    body {
-        margin: 0;
-        background: var(--salt-bg);
-        color: var(--salt-text);
-        font-family:
-            Inter,
-            ui-sans-serif,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
-    }
-
-    /* =====================================================
-       SIDEBAR
-       ===================================================== */
-
-    .sidebar {
-        background:
-            linear-gradient(
-                180deg,
-                var(--salt-navy) 0%,
-                #12366f 100%
-            );
-    }
-
-    .sidebar-link {
-        transition:
-            background .2s ease,
-            color .2s ease,
-            transform .2s ease;
-    }
-
-    .sidebar-link:hover {
-        background: rgba(255,255,255,.10);
-        transform: translateX(2px);
-    }
-
-    .sidebar-link.active {
-        background: rgba(255,255,255,.16);
-        box-shadow:
-            inset 3px 0 0 #60a5fa;
-    }
-
-    /* =====================================================
-       MAIN CONTENT
-       ===================================================== */
-
-    .page-container {
-        max-width: 1180px;
-        margin: 0 auto;
-    }
-
-    /* =====================================================
-       INFO BAR
-       ===================================================== */
-
-    .info-box {
-        background: var(--salt-blue-light);
-        border: 1px solid #cfe0fb;
-        color: #31527f;
-        border-radius: 14px;
-    }
-
-    /* =====================================================
-       FORM CARD
-       ===================================================== */
-
-    .form-card {
-        background: #ffffff;
-        border: 1px solid var(--salt-border);
-        border-radius: 20px;
-        box-shadow:
-            0 8px 30px rgba(15,43,91,.06);
-    }
-
-    .section-header {
-        border-bottom: 1px solid var(--salt-border);
-    }
-
-    /* =====================================================
-       FORM ELEMENTS
-       ===================================================== */
-
-    .form-label {
-        display: block;
-        color: #26344d;
-        font-size: .9rem;
-        font-weight: 700;
-        margin-bottom: 8px;
-    }
-
-    .required {
-        color: #dc2626;
-    }
-
-    .form-input,
-    .form-select,
-    .form-textarea {
-        width: 100%;
-        background: #fff;
-        border: 1px solid #d6dfeb;
-        border-radius: 12px;
-        color: #172033;
-        font-size: .95rem;
-        outline: none;
-        transition:
-            border-color .2s ease,
-            box-shadow .2s ease;
-    }
-
-    .form-input,
-    .form-select {
-        height: 50px;
-        padding: 0 15px;
-    }
-
-    .form-textarea {
-        padding: 13px 15px;
-        resize: vertical;
-        min-height: 120px;
-    }
-
-    .form-input::placeholder,
-    .form-textarea::placeholder {
-        color: #9aa5b5;
-    }
-
-    .form-input:hover,
-    .form-select:hover,
-    .form-textarea:hover {
-        border-color: #b9c7da;
-    }
-
-    .form-input:focus,
-    .form-select:focus,
-    .form-textarea:focus {
-        border-color: var(--salt-blue);
-        box-shadow:
-            0 0 0 3px rgba(21,88,176,.12);
-    }
-
-    /* =====================================================
-       INPUT ICONS
-       ===================================================== */
-
-    .input-wrapper {
-        position: relative;
-    }
-
-    .input-icon {
-        position: absolute;
-        left: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #7b8aa3;
-        pointer-events: none;
-    }
-
-    .has-icon {
-        padding-left: 43px !important;
-    }
-
-    /* =====================================================
-       BUTTONS
-       ===================================================== */
-
-    .primary-btn {
-        background:
-            linear-gradient(
-                135deg,
-                #1558b0,
-                #0f4b99
-            );
-        color: #fff;
-        border: none;
-        border-radius: 12px;
-        padding: 13px 22px;
-        font-weight: 700;
-        box-shadow:
-            0 6px 16px rgba(21,88,176,.20);
-        transition:
-            transform .2s ease,
-            box-shadow .2s ease;
-    }
-
-    .primary-btn:hover {
-        transform: translateY(-1px);
-        box-shadow:
-            0 9px 20px rgba(21,88,176,.27);
-    }
-
-    .secondary-btn {
-        background: #fff;
-        color: #334155;
-        border: 1px solid #d5deea;
-        border-radius: 12px;
-        padding: 13px 20px;
-        font-weight: 700;
-        transition:
-            background .2s ease,
-            border-color .2s ease;
-    }
-
-    .secondary-btn:hover {
-        background: #f8fafc;
-        border-color: #b9c7da;
-    }
-
-    /* =====================================================
-       RESPONSIVE
-       ===================================================== */
-
-    @media (max-width: 900px) {
-
-        .sidebar {
-            width: 220px !important;
-        }
-
-    }
-
-    @media (max-width: 768px) {
-
-        .layout {
-            flex-direction: column;
-        }
-
-        .sidebar {
-            width: 100% !important;
-            min-height: auto;
-        }
-
-        .sidebar-nav {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .main-content {
-            padding: 20px !important;
-        }
-
-        .top-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
-        }
-
-        .back-btn {
-            width: 100%;
-            justify-content: center;
-        }
-
-    }
-
-    @media (max-width: 500px) {
-
-        .sidebar-nav {
-            grid-template-columns: 1fr;
-        }
-
-        .form-card {
-            border-radius: 15px;
-        }
-
-        .form-body {
-            padding: 20px !important;
-        }
-
-        .action-buttons {
-            flex-direction: column;
-        }
-
-        .action-buttons a,
-        .action-buttons button {
-            width: 100%;
-            justify-content: center;
-        }
-
-    }
-
-</style>
-
-
-
-    <!-- SALT Workforce PWA -->
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#0b3d91">
-    <meta name="application-name" content="SALT Workforce">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="SALT Workforce">
-    <script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
-
-
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" content="#0b3d91">
+<meta name="application-name" content="SALT Workforce">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SALT Workforce">
+<script src="{{ url_for('static', filename='js/pwa.js') }}" defer></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
-</head>
+{% endblock %}
 
-<body>
+{% block extra_css %}
+<style>
+/* All styles are scoped to this page so base.html stays the shared source of truth. */
+:where(:root) {
+    --salt-blue: #1558b0;
+    --salt-blue-dark: #0f4590;
+    --salt-blue-soft: #eaf2ff;
+    --salt-border: #dbe4f0;
+    --salt-muted: #64748b;
+}
 
-<div class="layout flex min-h-screen">
+.assign-task-page { width: 100%; max-width: 1240px; margin: 0 auto; padding: 8px 8px 32px; color: #172033; }
+.assign-task-page *, .assign-task-page *::before, .assign-task-page *::after { box-sizing: border-box; }
+.assign-task-page button { font-family: inherit; }
+.assign-task-page [hidden] { display: none !important; }
 
+/* ===== Header ===== */
+.assign-task-page .page-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 4px 0 22px; }
+.assign-task-page .page-badge { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--salt-blue); font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+.assign-task-page .page-title { margin: 0; color: #172033; font-size: clamp(28px, 3vw, 38px); line-height: 1.15; font-weight: 800; letter-spacing: -.025em; }
+.assign-task-page .page-subtitle { margin: 8px 0 0; max-width: 60ch; color: var(--salt-muted); font-size: 14px; line-height: 1.6; }
 
-<!-- =====================================================
-     SIDEBAR
-     ===================================================== -->
+.assign-task-page .info-box { display: flex; align-items: flex-start; gap: 13px; padding: 14px 18px; margin-bottom: 22px; border: 1px solid #cfe0fb; border-radius: 14px; background: var(--salt-blue-soft); color: #31527f; }
+.assign-task-page .info-icon { width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(21,88,176,.10); color: var(--salt-blue); }
+.assign-task-page .info-title { color: #263f67; font-size: 14px; font-weight: 800; }
+.assign-task-page .info-text { margin-top: 2px; color: #536b8d; font-size: 13px; line-height: 1.55; }
 
-<aside
-    class="sidebar w-64 text-white flex flex-col shrink-0"
->
+.assign-task-page .form-alert { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; margin-bottom: 22px; border: 1px solid #fecaca; border-radius: 14px; background: #fff5f5; color: #b91c1c; font-size: 14px; font-weight: 700; line-height: 1.5; }
+.assign-task-page .form-alert i { margin-top: 3px; }
 
-    <!-- LOGO -->
-    <div
-        class="px-6 py-6 border-b border-white/10"
-    >
+/* ===== Buttons ===== */
+.assign-task-page .primary-btn, .assign-task-page .secondary-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 19px; border-radius: 12px; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease; }
+.assign-task-page .primary-btn { border: 0; background: linear-gradient(135deg, var(--salt-blue), var(--salt-blue-dark)); color: #fff; box-shadow: 0 6px 16px rgba(21,88,176,.20); }
+.assign-task-page .primary-btn:hover { transform: translateY(-1px); box-shadow: 0 9px 20px rgba(21,88,176,.27); }
+.assign-task-page .primary-btn:disabled { opacity: .7; cursor: progress; transform: none; }
+.assign-task-page .secondary-btn { border: 1px solid #d5deea; background: #fff; color: #334155; }
+.assign-task-page .secondary-btn:hover { background: #f8fafc; border-color: #b9c7da; }
+.assign-task-page .primary-btn:focus-visible, .assign-task-page .secondary-btn:focus-visible,
+.assign-task-page .chip:focus-visible, .assign-task-page .link-btn:focus-visible { outline: 2px solid var(--salt-blue); outline-offset: 2px; }
 
-        <div class="flex items-center gap-3">
+/* ===== Layout ===== */
+.assign-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+.form-card { overflow: hidden; border: 1px solid var(--salt-border); border-radius: 20px; background: #fff; box-shadow: 0 8px 30px rgba(15,43,91,.06); }
+.form-section { padding: 26px 28px; border-bottom: 1px solid var(--salt-border); }
+.section-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.section-icon { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 11px; background: var(--salt-blue-soft); color: var(--salt-blue); }
+.section-title { margin: 0; color: #26344d; font-size: 16px; font-weight: 800; }
+.section-sub { margin: 2px 0 0; color: #7b8aa3; font-size: 13px; }
 
-            <div
-                class="w-11 h-11 rounded-xl bg-white/10
-                       flex items-center justify-center
-                       border border-white/10"
-            >
-                <img
-                    src="{{ url_for('static', filename='salt-logo.png') }}"
-                    alt="SALT"
-                    class="w-8 h-8 object-contain"
-                >
-            </div>
+.field + .field { margin-top: 20px; }
+.form-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: #26344d; font-size: 14px; font-weight: 700; }
+.form-label .required { color: #dc2626; }
+.form-label .optional { color: #94a3b8; font-size: 12px; font-weight: 600; }
+.counter { color: #94a3b8; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hint { margin: 7px 0 0; color: #94a3b8; font-size: 12px; line-height: 1.5; }
 
-            <div>
+.input-wrapper { position: relative; }
+.input-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #7b8aa3; pointer-events: none; }
+.form-input, .form-textarea { display: block; width: 100%; border: 1px solid #d6dfeb; border-radius: 12px; background: #fff; color: #172033; font: inherit; font-size: 15px; outline: none; transition: border-color .2s ease, box-shadow .2s ease; }
+.form-input { height: 50px; padding: 0 15px; }
+.form-input.has-icon { padding-left: 43px; }
+.form-textarea { min-height: 120px; padding: 13px 15px; resize: vertical; line-height: 1.55; }
+.form-input:focus, .form-textarea:focus { border-color: var(--salt-blue); box-shadow: 0 0 0 3px rgba(21,88,176,.12); }
 
-                <h2
-                    class="text-xl font-bold tracking-tight"
-                >
-                    SALT Portal
-                </h2>
+/* ===== Chips (templates + quick deadlines) ===== */
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-label { margin: 0 0 8px; color: #7b8aa3; font-size: 12px; font-weight: 700; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid #d9e2ee; border-radius: 999px; background: #fff; color: #475569; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease; }
+.chip:hover { border-color: #b9cde8; color: var(--salt-blue); }
+.chip.active { border-color: var(--salt-blue); background: var(--salt-blue); color: #fff; }
+.templates { margin-bottom: 20px; padding: 14px; border: 1px dashed #c9d9ee; border-radius: 14px; background: #f9fbfe; }
 
-                <p
-                    class="text-xs text-blue-200 mt-0.5"
-                >
-                    Assign Task
-                </p>
+/* ===== Employee picker ===== */
+.picker { margin: 0; padding: 0; border: 0; min-width: 0; }
+.picker legend { padding: 0; }
+.picker-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.picker-search { flex: 1; min-width: 0; }
+.picker-search .form-input { height: 44px; font-size: 14px; }
+.link-btn { padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--salt-blue); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.link-btn:hover { background: var(--salt-blue-soft); }
+.selected-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 34px; margin-bottom: 12px; }
+.selected-count { padding: 5px 11px; border-radius: 999px; background: var(--salt-blue-soft); color: var(--salt-blue); font-size: 12px; font-weight: 800; white-space: nowrap; }
+.sel-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 6px 4px 5px; border: 1px solid #d5e3f7; border-radius: 999px; background: #fff; color: #334155; font-size: 12px; font-weight: 700; }
+.sel-chip button { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: #eef2f7; color: #64748b; font-size: 10px; cursor: pointer; }
+.sel-chip button:hover { background: #fee2e2; color: #dc2626; }
 
-            </div>
+.emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; max-height: 300px; padding: 2px; overflow-y: auto; }
+.emp-option { position: relative; display: block; cursor: pointer; }
+.emp-option input { position: absolute; opacity: 0; pointer-events: none; }
+.emp-card { display: flex; align-items: center; gap: 11px; padding: 11px 12px; border: 1px solid #dbe4f0; border-radius: 13px; background: #fff; transition: border-color .15s ease, background .15s ease, box-shadow .15s ease; }
+.emp-option:hover .emp-card { border-color: #b9cde8; background: #fbfdff; }
+.emp-option input:focus-visible + .emp-card { outline: 2px solid var(--salt-blue); outline-offset: 2px; }
+.emp-option input:checked + .emp-card { border-color: var(--salt-blue); background: var(--salt-blue-soft); box-shadow: 0 0 0 1px var(--salt-blue) inset; }
+.emp-name { flex: 1; min-width: 0; color: #334155; font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emp-check { width: 22px; height: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px solid #cbd5e1; border-radius: 50%; color: transparent; font-size: 10px; transition: all .15s ease; }
+.emp-option input:checked + .emp-card .emp-check { border-color: var(--salt-blue); background: var(--salt-blue); color: #fff; }
+.no-match { padding: 22px; text-align: center; color: #94a3b8; font-size: 13px; }
+.field-error { margin: 10px 0 0; color: #dc2626; font-size: 13px; font-weight: 700; }
+.picker.has-error .emp-grid { border-radius: 14px; box-shadow: 0 0 0 2px rgba(220,38,38,.35); }
 
+.avatar { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 13px; font-weight: 800; }
+.avatar.sm { width: 22px; height: 22px; border-radius: 7px; font-size: 10px; }
+.av-0 { background: #dbeafe; color: #1d4ed8; }
+.av-1 { background: #ede9fe; color: #6d28d9; }
+.av-2 { background: #dcfce7; color: #15803d; }
+.av-3 { background: #fef3c7; color: #a16207; }
+.av-4 { background: #cffafe; color: #0e7490; }
+.av-5 { background: #fce7f3; color: #be185d; }
+
+/* ===== Schedule ===== */
+.schedule-grid { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+/* ===== Footer bar ===== */
+.form-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 28px; background: #f9fbfe; }
+.footer-summary { display: flex; align-items: center; gap: 8px; color: #526985; font-size: 13px; line-height: 1.5; }
+.footer-summary i { color: var(--salt-blue); }
+.action-buttons { display: flex; align-items: center; gap: 10px; }
+
+/* ===== Live preview ===== */
+.preview-col { position: relative; will-change: transform; }
+.preview-card { overflow: hidden; border: 1px solid var(--salt-border); border-radius: 20px; background: #fff; box-shadow: 0 8px 30px rgba(15,43,91,.06); }
+.preview-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--salt-border); background: linear-gradient(135deg, #f8fbff, #f1f7ff); }
+.preview-head strong { display: flex; align-items: center; gap: 8px; color: #263f67; font-size: 13px; font-weight: 800; }
+.preview-head strong i { color: var(--salt-blue); }
+.preview-head span { color: #7b8aa3; font-size: 12px; }
+.pv-body { padding: 18px; }
+.pv-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.pv-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+.pv-pending { background: #fff7df; color: #a16207; }
+.pv-assigned { background: #f3eefe; color: #7c3aed; }
+.pv-priority-high { background: #fff0f0; color: #b42318; }
+.pv-priority-medium { background: #fff7df; color: #a16207; }
+.pv-priority-low { background: #eaf8f0; color: #15803d; }
+.pv-title { color: #1e293b; font-size: 17px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+.pv-desc { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; margin-top: 7px; overflow: hidden; color: #64748b; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-line; }
+.is-placeholder { color: #b6c2d3; font-style: italic; font-weight: 600; }
+.pv-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #edf1f6; color: #475569; font-size: 13px; font-weight: 700; }
+.pv-row > i { width: 18px; text-align: center; color: var(--salt-blue); }
+.pv-row small { display: block; color: #94a3b8; font-size: 12px; font-weight: 600; }
+.pv-avatars { display: flex; }
+.pv-avatars .avatar { border: 2px solid #fff; margin-left: -7px; }
+.pv-avatars .avatar:first-child { margin-left: 0; }
+.pv-note { margin-top: 14px; padding: 10px 12px; border-left: 3px solid #7c3aed; border-radius: 0 10px 10px 0; background: #fbfcfe; color: #475569; font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-line; }
+.pv-note b { display: block; margin-bottom: 3px; color: #7c3aed; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.preview-tip { display: flex; gap: 10px; margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: #f9fbfe; border: 1px solid #e3ebf6; color: #526985; font-size: 12px; line-height: 1.55; }
+.preview-tip i { margin-top: 2px; color: var(--salt-blue); }
+
+.assign-task-page .page-footer { margin-top: 24px; text-align: center; color: #8d9bb0; font-size: 11px; }
+
+@media (prefers-reduced-motion: reduce) { .assign-task-page * { transition: none !important; } }
+
+@media (max-width: 1020px) {
+    .assign-layout { grid-template-columns: minmax(0, 1fr); }
+    .preview-col { position: relative; will-change: transform; }
+}
+@media (max-width: 768px) {
+    .assign-task-page { padding: 4px 0 24px; }
+    .assign-task-page .page-header { align-items: flex-start; flex-direction: column; gap: 14px; }
+    .assign-task-page .page-header .secondary-btn { width: 100%; }
+    .form-section { padding: 18px; }
+    .schedule-grid { grid-template-columns: minmax(0, 1fr); }
+    .form-footer { align-items: stretch; flex-direction: column; padding: 18px; }
+    .action-buttons { flex-direction: column-reverse; width: 100%; }
+    .action-buttons > * { width: 100%; }
+    .emp-grid { grid-template-columns: minmax(0, 1fr); max-height: 260px; }
+}
+
+/* ===== Dark mode ===== */
+html.salt-dark .assign-task-page .page-title, html.salt-dark .section-title, html.salt-dark .form-label,
+html.salt-dark .info-title, html.salt-dark .pv-title, html.salt-dark .emp-name, html.salt-dark .preview-head strong { color: #e8f0fb; }
+html.salt-dark .page-subtitle, html.salt-dark .section-sub, html.salt-dark .info-text, html.salt-dark .pv-desc,
+html.salt-dark .footer-summary, html.salt-dark .preview-tip, html.salt-dark .pv-row { color: #9fb0c8; }
+html.salt-dark .form-card, html.salt-dark .preview-card, html.salt-dark .info-box { background: #111b2d; border-color: #2a3b56; }
+html.salt-dark .form-section { border-color: #263852; }
+html.salt-dark .form-input, html.salt-dark .form-textarea, html.salt-dark .emp-card, html.salt-dark .chip,
+html.salt-dark .sel-chip, html.salt-dark .assign-task-page .secondary-btn { background: #0f192a; border-color: #334967; color: #e8f0fb; }
+html.salt-dark .emp-option input:checked + .emp-card { background: #14284a; border-color: var(--salt-blue); }
+html.salt-dark .chip.active { background: var(--salt-blue); border-color: var(--salt-blue); color: #fff; }
+html.salt-dark .templates, html.salt-dark .form-footer, html.salt-dark .preview-tip, html.salt-dark .pv-note { background: #0f192a; border-color: #2a3b56; }
+html.salt-dark .preview-head { background: linear-gradient(135deg, #111f34, #0f1a2b); border-color: #2a3b56; }
+html.salt-dark .pv-row { border-color: #263852; }
+html.salt-dark .pv-avatars .avatar { border-color: #111b2d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="assign-task-page">
+
+    <!-- HEADER -->
+    <div class="page-header">
+        <div>
+            <div class="page-badge"><i class="fas fa-list-check"></i> TASK MANAGEMENT</div>
+            <h1 class="page-title">Assign new task</h1>
+            <p class="page-subtitle">
+                Write the task once and send it to one person or the whole team.
+                Everyone you pick gets their own copy to track and discuss.
+            </p>
         </div>
 
+        <a href="/admin/tasks" class="secondary-btn">
+            <i class="fas fa-arrow-left"></i> Back to tasksboard
+        </a>
     </div>
 
-
-    <!-- =================================================
-         NAVIGATION
-         ================================================= -->
-
-    <nav
-        class="sidebar-nav flex-1 p-4 space-y-2"
-    >
-
-        <!-- DASHBOARD -->
-
-        <a
-            href="/dashboard"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-home"></i>
-            </span>
-
-            <span class="font-medium">
-                Dashboard
-            </span>
-
-        </a>
-
-
-        <!-- EMPLOYEES -->
-
-        <a
-            href="/admin/employees"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-users"></i>
-            </span>
-
-            <span class="font-medium">
-                Employees
-            </span>
-
-        </a>
-
-
-        <!-- TASK BOARD -->
-
-        <a
-            href="/admin/tasks"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-list-check"></i>
-            </span>
-
-            <span class="font-medium">
-                Task Board
-            </span>
-
-        </a>
-
-
-        <!-- ASSIGN TASK - ACTIVE -->
-
-        <a
-            href="/admin/assign_task"
-            class="sidebar-link active flex items-center gap-3
-                   px-4 py-3 rounded-xl text-white"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-plus"></i>
-            </span>
-
-            <span class="font-semibold">
-                Assign Task
-            </span>
-
-        </a>
-
-
-        <!-- ATTENDANCE -->
-
-        <a
-            href="/attendance"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-calendar-check"></i>
-            </span>
-
-            <span class="font-medium">
-                Attendance
-            </span>
-
-        </a>
-
-
-        <!-- MY TASKS -->
-
-        <a
-            href="/tasks"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl text-blue-100"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-clipboard-list"></i>
-            </span>
-
-            <span class="font-medium">
-                My Tasks
-            </span>
-
-        </a>
-
-    </nav>
-
-
-    <!-- =================================================
-         LOGOUT
-         ================================================= -->
-
-    <div
-        class="p-4 border-t border-white/10"
-    >
-
-        <a
-            href="/logout"
-            class="sidebar-link flex items-center gap-3
-                   px-4 py-3 rounded-xl
-                   bg-red-500/90 hover:bg-red-600"
-        >
-
-            <span
-                class="w-9 h-9 rounded-lg bg-white/10
-                       flex items-center justify-center"
-            >
-                <i class="fas fa-right-from-bracket"></i>
-            </span>
-
-            <span class="font-semibold">
-                Logout
-            </span>
-
-        </a>
-
+    {% if form_error %}
+    <div class="form-alert" role="alert">
+        <i class="fas fa-circle-exclamation"></i>
+        <span>{{ form_error }}</span>
     </div>
+    {% endif %}
 
-</aside>
+    <div class="assign-layout">
 
+        <!-- ===================== FORM ===================== -->
+        <form method="POST" id="assignForm" class="form-card" novalidate>
 
-<!-- =====================================================
-     MAIN CONTENT
-     ===================================================== -->
-
-<main
-    class="main-content flex-1 p-8"
->
-
-    <div class="page-container">
-
-
-        <!-- =================================================
-             TOP HEADER
-             ================================================= -->
-
-        <div
-            class="top-header flex justify-between items-center mb-7"
-        >
-
-            <div>
-
-                <!-- TOP BADGE -->
-
-                <div
-                    class="flex items-center gap-2
-                           text-sm text-blue-600
-                           font-semibold mb-2"
-                >
-
-                    <i class="fas fa-list-check"></i>
-
-                    Task Management
-
-                </div>
-
-
-                <h1
-                    class="text-3xl md:text-4xl
-                           font-bold text-slate-800"
-                >
-                    Assign New Task
-                </h1>
-
-
-                <p
-                    class="text-slate-500 mt-2"
-                >
-                    Create a task and assign it to a member
-                    of your team.
-                </p>
-
-            </div>
-
-
-            <a
-                href="/admin/tasks"
-                class="back-btn secondary-btn
-                       flex items-center gap-2"
-            >
-
-                <i class="fas fa-arrow-left"></i>
-
-                Back to Tasks
-
-            </a>
-
-        </div>
-
-
-        <!-- =================================================
-             LIGHT BLUE WELCOME BAR
-             ================================================= -->
-
-        <div
-            class="info-box flex items-start gap-3
-                   px-5 py-4 mb-6"
-        >
-
-            <div
-                class="w-9 h-9 rounded-lg
-                       bg-blue-600/10
-                       flex items-center justify-center
-                       shrink-0"
-            >
-
-                <i
-                    class="fas fa-circle-info text-blue-600"
-                ></i>
-
-            </div>
-
-
-            <div>
-
-                <p
-                    class="font-semibold text-slate-700"
-                >
-                    Welcome to Task Management
-                </p>
-
-                <p
-                    class="text-sm mt-0.5"
-                >
-                    Create clear, actionable tasks, assign them
-                    to the appropriate employee, and set deadlines
-                    to keep work moving efficiently.
-                </p>
-
-            </div>
-
-        </div>
-
-
-        <!-- =================================================
-             FORM CARD
-             ================================================= -->
-
-        <div
-            class="form-card overflow-hidden"
-        >
-
-            <!-- CARD HEADER -->
-
-            <div
-                class="section-header px-7 py-5
-                       flex items-center gap-4"
-            >
-
-                <div
-                    class="w-12 h-12 rounded-xl
-                           bg-blue-50 text-blue-600
-                           flex items-center justify-center"
-                >
-
-                    <i
-                        class="fas fa-clipboard-list text-xl"
-                    ></i>
-
-                </div>
-
-
-                <div>
-
-                    <h2
-                        class="font-bold text-lg text-slate-800"
-                    >
-                        Task Details
-                    </h2>
-
-                    <p
-                        class="text-sm text-slate-500"
-                    >
-                        Enter the information for the new task.
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <!-- FORM BODY -->
-
-            <div class="form-body p-7">
-
-                <form
-                    method="POST"
-                    class="space-y-7"
-                >
-
-
-                    <!-- TITLE -->
-
+            <!-- 1. TASK DETAILS -->
+            <section class="form-section">
+                <div class="section-head">
+                    <div class="section-icon"><i class="fas fa-clipboard-list"></i></div>
                     <div>
+                        <h2 class="section-title">What needs to be done?</h2>
+                        <p class="section-sub">Be specific so nobody has to ask for clarification.</p>
+                    </div>
+                </div>
 
-                        <label
-                            for="title"
-                            class="form-label"
-                        >
-                            Task Title
-                            <span class="required">*</span>
-                        </label>
+                <div class="templates">
+                    <p class="chip-label">Quick start (optional)</p>
+                    <div class="chip-row">
+                        <button type="button" class="chip" data-template
+                            data-title="Prepare weekly report"
+                            data-desc="Summarise this week's completed work, open items, and any blockers. Submit before the deadline.">
+                            <i class="fas fa-file-lines"></i> Weekly report
+                        </button>
+                        <button type="button" class="chip" data-template
+                            data-title="Follow up on pending items"
+                            data-desc="Review your open items, contact the people involved, and post an update on each one.">
+                            <i class="fas fa-reply-all"></i> Follow-up
+                        </button>
+                        <button type="button" class="chip" data-template
+                            data-title="Review and give feedback"
+                            data-desc="Review the material shared with you and post your feedback and any suggested changes.">
+                            <i class="fas fa-magnifying-glass"></i> Review &amp; feedback
+                        </button>
+                        <button type="button" class="chip" data-template
+                            data-title="Update records"
+                            data-desc="Check your records for accuracy, correct any errors, and confirm once everything is up to date.">
+                            <i class="fas fa-pen-to-square"></i> Update records
+                        </button>
+                    </div>
+                </div>
 
+                <div class="field">
+                    <label for="title" class="form-label">
+                        <span>Task title <span class="required">*</span></span>
+                        <span class="counter" id="titleCount">0</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="input-icon fas fa-heading"></i>
+                        <input id="title" type="text" name="title" required autocomplete="off"
+                               placeholder="e.g. Prepare monthly staff report" class="form-input has-icon">
+                    </div>
+                    <p class="hint">A short, specific title works best.</p>
+                </div>
 
-                        <div class="input-wrapper">
+                <div class="field">
+                    <label for="description" class="form-label">
+                        <span>Description <span class="required">*</span></span>
+                    </label>
+                    <textarea id="description" name="description" rows="5" required
+                              placeholder="Describe what needs to be done, the expected result, and any relevant details…"
+                              class="form-textarea"></textarea>
+                    <p class="hint">Include the expected outcome so the task can be completed without follow-up questions.</p>
+                </div>
 
-                            <i
-                                class="input-icon fas fa-heading"
-                            ></i>
+                <div class="field">
+                    <label for="priority" class="form-label"><span>Task priority <span class="required">*</span></span></label>
+                    <div class="input-wrapper">
+                        <i class="input-icon fas fa-flag"></i>
+                        <select id="priority" name="priority" class="form-input has-icon" required>
+                            <option value="High" {{ 'selected' if priority|default('Medium') == 'High' else '' }}>High — Urgent or time-sensitive</option>
+                            <option value="Medium" {{ 'selected' if priority|default('Medium') == 'Medium' else '' }}>Medium — Normal priority</option>
+                            <option value="Low" {{ 'selected' if priority|default('Medium') == 'Low' else '' }}>Low — When time allows</option>
+                        </select>
+                    </div>
+                    <p class="hint">Choose how urgently this task should be handled. Employees will see this priority on their task list.</p>
+                </div>
+            </section>
 
-                            <input
-                                id="title"
-                                type="text"
-                                name="title"
-                                required
-                                autocomplete="off"
-                                placeholder="e.g. Prepare monthly staff report"
-                                class="form-input has-icon"
-                            >
+            <!-- 2. ASSIGNEES -->
+            <section class="form-section">
+                <div class="section-head">
+                    <div class="section-icon"><i class="fas fa-user-group"></i></div>
+                    <div>
+                        <h2 class="section-title">Who should do it?</h2>
+                        <p class="section-sub">Pick one or more employees. Each gets a separate task.</p>
+                    </div>
+                </div>
 
+                {% if employees %}
+                <fieldset class="picker" id="picker">
+                    <legend class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Assign to</legend>
+
+                    <div class="picker-bar">
+                        <div class="input-wrapper picker-search">
+                            <i class="input-icon fas fa-magnifying-glass"></i>
+                            <input type="search" id="empSearch" class="form-input has-icon" placeholder="Search employees…" autocomplete="off" aria-label="Search employees">
                         </div>
-
-
-                        <p
-                            class="text-xs text-slate-400 mt-2"
-                        >
-                            Use a short, specific title that clearly
-                            describes the task.
-                        </p>
-
+                        <button type="button" class="link-btn" id="selectAll">Select all</button>
+                        <button type="button" class="link-btn" id="clearAll">Clear</button>
                     </div>
 
-
-                    <!-- DESCRIPTION -->
-
-                    <div>
-
-                        <label
-                            for="description"
-                            class="form-label"
-                        >
-                            Description
-                            <span class="required">*</span>
-                        </label>
-
-
-                        <textarea
-                            id="description"
-                            name="description"
-                            rows="5"
-                            required
-                            placeholder="Describe what needs to be done, the expected result, and any relevant details..."
-                            class="form-textarea"
-                        ></textarea>
-
-
-                        <p
-                            class="text-xs text-slate-400 mt-2"
-                        >
-                            Give enough detail for the employee to
-                            complete the task without confusion.
-                        </p>
-
+                    <div class="selected-summary" id="selectedSummary" aria-live="polite">
+                        <span class="selected-count" id="selectedCount">No one selected</span>
+                        <span id="selectedChips" style="display:contents"></span>
                     </div>
 
-
-                    <!-- NOTE -->
-
-                    <div>
-
-                        <label
-                            for="note"
-                            class="form-label"
-                        >
-                            Comment / Note
-
-                            <span
-                                class="font-normal text-slate-400"
-                            >
-                                Optional
+                    <div class="emp-grid" id="empGrid">
+                        {% for emp in employees %}
+                        <label class="emp-option" data-name="{{ emp.name|lower }}">
+                            <input type="checkbox" name="assigned_to" value="{{ emp.id }}">
+                            <span class="emp-card">
+                                <span class="avatar av-{{ loop.index0 % 6 }}" data-initial>{{ (emp.name or '?')[0]|upper }}</span>
+                                <span class="emp-name">{{ emp.name }}</span>
+                                <span class="emp-check"><i class="fas fa-check"></i></span>
                             </span>
                         </label>
-
-
-                        <textarea
-                            id="note"
-                            name="note"
-                            rows="3"
-                            placeholder="Add additional instructions, comments, reminders, or special considerations..."
-                            class="form-textarea"
-                        ></textarea>
-
+                        {% endfor %}
+                        <div class="no-match" id="noMatch" hidden>No employees match your search.</div>
                     </div>
 
+                    <p class="field-error" id="pickerError" hidden>Choose at least one employee.</p>
+                </fieldset>
+                {% else %}
+                <div class="no-match">No employees are available to assign tasks to.</div>
+                {% endif %}
+            </section>
 
-                    <!-- ASSIGNMENT SETTINGS -->
+            <!-- 3. SCHEDULE + NOTE -->
+            <section class="form-section">
+                <div class="section-head">
+                    <div class="section-icon"><i class="fas fa-calendar-days"></i></div>
+                    <div>
+                        <h2 class="section-title">When and anything else?</h2>
+                        <p class="section-sub">Set a deadline and add an optional note for the discussion.</p>
+                    </div>
+                </div>
 
-                    <div
-                        class="border-t border-slate-200 pt-7"
-                    >
-
-                        <div class="mb-5">
-
-                            <h3
-                                class="font-bold text-slate-800"
-                            >
-                                Assignment Settings
-                            </h3>
-
-                            <p
-                                class="text-sm text-slate-500 mt-1"
-                            >
-                                Choose who should receive the task
-                                and when it should be completed.
-                            </p>
-
+                <div class="schedule-grid">
+                    <div class="field">
+                        <label for="deadline" class="form-label">
+                            <span>Deadline</span><span class="optional">Optional</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="input-icon fas fa-calendar-days"></i>
+                            <input id="deadline" type="date" name="deadline" class="form-input has-icon">
                         </div>
-
-
-                        <div
-                            class="grid grid-cols-1
-                                   md:grid-cols-2 gap-6"
-                        >
-
-                            <!-- ASSIGN TO -->
-
-                            <div>
-
-                                <label
-                                    for="assigned_to"
-                                    class="form-label"
-                                >
-                                    Assign To
-                                    <span class="required">*</span>
-                                </label>
-
-
-                                <div class="input-wrapper">
-
-                                    <i
-                                        class="input-icon fas fa-user"
-                                    ></i>
-
-
-                                    <select
-                                        id="assigned_to"
-                                        name="assigned_to"
-                                        required
-                                        class="form-select has-icon"
-                                    >
-
-                                        <option
-                                            value=""
-                                            disabled
-                                            selected
-                                        >
-                                            Select employee
-                                        </option>
-
-
-                                        {% for emp in employees %}
-
-                                        <option
-                                            value="{{ emp.id }}"
-                                        >
-                                            {{ emp.name }}
-                                        </option>
-
-                                        {% endfor %}
-
-                                    </select>
-
-                                </div>
-
-                            </div>
-
-
-                            <!-- DEADLINE -->
-
-                            <div>
-
-                                <label
-                                    for="deadline"
-                                    class="form-label"
-                                >
-                                    Deadline
-
-                                    <span
-                                        class="font-normal
-                                               text-slate-400"
-                                    >
-                                        Optional
-                                    </span>
-                                </label>
-
-
-                                <div class="input-wrapper">
-
-                                    <i
-                                        class="input-icon
-                                               fas fa-calendar-days"
-                                    ></i>
-
-
-                                    <input
-                                        id="deadline"
-                                        type="date"
-                                        name="deadline"
-                                        class="form-input has-icon"
-                                    >
-
-                                </div>
-
-
-                                <p
-                                    class="text-xs text-slate-400 mt-2"
-                                >
-                                    Select the expected completion
-                                    date.
-                                </p>
-
-                            </div>
-
-                        </div>
-
                     </div>
 
-
-                    <!-- ACTIONS -->
-
-                    <div
-                        class="border-t border-slate-200 pt-6
-                               flex flex-col sm:flex-row
-                               sm:justify-between
-                               sm:items-center gap-4"
-                    >
-
-                        <div
-                            class="text-sm text-slate-500"
-                        >
-
-                            <i
-                                class="fas fa-shield-halved
-                                       text-blue-500 mr-1"
-                            ></i>
-
-                            The assigned employee will receive
-                            this task.
-
+                    <div class="field">
+                        <p class="chip-label" style="margin-top:4px;">Quick pick</p>
+                        <div class="chip-row" id="quickDates">
+                            <button type="button" class="chip" data-quick="0">Today</button>
+                            <button type="button" class="chip" data-quick="1">Tomorrow</button>
+                            <button type="button" class="chip" data-quick="3">In 3 days</button>
+                            <button type="button" class="chip" data-quick="monday">Next Monday</button>
+                            <button type="button" class="chip" data-quick="eom">End of month</button>
+                            <button type="button" class="chip" data-quick="none">No deadline</button>
                         </div>
+                    </div>
+                </div>
 
+                <div class="field">
+                    <label for="note" class="form-label">
+                        <span>Comment / note</span><span class="optional">Optional</span>
+                    </label>
+                    <textarea id="note" name="note" rows="3"
+                              placeholder="Add extra instructions, reminders, or special considerations…"
+                              class="form-textarea"></textarea>
+                    <p class="hint">Shown to each employee as the first message in the task discussion.</p>
+                </div>
+            </section>
 
-                        <div
-                            class="action-buttons flex
-                                   items-center gap-3"
-                        >
+            <!-- ACTIONS -->
+            <div class="form-footer">
+                <div class="footer-summary">
+                    <i class="fas fa-paper-plane"></i>
+                    <span id="footerSummary">Choose who this task is for.</span>
+                </div>
 
-                            <a
-                                href="/admin/tasks"
-                                class="secondary-btn
-                                       flex items-center
-                                       justify-center gap-2"
-                            >
+                <div class="action-buttons">
+                    <a href="/admin/tasks" class="secondary-btn"><i class="fas fa-xmark"></i> Cancel</a>
+                    <button type="submit" class="primary-btn" id="submitBtn">
+                        <i class="fas fa-paper-plane"></i>
+                        <span id="submitLabel">Assign task</span>
+                    </button>
+                </div>
+            </div>
+        </form>
 
-                                <i class="fas fa-xmark"></i>
+        <!-- ===================== LIVE PREVIEW ===================== -->
+        <aside class="preview-col" aria-label="Task preview">
+            <div class="preview-card">
+                <div class="preview-head">
+                    <strong><i class="fas fa-eye"></i> Live preview</strong>
+                    <span>What employees will see</span>
+                </div>
 
-                                Cancel
-
-                            </a>
-
-
-                            <button
-                                type="submit"
-                                class="primary-btn
-                                       flex items-center
-                                       justify-center gap-2"
-                            >
-
-                                <i
-                                    class="fas fa-paper-plane"
-                                ></i>
-
-                                Assign Task
-
-                            </button>
-
-                        </div>
-
+                <div class="pv-body">
+                    <div class="pv-badges">
+                        <span class="pv-badge pv-pending"><i class="fas fa-clock"></i> Pending</span>
+                        <span class="pv-badge pv-assigned"><i class="fas fa-user-plus"></i> Assigned</span>
+                        <span class="pv-badge pv-priority-medium" id="pvPriority"><i class="fas fa-flag"></i> Medium priority</span>
                     </div>
 
-                </form>
+                    <div class="pv-title is-placeholder" id="pvTitle">Your task title</div>
+                    <div class="pv-desc is-placeholder" id="pvDesc">The description will appear here as you type.</div>
 
+                    <div class="pv-row">
+                        <i class="fas fa-calendar-day"></i>
+                        <div>
+                            <span id="pvDeadline">No deadline</span>
+                            <small id="pvDeadlineSub"></small>
+                        </div>
+                    </div>
+
+                    <div class="pv-row">
+                        <i class="fas fa-user-group"></i>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div class="pv-avatars" id="pvAvatars"></div>
+                            <span id="pvPeople">No one selected</span>
+                        </div>
+                    </div>
+
+                    <div class="pv-note" id="pvNote" hidden>
+                        <b><i class="fas fa-shield-halved"></i> Admin note</b>
+                        <span id="pvNoteText"></span>
+                    </div>
+                </div>
             </div>
 
-        </div>
-
-
-        <!-- FOOTER -->
-
-        <div
-            class="text-center text-xs text-slate-400
-                   mt-6 pb-3"
-        >
-
-            <i class="fas fa-lock mr-1"></i>
-
-            SALT Workforce Portal · Admin Task Management
-
-        </div>
-
+            <div class="preview-tip">
+                <i class="fas fa-lightbulb"></i>
+                <span>Assigning to several people creates one task per person, so each can update their own status and progress.</span>
+            </div>
+        </aside>
     </div>
 
-</main>
-
+    <div class="page-footer">
+        <i class="fas fa-lock" style="margin-right:4px;"></i>
+        SALT Workforce Portal · Admin Task Management
+    </div>
 </div>
+{% endblock %}
 
-<!-- =========================================================
-     DEADLINE: PREVENT PAST DATES
-     ========================================================= -->
-
+{% block scripts %}
 <script>
+(function () {
+    "use strict";
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
+    const $ = function (id) { return document.getElementById(id); };
 
-        const deadline =
-            document.getElementById(
-                "deadline"
-            );
+    const form = $("assignForm");
+    if (!form) return;
 
+    const titleEl = $("title");
+    const descEl = $("description");
+    const noteEl = $("note");
+    const deadlineEl = $("deadline");
+    const searchEl = $("empSearch");
+    const picker = $("picker");
+    const options = Array.from(document.querySelectorAll(".emp-option"));
+    const submitBtn = $("submitBtn");
 
-        if (!deadline) {
+    /* ---------- date helpers (local time, no timezone drift) ---------- */
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function toISO(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+    function fromISO(s) {
+        const m = String(s || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+    }
+    function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+    deadlineEl.min = toISO(startOfToday());
+
+    /* ---------- selection helpers ---------- */
+    function checkedOptions() {
+        return options.filter(function (o) { return o.querySelector("input").checked; });
+    }
+    function personInfo(option) {
+        const avatar = option.querySelector("[data-initial]");
+        return {
+            name: option.querySelector(".emp-name").textContent.trim(),
+            initial: avatar.textContent.trim(),
+            color: Array.from(avatar.classList).find(function (c) { return /^av-\d$/.test(c); }) || "av-0"
+        };
+    }
+    function makeAvatar(info, small) {
+        const el = document.createElement("span");
+        el.className = "avatar " + (small ? "sm " : "") + info.color;
+        el.textContent = info.initial;
+        el.title = info.name;
+        return el;
+    }
+
+    /* ---------- render ---------- */
+    function renderDeadline() {
+        const main = $("pvDeadline");
+        const sub = $("pvDeadlineSub");
+        const date = fromISO(deadlineEl.value);
+
+        document.querySelectorAll("#quickDates .chip").forEach(function (chip) {
+            chip.classList.toggle("active", quickValue(chip.dataset.quick) === (deadlineEl.value || ""));
+        });
+
+        if (!date) { main.textContent = "No deadline"; sub.textContent = ""; return; }
+
+        const days = Math.round((date - startOfToday()) / 86400000);
+        main.textContent = date.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+        sub.textContent =
+            days === 0 ? "Due today" :
+            days === 1 ? "Due tomorrow" :
+            days > 1 ? "Due in " + days + " days" : "This date has passed";
+    }
+
+    function renderSelection() {
+        const chosen = checkedOptions();
+        const n = chosen.length;
+
+        $("selectedCount").textContent = n === 0 ? "No one selected" : n + " selected";
+
+        const chips = $("selectedChips");
+        chips.textContent = "";
+        chosen.forEach(function (option) {
+            const info = personInfo(option);
+            const chip = document.createElement("span");
+            chip.className = "sel-chip";
+            chip.appendChild(makeAvatar(info, true));
+            const label = document.createElement("span");
+            label.textContent = info.name;
+            chip.appendChild(label);
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.setAttribute("aria-label", "Remove " + info.name);
+            remove.innerHTML = '<i class="fas fa-xmark"></i>';
+            remove.addEventListener("click", function () {
+                option.querySelector("input").checked = false;
+                renderSelection();
+            });
+            chip.appendChild(remove);
+            chips.appendChild(chip);
+        });
+
+        /* preview avatars */
+        const avatars = $("pvAvatars");
+        avatars.textContent = "";
+        chosen.slice(0, 4).forEach(function (o) { avatars.appendChild(makeAvatar(personInfo(o), true)); });
+        if (n > 4) {
+            const more = document.createElement("span");
+            more.className = "avatar sm av-0";
+            more.textContent = "+" + (n - 4);
+            avatars.appendChild(more);
+        }
+        $("pvPeople").textContent =
+            n === 0 ? "No one selected" :
+            n === 1 ? personInfo(chosen[0]).name :
+            n + " people (one task each)";
+
+        /* footer + button */
+        $("submitLabel").textContent = n > 1 ? "Assign to " + n + " employees" : "Assign task";
+        $("footerSummary").textContent =
+            n === 0 ? "Choose who this task is for." :
+            n === 1 ? "This task will be sent to " + personInfo(chosen[0]).name + "." :
+            "This will create " + n + " separate tasks, one for each person.";
+
+        if (n > 0) { picker.classList.remove("has-error"); $("pickerError").hidden = true; }
+    }
+
+    function renderText() {
+        $("titleCount").textContent = titleEl.value.length;
+
+        const title = titleEl.value.trim();
+        const t = $("pvTitle");
+        t.textContent = title || "Your task title";
+        t.classList.toggle("is-placeholder", !title);
+
+        const desc = descEl.value.trim();
+        const d = $("pvDesc");
+        d.textContent = desc || "The description will appear here as you type.";
+        d.classList.toggle("is-placeholder", !desc);
+
+        const note = noteEl.value.trim();
+        $("pvNote").hidden = !note;
+        $("pvNoteText").textContent = note;
+    }
+
+    /* ---------- quick deadlines ---------- */
+    function quickValue(kind) {
+        const today = startOfToday();
+        if (kind === "none") return "";
+        if (kind === "monday") {
+            const d = new Date(today);
+            const add = ((8 - d.getDay()) % 7) || 7;
+            d.setDate(d.getDate() + add);
+            return toISO(d);
+        }
+        if (kind === "eom") return toISO(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+        const d = new Date(today);
+        d.setDate(d.getDate() + Number(kind));
+        return toISO(d);
+    }
+
+    document.querySelectorAll("#quickDates .chip").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+            deadlineEl.value = quickValue(chip.dataset.quick);
+            renderDeadline();
+        });
+    });
+
+    /* ---------- templates ---------- */
+    document.querySelectorAll("[data-template]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            const hasContent = titleEl.value.trim() || descEl.value.trim();
+            if (hasContent && !window.confirm("Replace the current title and description with this template?")) return;
+            titleEl.value = btn.dataset.title;
+            descEl.value = btn.dataset.desc;
+            renderText();
+            titleEl.focus();
+        });
+    });
+
+    /* ---------- picker: search / select all / clear ---------- */
+    function applySearch() {
+        const q = (searchEl ? searchEl.value : "").trim().toLowerCase();
+        let shown = 0;
+        options.forEach(function (o) {
+            const match = !q || o.dataset.name.includes(q);
+            o.hidden = !match;
+            if (match) shown++;
+        });
+        $("noMatch").hidden = shown !== 0;
+    }
+
+    if (searchEl) {
+        searchEl.addEventListener("input", applySearch);
+        searchEl.addEventListener("keydown", function (e) { if (e.key === "Enter") e.preventDefault(); });
+    }
+
+    const selectAll = $("selectAll");
+    if (selectAll) selectAll.addEventListener("click", function () {
+        options.forEach(function (o) { if (!o.hidden) o.querySelector("input").checked = true; });
+        renderSelection();
+    });
+
+    const clearAll = $("clearAll");
+    if (clearAll) clearAll.addEventListener("click", function () {
+        options.forEach(function (o) { o.querySelector("input").checked = false; });
+        renderSelection();
+    });
+
+    options.forEach(function (o) { o.querySelector("input").addEventListener("change", renderSelection); });
+
+    /* ---------- live inputs ---------- */
+    [titleEl, descEl, noteEl].forEach(function (el) { el.addEventListener("input", renderText); });
+    deadlineEl.addEventListener("input", renderDeadline);
+    deadlineEl.addEventListener("change", renderDeadline);
+
+    /* ---------- submit ---------- */
+    form.addEventListener("submit", function (event) {
+        /* Native checks for title/description/deadline first. */
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            form.reportValidity();
             return;
         }
 
+        if (picker && checkedOptions().length === 0) {
+            event.preventDefault();
+            picker.classList.add("has-error");
+            $("pickerError").hidden = false;
+            picker.scrollIntoView({ behavior: "smooth", block: "center" });
+            if (searchEl) searchEl.focus({ preventScroll: true });
+            return;
+        }
 
-        const today =
-            new Date();
+        /* Block double-clicks so multi-assign never creates duplicates. */
+        submitBtn.disabled = true;
+        submitBtn.querySelector("i").className = "fas fa-spinner fa-spin";
+        $("submitLabel").textContent = "Assigning…";
+    });
 
+    /* Restore the button if the user comes back with the browser's Back button. */
+    window.addEventListener("pageshow", function (e) {
+        if (e.persisted) {
+            submitBtn.disabled = false;
+            submitBtn.querySelector("i").className = "fas fa-paper-plane";
+            renderSelection();
+        }
+    });
 
-        const year =
-            today.getFullYear();
+    /* ---------- keep the preview in view while the page scrolls ----------
+       CSS `position: sticky` silently fails when any ancestor in base.html has
+       overflow set, so the preview is positioned from the real scroll container. */
+    (function () {
+        const aside = document.querySelector(".preview-col");
+        const layout = document.querySelector(".assign-layout");
+        if (!aside || !layout) return;
 
+        const TOP_GAP = 20;
+        const wide = window.matchMedia("(min-width: 1021px)");
+        let queued = false;
 
-        const month =
-            String(
-                today.getMonth() + 1
-            ).padStart(
-                2,
-                "0"
-            );
+        function scrollParent(el) {
+            let p = el.parentElement;
+            while (p && p !== document.body) {
+                const o = getComputedStyle(p).overflowY;
+                if ((o === "auto" || o === "scroll") && p.scrollHeight > p.clientHeight) return p;
+                p = p.parentElement;
+            }
+            return window;
+        }
 
+        function update() {
+            queued = false;
 
-        const day =
-            String(
-                today.getDate()
-            ).padStart(
-                2,
-                "0"
-            );
+            if (!wide.matches) { aside.style.transform = ""; return; }
 
+            const sp = scrollParent(layout);
+            const viewTop = sp === window ? 0 : sp.getBoundingClientRect().top;
+            const layoutTop = layout.getBoundingClientRect().top;
+            const maxShift = Math.max(0, layout.offsetHeight - aside.offsetHeight);
+            const shift = Math.min(maxShift, Math.max(0, viewTop + TOP_GAP - layoutTop));
 
-        deadline.min =
-            `${year}-${month}-${day}`;
+            aside.style.transform = shift ? "translateY(" + Math.round(shift) + "px)" : "";
+        }
 
-    }
-);
+        function request() {
+            if (!queued) { queued = true; requestAnimationFrame(update); }
+        }
 
+        /* capture: true also catches scrolling inside inner containers */
+        window.addEventListener("scroll", request, { passive: true, capture: true });
+        window.addEventListener("resize", request);
+        form.addEventListener("input", request);
+        if (window.ResizeObserver) new ResizeObserver(request).observe(layout);
+
+        update();
+    })();
+
+    renderText();
+    renderDeadline();
+    renderSelection();
+})();
 </script>
-
-
-<script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
-</body>
-
-</html>
+{% endblock %}
