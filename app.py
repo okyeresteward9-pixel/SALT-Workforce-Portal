@@ -2173,11 +2173,19 @@ def offline():
 
 @app.route("/service-worker.js")
 def service_worker():
-    return send_from_directory(
-        os.path.join(app.root_path, "static", "js"),
-        "service-worker.js",
+    # The deploy's commit id (Render sets RENDER_GIT_COMMIT) becomes the cache
+    # version, so every deploy gets a fresh cache and a clean update prompt.
+    path = os.path.join(app.root_path, "static", "js", "service-worker.js")
+    with open(path, encoding="utf-8") as f:
+        script = f.read()
+    version = (os.environ.get("RENDER_GIT_COMMIT") or str(int(os.path.getmtime(path))))[:12]
+    response = app.response_class(
+        script.replace("__APP_VERSION__", version),
         mimetype="application/javascript"
     )
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
 
 # -------------------------
 # Notifications helper
