@@ -1,11 +1,25 @@
 version: 2
 updates:
+  # Python packages: monthly, few PRs. The server stack (gevent & friends) is upgraded
+  # by hand after testing chat/live updates, so Dependabot leaves it alone.
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      dev-tools:
+        patterns: ["pytest*", "ruff"]
+    ignore:
+      - dependency-name: "gevent"
+      - dependency-name: "greenlet"
+      - dependency-name: "gevent-websocket"
+      - dependency-name: "psycogreen"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]

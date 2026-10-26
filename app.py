@@ -29,19 +29,31 @@ from routes.chat import (
     register_chat_socketio
 )
 
+from routes.auth import auth_bp
+from routes.pwa import pwa_bp
+from routes.notifications import notifications_bp
+from services.notifications import (
+    init_notifications,
+    create_notification,
+    notify_users,
+    notify_announcement,
+    get_notification_count,
+)
 from request_workflow import register_request_workflow
 from cloudinary import uploader
 from cloudinary import api as cloudinary_api
 import cloudinary
 import cloudinary_config
 import json
-from push_notifications import get_vapid_public_key
-from security import LoginThrottle, origin_allowed, SAFE_METHODS
+from security import origin_allowed, SAFE_METHODS
 
 app = Flask(__name__)
 
 
 app.register_blueprint(chat_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(pwa_bp)
+app.register_blueprint(notifications_bp)
 
 # APP_ENV=development enables debug mode and an insecure local-only key.
 # Anything else (including unset) is treated as production.
@@ -78,17 +90,7 @@ socketio = SocketIO(
 )
 
 register_chat_socketio(socketio)
-
-login_throttle = LoginThrottle(max_attempts=5, window=900, ip_max=30)
-
-
-def _client_ip():
-    # Behind Render's proxy the real client is the LAST X-Forwarded-For entry
-    # (the one the proxy appended); earlier entries can be forged by the client.
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    if forwarded:
-        return forwarded.split(",")[-1].strip()
-    return request.remote_addr or "unknown"
+init_notifications(socketio)
 
 
 # Legacy task links change data via GET (see tasks.html). Until they become POST
@@ -109,7 +111,6 @@ def block_cross_site_writes():
     ):
         return jsonify({"status": "error", "message": "Cross-site request blocked."}), 403
     return None
-
 
 
 def format_datetime(value):
@@ -519,7 +520,6 @@ def init_db():
                 PRIMARY KEY(employee_id, achievement_id)
             )
         """)
-
 
 
         achievements_seed = [
@@ -952,79 +952,6 @@ def create_admin():
 # Routes
 # -------------------------
 
-@app.route('/')
-def home():
-
-    if 'user_id' in session:
-        return redirect('/dashboard')
-
-    return render_template("login.html")
-
-
-@app.route('/login', methods=['POST'])
-def login():
-
-    email = request.form.get('email', '').strip()
-    password = request.form.get('password', '')
-
-    # Check Remember Me
-    remember = request.form.get('remember') == '1'
-
-    if not email or not password:
-        return render_template(
-            "login.html",
-            error="Please enter your email and password."
-        )
-
-    client_ip = _client_ip()
-
-    if login_throttle.blocked(client_ip, email):
-        return render_template(
-            "login.html",
-            error="Too many failed attempts. Please wait 15 minutes and try again."
-        ), 429
-
-    conn = get_db()
-    c = conn.cursor()
-
-    c.execute(
-        """
-        SELECT *
-        FROM employees
-        WHERE email=%s
-        """,
-        (email,)
-    )
-
-    user = c.fetchone()
-    conn.close()
-
-    if user and check_password_hash(user['password'], password):
-
-        login_throttle.reset(client_ip, email)
-
-        # Clear old session data
-        session.clear()
-
-        # Store logged-in user
-        session['user_id'] = user['id']
-        session['name'] = user['name']
-        session['role'] = user['role']
-
-        # Remember Me
-        if remember:
-            session.permanent = True
-        else:
-            session.permanent = False
-
-        return redirect('/dashboard')
-
-    login_throttle.record_failure(client_ip, email)
-
-    return render_template(
-        "login.html",
-        error="Invalid email or password."
-    )
 
 @app.route('/settings/profile', methods=['GET', 'POST'])
 def profile_settings():
@@ -1464,86 +1391,16 @@ def inject_user():
 
         conn.close()
 
-        return dict(user=user)
+        return dict(
+            user=user,
+            current_avatar=(user or {}).get("profile_pic")
+        )
 
-    return dict(user=None)
+    return dict(user=None, current_avatar=None)
 
 # -------------------------
 # WEB PUSH
 # -------------------------
-
-@app.route("/api/push/public-key")
-def push_public_key():
-
-    if 'user_id' not in session:
-        return jsonify({"publicKey": ""}), 401
-
-    return jsonify({
-        "publicKey": get_vapid_public_key()
-    })
-
-
-@app.route("/api/push/subscribe", methods=["POST"])
-def push_subscribe():
-
-    if 'user_id' not in session:
-        return jsonify({
-            "success": False,
-            "message": "Unauthorized"
-        }), 401
-
-    subscription = request.get_json(silent=True)
-
-    if not subscription or not subscription.get("endpoint"):
-        return jsonify({
-            "success": False,
-            "message": "Invalid push subscription."
-        }), 400
-
-    conn = get_db()
-    c = conn.cursor()
-
-    try:
-        c.execute("""
-            INSERT INTO push_subscriptions
-            (
-                user_id,
-                endpoint,
-                subscription
-            )
-            VALUES
-            (
-                %s,
-                %s,
-                %s::jsonb
-            )
-            ON CONFLICT (endpoint)
-            DO UPDATE SET
-                user_id = EXCLUDED.user_id,
-                subscription = EXCLUDED.subscription
-        """, (
-            session['user_id'],
-            subscription['endpoint'],
-            json.dumps(subscription)
-        ))
-
-        conn.commit()
-
-        return jsonify({
-            "success": True
-        })
-
-    except Exception as e:
-        conn.rollback()
-        print("PUSH SUBSCRIPTION ERROR:", repr(e))
-
-        return jsonify({
-            "success": False,
-            "message": "Unable to save push subscription."
-        }), 500
-
-    finally:
-        conn.close()
 
 
 # -------------------------
@@ -1561,7 +1418,6 @@ def dashboard():
 
     conn = get_db()
     c = conn.cursor()
-
 
 
     # -------------------------
@@ -1601,7 +1457,6 @@ def dashboard():
             clocked_out = True
 
 
-
     # -------------------------
     # Dashboard stats
     # -------------------------
@@ -1635,7 +1490,6 @@ def dashboard():
         absent_today = total_employees - present_today
 
 
-
         c.execute("""
             SELECT COUNT(*) AS count
             FROM attendance
@@ -1663,7 +1517,6 @@ def dashboard():
 
 
         clockins_today = c.fetchone()['count']
-
 
 
     # -------------------------
@@ -1697,7 +1550,6 @@ def dashboard():
         )
 
 
-
     # -------------------------
     # Working employees
     # -------------------------
@@ -1727,7 +1579,6 @@ def dashboard():
     else:
 
         working_employees = []
-
 
 
     # -------------------------
@@ -1761,9 +1612,7 @@ def dashboard():
         formatted_employees.append(emp)
 
 
-
     working_employees = formatted_employees
-
 
 
     # -------------------------
@@ -1805,7 +1654,6 @@ def dashboard():
         tasks_completed = c.fetchone()['count']
 
 
-
         c.execute("""
             SELECT COUNT(*) AS count
             FROM tasks
@@ -1816,7 +1664,6 @@ def dashboard():
 
 
         tasks_pending = c.fetchone()['count']
-
 
 
     # -------------------------
@@ -1851,7 +1698,6 @@ def dashboard():
     except Exception:
         request_pending_approvals = 0
         request_my_pending = 0
-
 
 
     # -------------------------
@@ -2014,7 +1860,6 @@ def dashboard():
     conn.close()
 
 
-
     # -------------------------
     # Employee Locations
     # -------------------------
@@ -2043,7 +1888,6 @@ def dashboard():
             "lon": lon_f
 
         })
-
 
 
     return render_template(
@@ -2172,323 +2016,6 @@ def clockout():
 
     return redirect('/dashboard')
 
-@app.route("/offline")
-def offline():
-    return render_template("offline.html")
-
-@app.route("/service-worker.js")
-def service_worker():
-    # The deploy's commit id (Render sets RENDER_GIT_COMMIT) becomes the cache
-    # version, so every deploy gets a fresh cache and a clean update prompt.
-    path = os.path.join(app.root_path, "static", "js", "service-worker.js")
-    with open(path, encoding="utf-8") as f:
-        script = f.read()
-    version = (os.environ.get("RENDER_GIT_COMMIT") or str(int(os.path.getmtime(path))))[:12]
-    response = app.response_class(
-        script.replace("__APP_VERSION__", version),
-        mimetype="application/javascript"
-    )
-    response.headers["Cache-Control"] = "no-cache"
-    response.headers["Service-Worker-Allowed"] = "/"
-    return response
-
-# -------------------------
-# Notifications helper
-# -------------------------
-def create_notification(user_id, message, created_at=None):
-    """
-    Create a persistent notification and immediately push it
-    to the user's Socket.IO room.
-
-    This is the single notification entry point for the portal.
-    It is intentionally generic so tasks, announcements,
-    comments, workflow events, and future features can all use
-    the same notification system.
-    """
-    if not user_id or not message:
-        return None
-
-    created_at = created_at or datetime.now()
-
-    conn = get_db()
-    c = conn.cursor(cursor_factory=RealDictCursor)
-
-    try:
-        c.execute("""
-            INSERT INTO notifications
-            (
-                user_id,
-                message,
-                is_read,
-                created_at
-            )
-            VALUES
-            (
-                %s,
-                %s,
-                FALSE,
-                %s
-            )
-            RETURNING id
-        """, (
-            int(user_id),
-            message,
-            created_at
-        ))
-
-        row = c.fetchone()
-        notification_id = row["id"]
-
-        conn.commit()
-
-        socketio.emit(
-            "new_notification",
-            {
-                "id": notification_id,
-                "message": message,
-                "created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "is_read": False
-            },
-            room=f"user_{int(user_id)}"
-        )
-
-        # Browser/desktop push is deliberately best-effort.
-        # If push is unavailable, the normal SALT notification
-        # system above continues to work normally.
-        try:
-            from push_notifications import send_web_push
-
-            c.execute("""
-                SELECT subscription
-                FROM push_subscriptions
-                WHERE user_id=%s
-            """, (int(user_id),))
-
-            push_rows = c.fetchall()
-
-            for push_row in push_rows:
-                subscription = push_row["subscription"]
-
-                if isinstance(subscription, str):
-                    subscription = json.loads(subscription)
-
-                send_web_push(
-                    subscription=subscription,
-                    title="SALT Portal",
-                    body=message,
-                    url="/dashboard",
-                    tag=f"salt-notification-{notification_id}"
-                )
-
-        except Exception as push_error:
-            print(
-                "DESKTOP PUSH SKIPPED:",
-                repr(push_error)
-            )
-
-        return notification_id
-
-    except Exception as e:
-        conn.rollback()
-        print("CREATE NOTIFICATION ERROR:", repr(e))
-        return None
-
-    finally:
-        conn.close()
-
-
-def notify_users(user_ids, message):
-    """
-    Send the same notification to multiple users.
-    Duplicate user IDs are ignored.
-    """
-    sent = []
-
-    for user_id in set(user_ids or []):
-        notification_id = create_notification(
-            user_id,
-            message
-        )
-
-        if notification_id is not None:
-            sent.append(notification_id)
-
-    return sent
-
-
-def notify_announcement(audience, message, exclude_user_id=None):
-    """
-    Notify users according to an announcement audience:
-      - everyone -> all employees
-      - staff    -> staff users only
-      - admin    -> admin users only
-    """
-    conn = get_db()
-    c = conn.cursor()
-
-    try:
-        if audience == "admin":
-            c.execute("""
-                SELECT id
-                FROM employees
-                WHERE role='admin'
-            """)
-        elif audience == "staff":
-            c.execute("""
-                SELECT id
-                FROM employees
-                WHERE role <> 'admin'
-            """)
-        else:
-            c.execute("""
-                SELECT id
-                FROM employees
-            """)
-
-        user_ids = [
-            row["id"]
-            for row in c.fetchall()
-            if row["id"] != exclude_user_id
-        ]
-
-    finally:
-        conn.close()
-
-    return notify_users(
-        user_ids,
-        message
-    )
-
-
-def get_notification_count(user_id):
-
-    conn = get_db()
-    c = conn.cursor()
-
-    c.execute("""
-    SELECT COUNT(*) AS total
-    FROM notifications
-    WHERE user_id=%s AND is_read=FALSE
-    """, (user_id,))
-
-    count = c.fetchone()["total"]
-
-    conn.close()
-
-    return count
-
-# -------------------------
-# Get notifications (AJAX)
-# -------------------------
-@app.route('/api/notifications')
-def api_notifications():
-
-    if 'user_id' not in session:
-        return jsonify([])
-
-
-    conn = get_db()
-
-    c = conn.cursor()
-
-
-    c.execute("""
-        SELECT id, message, created_at, is_read
-        FROM notifications
-        WHERE user_id=%s
-        ORDER BY created_at DESC
-        LIMIT 10
-    """,
-    (session['user_id'],))
-
-
-    notes = c.fetchall()
-
-
-    conn.close()
-
-
-    return jsonify(notes)
-
-
-# -------------------------
-# Mark all notifications read
-# -------------------------
-@app.route('/api/notifications/mark-read', methods=['POST'])
-def mark_notifications_read():
-
-    if 'user_id' not in session:
-        return jsonify({"success": False})
-
-
-    conn = get_db()
-    c = conn.cursor()
-
-
-    c.execute("""
-        UPDATE notifications
-        SET is_read=TRUE
-        WHERE user_id=%s
-    """,
-    (session['user_id'],))
-
-
-    conn.commit()
-    conn.close()
-
-
-    return jsonify({"success": True})
-
-# -------------------------
-# Clear all notifications
-# -------------------------
-@app.route('/api/notifications/clear-all', methods=['POST'])
-def clear_all_notifications():
-
-    if 'user_id' not in session:
-        return jsonify({
-            "success": False,
-            "message": "Unauthorized"
-        }), 401
-
-    conn = get_db()
-    c = conn.cursor()
-
-    try:
-
-        c.execute("""
-            DELETE FROM notifications
-            WHERE user_id=%s
-        """, (
-            session['user_id'],
-        ))
-
-        deleted_count = c.rowcount
-
-        conn.commit()
-
-        return jsonify({
-            "success": True,
-            "deleted": deleted_count
-        })
-
-    except Exception as e:
-
-        conn.rollback()
-
-        print(
-            "CLEAR NOTIFICATIONS ERROR:",
-            e
-        )
-
-        return jsonify({
-            "success": False,
-            "message": "Unable to clear notifications."
-        }), 500
-
-    finally:
-
-        conn.close()
 
 # -------------------------
 # Clear all notifications
@@ -3992,7 +3519,6 @@ def add_employee():
         return "Access Denied", 403
 
 
-
     if request.method == "POST":
 
 
@@ -4010,7 +3536,6 @@ def add_employee():
         immediate_supervisor_id = request.form.get("immediate_supervisor_id") or None
 
 
-
         # Validation
 
         if not name or not email or not password:
@@ -4018,15 +3543,12 @@ def add_employee():
             return "Please fill all fields", 400
 
 
-
         hashed_password = generate_password_hash(password)
-
 
 
         conn = get_db()
 
         c = conn.cursor()
-
 
 
         c.execute("""
@@ -4063,15 +3585,12 @@ def add_employee():
         ))
 
 
-
         conn.commit()
 
         conn.close()
 
 
-
         return redirect("/admin/employees")
-
 
 
     return render_template(
@@ -4529,8 +4048,6 @@ def delete_employee(id):
             DELETE FROM announcements
             WHERE created_by=%s
         """, (id,))
-
-
 
 
         c.execute("""
@@ -6759,10 +6276,6 @@ def on_join(data):
         f"{expected_room}"
     )
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect('/')
 # -------------------------
 # Initialize app
 # -------------------------

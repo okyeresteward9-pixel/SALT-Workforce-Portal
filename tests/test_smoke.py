@@ -5,7 +5,7 @@ import pytest
 
 from conftest import login
 
-PUBLIC_ENDPOINTS = {"home", "offline", "service_worker", "static"}
+PUBLIC_ENDPOINTS = {"auth.home", "pwa.offline", "pwa.service_worker", "static"}
 # Public GET pages that are allowed to answer 200 without logging in (add yours here on purpose).
 PUBLIC_PATHS = {"/", "/offline", "/service-worker.js"}
 # Background-polling endpoints that deliberately answer a logged-out visitor with an empty list.
