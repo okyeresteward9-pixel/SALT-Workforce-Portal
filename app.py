@@ -372,7 +372,7 @@ def init_db():
         """)
         c.execute("""
             ALTER TABLE tasks
-            ADD COLUMN IF NOT EXISTS created_at TEXT
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMP
         """)
         c.execute("""
             ALTER TABLE tasks

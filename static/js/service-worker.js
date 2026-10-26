@@ -133,14 +133,28 @@ self.addEventListener('push', function (event) {
         };
     }
 
-    event.waitUntil(self.registration.showNotification(data.title || 'SALT Workforce', {
-        body: data.body || 'You have a new notification.',
-        icon: data.icon || '/static/icons/icon-192.png',
-        badge: data.badge || '/static/icons/icon-192.png',
-        tag: data.tag || 'salt-workforce-notification',
-        renotify: true,
-        data: { url: safeTarget(data.url) }
-    }));
+    event.waitUntil((async function () {
+        // If the portal is open and visible, the page already shows the live
+        // Socket.IO toast and badge, so skip the popup to avoid a duplicate.
+        // Safari/iOS require every push to show a notification (silent pushes
+        // get the subscription revoked), so they always show it.
+        const ua = self.navigator.userAgent || '';
+        const strictWebKit = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg|CriOS|FxiOS|Firefox/.test(ua);
+
+        if (!strictWebKit) {
+            const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+            if (windows.some(function (w) { return w.visibilityState === 'visible'; })) return;
+        }
+
+        await self.registration.showNotification(data.title || 'SALT Workforce', {
+            body: data.body || 'You have a new notification.',
+            icon: data.icon || '/static/icons/icon-192.png',
+            badge: data.badge || '/static/icons/icon-192.png',
+            tag: data.tag || 'salt-workforce-notification',
+            renotify: true,
+            data: { url: safeTarget(data.url) }
+        });
+    })());
 });
 
 self.addEventListener('notificationclick', function (event) {

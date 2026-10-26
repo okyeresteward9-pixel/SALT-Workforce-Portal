@@ -94,6 +94,16 @@ def create_notification(user_id, message, created_at=None):
 
             push_rows = c.fetchall()
 
+            def drop_dead_subscription(endpoint):
+                # Called when the push service reports 404/410 (expired).
+                if not endpoint:
+                    return
+                c.execute(
+                    "DELETE FROM push_subscriptions WHERE endpoint=%s",
+                    (endpoint,)
+                )
+                conn.commit()
+
             for push_row in push_rows:
                 subscription = push_row["subscription"]
 
@@ -105,7 +115,8 @@ def create_notification(user_id, message, created_at=None):
                     title="SALT Portal",
                     body=message,
                     url="/dashboard",
-                    tag=f"salt-notification-{notification_id}"
+                    tag=f"salt-notification-{notification_id}",
+                    on_expired=drop_dead_subscription
                 )
 
         except Exception as push_error:
