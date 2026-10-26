@@ -1,0 +1,262 @@
+[
+  {
+    "rule": "/",
+    "methods": "GET"
+  },
+  {
+    "rule": "/admin/add_employee",
+    "methods": "GET,POST"
+  },
+  {
+    "rule": "/admin/announcement/file/<int:id>",
+    "methods": "GET"
+  },
+  {
+    "rule": "/admin/announcements",
+    "methods": "GET,POST"
+  },
+  {
+    "rule": "/admin/announcements/upload-signature",
+    "methods": "POST"
+  },
+  {
+    "rule": "/admin/assign_task",
+    "methods": "GET,POST"
+  },
+  {
+    "rule": "/admin/delete_announcement/<int:id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/admin/delete_employee/<int:id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/admin/edit_employee/<int:id>",
+    "methods": "GET,POST"
+  },
+  {
+    "rule": "/admin/employees",
+    "methods": "GET"
+  },
+  {
+    "rule": "/admin/reply_task/<int:id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/admin/reset_password/<int:id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/admin/save_employee",
+    "methods": "POST"
+  },
+  {
+    "rule": "/admin/tasks",
+    "methods": "GET"
+  },
+  {
+    "rule": "/admin/update_announcement/<int:id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/api/live-dashboard",
+    "methods": "GET"
+  },
+  {
+    "rule": "/api/notifications",
+    "methods": "GET"
+  },
+  {
+    "rule": "/api/notifications/clear-all",
+    "methods": "POST"
+  },
+  {
+    "rule": "/api/notifications/mark-read",
+    "methods": "POST"
+  },
+  {
+    "rule": "/api/push/public-key",
+    "methods": "GET"
+  },
+  {
+    "rule": "/api/push/subscribe",
+    "methods": "POST"
+  },
+  {
+    "rule": "/api/salty",
+    "methods": "POST"
+  },
+  {
+    "rule": "/attendance",
+    "methods": "GET"
+  },
+  {
+    "rule": "/chat/download/<int:message_id>",
+    "methods": "GET"
+  },
+  {
+    "rule": "/clockin",
+    "methods": "POST"
+  },
+  {
+    "rule": "/clockout",
+    "methods": "POST"
+  },
+  {
+    "rule": "/complete_task/<int:id>",
+    "methods": "GET"
+  },
+  {
+    "rule": "/dashboard",
+    "methods": "GET"
+  },
+  {
+    "rule": "/delete_message/<int:message_id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/delete_task/<int:id>",
+    "methods": "GET"
+  },
+  {
+    "rule": "/delete_task/<int:task_id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/edit_message/<int:message_id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/edit_task/<int:id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/export-task-history",
+    "methods": "GET"
+  },
+  {
+    "rule": "/export/attendance",
+    "methods": "GET"
+  },
+  {
+    "rule": "/get_messages/<int:user_id>",
+    "methods": "GET"
+  },
+  {
+    "rule": "/login",
+    "methods": "POST"
+  },
+  {
+    "rule": "/logout",
+    "methods": "GET"
+  },
+  {
+    "rule": "/messages",
+    "methods": "GET,POST"
+  },
+  {
+    "rule": "/messages/<int:user_id>",
+    "methods": "GET,POST"
+  },
+  {
+    "rule": "/offline",
+    "methods": "GET"
+  },
+  {
+    "rule": "/reply_task/<int:id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/requests/",
+    "methods": "GET"
+  },
+  {
+    "rule": "/requests/<int:request_id>",
+    "methods": "GET"
+  },
+  {
+    "rule": "/requests/<int:request_id>/approve",
+    "methods": "POST"
+  },
+  {
+    "rule": "/requests/<int:request_id>/attachment/<int:attachment_id>",
+    "methods": "GET"
+  },
+  {
+    "rule": "/requests/<int:request_id>/attachment/<int:attachment_id>/delete",
+    "methods": "POST"
+  },
+  {
+    "rule": "/requests/<int:request_id>/delete",
+    "methods": "POST"
+  },
+  {
+    "rule": "/requests/<int:request_id>/edit",
+    "methods": "GET,POST"
+  },
+  {
+    "rule": "/requests/<int:request_id>/print",
+    "methods": "GET"
+  },
+  {
+    "rule": "/requests/<int:request_id>/reject",
+    "methods": "POST"
+  },
+  {
+    "rule": "/requests/<int:request_id>/return",
+    "methods": "POST"
+  },
+  {
+    "rule": "/requests/<int:request_id>/submit",
+    "methods": "POST"
+  },
+  {
+    "rule": "/requests/api/dashboard-counts",
+    "methods": "GET"
+  },
+  {
+    "rule": "/requests/approvals",
+    "methods": "GET"
+  },
+  {
+    "rule": "/requests/new",
+    "methods": "GET,POST"
+  },
+  {
+    "rule": "/requests/profile/signature",
+    "methods": "POST"
+  },
+  {
+    "rule": "/service-worker.js",
+    "methods": "GET"
+  },
+  {
+    "rule": "/settings/profile",
+    "methods": "GET,POST"
+  },
+  {
+    "rule": "/start_task/<int:id>",
+    "methods": "GET"
+  },
+  {
+    "rule": "/static/<path:filename>",
+    "methods": "GET"
+  },
+  {
+    "rule": "/task-history",
+    "methods": "GET"
+  },
+  {
+    "rule": "/task/add_note/<int:id>",
+    "methods": "POST"
+  },
+  {
+    "rule": "/tasks",
+    "methods": "GET"
+  },
+  {
+    "rule": "/tasks/create",
+    "methods": "POST"
+  }
+]

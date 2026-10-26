@@ -91,9 +91,14 @@ def _client_ip():
     return request.remote_addr or "unknown"
 
 
+# Legacy task links change data via GET (see tasks.html). Until they become POST
+# (planned in the tasks refactor), refuse them when the request comes from another site.
+MUTATING_GET_PREFIXES = ("/start_task/", "/complete_task/", "/delete_task/")
+
+
 @app.before_request
 def block_cross_site_writes():
-    if request.method in SAFE_METHODS:
+    if request.method in SAFE_METHODS and not request.path.startswith(MUTATING_GET_PREFIXES):
         return None
     if not origin_allowed(
         request.headers.get("Origin"),
