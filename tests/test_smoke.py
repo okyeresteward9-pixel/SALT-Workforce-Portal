@@ -8,6 +8,8 @@ from conftest import login
 PUBLIC_ENDPOINTS = {"home", "offline", "service_worker", "static"}
 # Public GET pages that are allowed to answer 200 without logging in (add yours here on purpose).
 PUBLIC_PATHS = {"/", "/offline", "/service-worker.js"}
+# Background-polling endpoints that deliberately answer a logged-out visitor with an empty list.
+EMPTY_LIST_WHEN_LOGGED_OUT = {"/api/notifications", "/get_messages/1"}
 
 
 def test_login_page_loads(client):
@@ -35,7 +37,10 @@ def test_every_get_page_requires_login(app, client):
         path = re.sub(r"<(?:int:|path:|string:)?\w+>", "1", rule.rule)
         if path in PUBLIC_PATHS or path.startswith("/socket.io"):
             continue
-        status = client.get(path).status_code
+        response = client.get(path)
+        status = response.status_code
+        if status == 200 and path in EMPTY_LIST_WHEN_LOGGED_OUT and response.get_json(silent=True) == []:
+            continue
         if status == 200 or status >= 500:
             offenders.append((path, status))
     assert not offenders, f"Pages reachable without login (or crashing): {offenders}"

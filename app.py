@@ -3850,7 +3850,7 @@ def delete_task_route(task_id):
 def assign_task():
 
     if 'role' not in session or session['role'] != 'admin':
-        return "Access Denied"
+        return "Access Denied", 403
 
     conn = get_db()
     c = conn.cursor(cursor_factory=RealDictCursor)
@@ -3989,7 +3989,7 @@ def add_employee():
 
 
     if 'role' not in session or session['role'] != 'admin':
-        return "Access Denied"
+        return "Access Denied", 403
 
 
 
