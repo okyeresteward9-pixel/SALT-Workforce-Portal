@@ -60,6 +60,10 @@
     "methods": "POST"
   },
   {
+    "rule": "/api/chat/unread-count",
+    "methods": "GET"
+  },
+  {
     "rule": "/api/live-dashboard",
     "methods": "GET"
   },
@@ -104,20 +108,12 @@
     "methods": "POST"
   },
   {
-    "rule": "/complete_task/<int:id>",
-    "methods": "GET"
-  },
-  {
     "rule": "/dashboard",
     "methods": "GET"
   },
   {
     "rule": "/delete_message/<int:message_id>",
     "methods": "POST"
-  },
-  {
-    "rule": "/delete_task/<int:id>",
-    "methods": "GET"
   },
   {
     "rule": "/delete_task/<int:task_id>",
@@ -236,10 +232,6 @@
     "methods": "GET,POST"
   },
   {
-    "rule": "/start_task/<int:id>",
-    "methods": "GET"
-  },
-  {
     "rule": "/static/<path:filename>",
     "methods": "GET"
   },
@@ -254,6 +246,18 @@
   {
     "rule": "/tasks",
     "methods": "GET"
+  },
+  {
+    "rule": "/tasks/<int:id>/complete",
+    "methods": "POST"
+  },
+  {
+    "rule": "/tasks/<int:id>/delete",
+    "methods": "POST"
+  },
+  {
+    "rule": "/tasks/<int:id>/start",
+    "methods": "POST"
   },
   {
     "rule": "/tasks/create",

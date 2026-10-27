@@ -569,6 +569,47 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 
 
 
+<style id="salt-connect-polish">
+/* SALT Connect polish: additive, safe to delete as one block. */
+body > .flex.h-screen { height: 100vh; height: 100dvh; }
+.salt-chat-canvas {
+    background-color: #f6f8fc;
+    background-image: radial-gradient(#dbe4f3 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+#chat-box { overscroll-behavior: contain; scrollbar-width: thin; }
+#users-list { scrollbar-width: thin; }
+.user-item { transition: background-color .18s, border-color .18s, transform .18s; }
+.user-item.active { box-shadow: inset 3px 0 0 #2563eb; }
+#emoji-btn, #chat-form label { color: #64748b; font-size: 20px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center; }
+#emoji-btn:hover, #chat-form label:hover { color: #2563eb; }
+#chat-form label { width: 44px; height: 44px; border-radius: 9999px; }
+#chat-form label:hover { background: #eff6ff; }
+#chat-form button[type="submit"] { box-shadow: 0 8px 20px -8px rgba(37, 99, 235, .6);
+    transition: transform .15s, box-shadow .15s, filter .15s; }
+#chat-form button[type="submit"]:hover { box-shadow: 0 12px 24px -8px rgba(37, 99, 235, .7); }
+#chat-form button[type="submit"]:active { transform: scale(.95); }
+#chat-form button[type="submit"]:disabled { filter: grayscale(.6); opacity: .6; cursor: not-allowed; }
+#typing-indicator { color: #64748b; }
+#edit-modal { backdrop-filter: blur(3px); }
+#edit-modal > div { animation: saltPop .18s ease-out; }
+#edit-text { outline: none; }
+#edit-text:focus { border-color: #60a5fa; box-shadow: 0 0 0 4px #dbeafe; }
+.salt-bubble-mine { border-bottom-right-radius: 8px; }
+.salt-bubble-theirs { border-bottom-left-radius: 8px; }
+.salt-day-divider { display: flex; justify-content: center; margin: 20px 0 14px; }
+.salt-day-divider span { padding: 4px 14px; border-radius: 9999px; background: rgba(255,255,255,.92);
+    border: 1px solid #e2e8f0; color: #64748b; font-size: 11px; font-weight: 700;
+    letter-spacing: .02em; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
+@keyframes saltPop { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+:where(a, button, input, textarea, label):focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+#message-input { resize: none; overflow-y: auto; max-height: 140px; min-height: 28px;
+    line-height: 1.45; padding-top: 4px; padding-bottom: 4px; scrollbar-width: thin; }
+</style>
 </head>
 <body class="bg-[#f4f7fb]">
 <!-- CHAT REAL-TIME NOTIFICATION SOUND + TOAST -->
@@ -652,7 +693,7 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
                 <a class="user-item group flex items-center gap-4 p-3 md:p-4 rounded-2xl hover:bg-blue-50 transition-all duration-200" data-user-email="{{ user.email|default('', true)|lower|e }}" data-user-id="{{ user.id }}" data-user-name="{{ user.name|lower|e }}" href="/messages/{{ user.id }}">
 <div class="relative">
 <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md">
-                            {{ user.name[0] }}
+                            {{ (user.name or '?')[0]|upper }}
                         </div>
 <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
 </div>
@@ -715,7 +756,7 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 <div class="relative">
 <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center font-bold shadow-md">
 
-                            {{ receiver.name[0] }}
+                            {{ (receiver.name or '?')[0]|upper }}
 
                         </div>
 <div class="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-green-500 border-2 border-white">
@@ -742,7 +783,7 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
                 </div>
 </div>
 <!-- CHAT BODY -->
-<div class="flex-1 overflow-y-auto scroll-smooth px-4 md:px-8 py-6 space-y-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" id="chat-box">
+<div class="flex-1 overflow-y-auto scroll-smooth px-4 md:px-8 py-6 space-y-5 salt-chat-canvas" id="chat-box">
 </div>
 <div class="hidden px-6 py-2 text-sm text-gray-500 italic" id="typing-indicator">
 </div>
@@ -773,42 +814,20 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 
                         </button>
 </div>
-<div class="relative inline-block">
-<img class="hidden max-w-[180px] rounded-2xl shadow border" id="preview-image"/>
-<div class="hidden bg-gray-100 border rounded-xl px-4 py-3 text-sm text-gray-700" id="preview-file">
-</div>
-<button class="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 rounded-full shadow" id="remove-preview" type="button">
-                
-                            ✕
-                
-                        </button>
-</div>
 </div>
 <form class="flex items-center gap-3" enctype="multipart/form-data" id="chat-form" method="POST">
 <!-- INPUT CONTAINER -->
-<div class="flex-1 flex items-center bg-gray-100 border border-gray-200 rounded-full px-4 py-2 focus-within:ring-4 focus-within:ring-blue-100 focus-within:border-blue-400 transition">
+<div class="flex-1 flex items-center bg-gray-100 border border-gray-200 rounded-[26px] px-4 py-2 focus-within:ring-4 focus-within:ring-blue-100 focus-within:border-blue-400 transition">
 <!-- EMOJI -->
-<button class="text-2xl mr-2 hover:scale-110 transition" id="emoji-btn" type="button">
-
-                            😊
-
-                        </button>
+<button class="text-2xl mr-2 hover:scale-110 transition" id="emoji-btn" type="button" aria-label="Insert emoji"><i class="far fa-face-smile"></i></button>
 <!-- INPUT -->
-<input autocomplete="off" class="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400 px-2" id="message-input" name="message" placeholder="Type your message..." type="text"/>
+<textarea autocomplete="off" class="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400 px-2" id="message-input" name="message" placeholder="Type your message..." rows="1"></textarea>
 </div>
 <!-- FILE -->
-<label class="cursor-pointer text-2xl hover:scale-110 transition">
-
-                        📎
-
-                        <input accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.mp4,.webm,.mov,.m4v,.avi,.mkv,.mp3,.wav,.ogg,.m4a,.aac,.flac,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.json,.xml,.zip,.rar,.7z" aria-label="Attach a file" class="hidden" id="file-input" name="file" type="file"/>
+<label class="cursor-pointer text-2xl hover:scale-110 transition" title="Attach a file"><i class="fas fa-paperclip"></i><input accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.mp4,.webm,.mov,.m4v,.avi,.mkv,.mp3,.wav,.ogg,.m4a,.aac,.flac,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.json,.xml,.zip,.rar,.7z" aria-label="Attach a file" class="hidden" id="file-input" name="file" type="file"/>
 </label>
 <!-- SEND -->
-<button class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition" type="submit">
-                    
-                        ➤
-                
-                    </button>
+<button class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition" type="submit" aria-label="Send message" title="Send"><i class="fas fa-paper-plane"></i></button>
 </form>
 </div>
 
@@ -850,7 +869,7 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
 
     {% if receiver %}
 
-    <div class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center" id="edit-modal">
+    <div class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center" id="edit-modal" role="dialog" aria-modal="true" aria-label="Edit message">
 <div class="bg-white rounded-2xl p-6 w-96 shadow-xl">
 <h3 class="font-bold text-lg mb-4">
             Edit Message
@@ -883,7 +902,7 @@ body.salt-mobile-menu-open #saltMasterSidebarOverlay{opacity:1;visibility:visibl
         window.CHAT_SENDER_NAME = "New message";
     </script>
 {% endif %}
-<script src="{{ url_for('static', filename='js/chat.js', v='3') }}"></script>
+<script src="{{ url_for('static', filename='js/chat.js', v='4') }}"></script>
 <script>
 /* SALTY CHAT — WHATSAPP / TELEGRAM STYLE MOBILE NAVIGATION */
 document.addEventListener("DOMContentLoaded", function () {
@@ -1072,5 +1091,17 @@ document.addEventListener("DOMContentLoaded",function(){
 <button class="salt-poll-cancel" id="saltNotificationMarkAll" type="button">Mark all as read</button>
 </div>
 <!-- SALT SOCIAL POLL MODAL -->
+<script>
+/* Auto-growing message box: Shift+Enter adds a new line, Enter sends (handled in chat.js). */
+(function () {
+    const box = document.getElementById('message-input');
+    if (!box) return;
+    const fit = () => { box.style.height = 'auto'; box.style.height = Math.min(box.scrollHeight, 140) + 'px'; };
+    box.addEventListener('input', fit);
+    box.form?.addEventListener('reset', () => setTimeout(fit, 0));
+    document.getElementById('emoji-picker')?.addEventListener('click', () => setTimeout(fit, 0));
+    fit();
+})();
+</script>
 </body>
 </html>

@@ -5,7 +5,8 @@ from flask import (
     redirect,
     session,
     jsonify,
-    current_app
+    current_app,
+    has_request_context
 )
 
 from flask_socketio import join_room
@@ -18,6 +19,7 @@ from database import (
     UPLOAD_FOLDER
 )
 
+from decorators import login_required
 from werkzeug.utils import secure_filename
 
 from flask_socketio import emit
@@ -284,12 +286,20 @@ def serialize_message(message):
 
     return message
 
+def _sender_name(message):
+    """Name of whoever sent/edited the message: the logged-in user when they are the sender."""
+    if has_request_context() and session.get("user_id") == message.get("sender_id"):
+        return session.get("name")
+    return None
+
+
 def emit_new_message(message):
 
     if socketio is None:
         return
 
     serialized = serialize_message(message)
+    serialized["sender_name"] = _sender_name(message)
 
     # Receiver gets the event even when another conversation is open.
     socketio.emit(
@@ -315,6 +325,7 @@ def emit_message_update(message):
         return
 
     serialized = serialize_message(message)
+    serialized["sender_name"] = _sender_name(message)
 
     socketio.emit(
         "message_updated",
@@ -422,32 +433,6 @@ def messages(user_id=None):
         ))
 
         new_message = c.fetchone()
-
-        # notification
-        c.execute("""
-
-            INSERT INTO notifications(
-
-                user_id,
-                message,
-                created_at
-
-            )
-
-            VALUES(
-
-                %s,
-                %s,
-                NOW()
-
-            )
-
-        """, (
-
-            user_id,
-            f"New message from {session['name']}"
-
-        ))
 
         conn.commit()
 
@@ -711,6 +696,31 @@ def messages(user_id=None):
 # ==========================================
 # DOWNLOAD ORIGINAL CHAT ATTACHMENT
 # ==========================================
+
+@chat_bp.route("/api/chat/unread-count")
+@login_required
+def chat_unread_count():
+    """Total unread chat messages for the logged-in user (drives the layout badges)."""
+
+    conn = get_db()
+
+    try:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+
+        c.execute("""
+            SELECT COUNT(*) AS count
+            FROM messages
+            WHERE receiver_id = %s
+            AND COALESCE(seen, FALSE) = FALSE
+        """, (session["user_id"],))
+
+        row = c.fetchone()
+
+    finally:
+        conn.close()
+
+    return jsonify({"count": int(row["count"]) if row else 0})
+
 
 @chat_bp.route("/chat/download/<int:message_id>")
 def download_chat_attachment(message_id):

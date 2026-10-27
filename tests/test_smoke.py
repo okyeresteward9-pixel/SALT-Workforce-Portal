@@ -66,12 +66,18 @@ def test_cross_site_post_is_blocked(client, fresh_ip):
     assert r.status_code == 403
 
 
-@pytest.mark.parametrize("path", ["/start_task/1", "/complete_task/1", "/delete_task/1"])
-def test_cross_site_links_cannot_trigger_task_actions(client, path):
-    r = client.get(path, headers={"Sec-Fetch-Site": "cross-site"})
+@pytest.mark.parametrize("action", ["start", "complete", "delete"])
+def test_task_actions_are_post_only(client, action):
+    assert client.get(f"/tasks/1/{action}").status_code == 405           # no state change via links
+    assert client.get(f"/{action}_task/1").status_code in (404, 405)      # old URLs are gone
+
+
+@pytest.mark.parametrize("action", ["start", "complete", "delete"])
+def test_task_actions_reject_cross_site_and_logged_out_posts(client, fresh_ip, action):
+    r = client.post(f"/tasks/1/{action}", headers={**fresh_ip, "Origin": "https://evil.example"})
     assert r.status_code == 403
-    r = client.get(path, headers={"Referer": "https://evil.example/page"})
-    assert r.status_code == 403
+    r = client.post(f"/tasks/1/{action}", headers={**fresh_ip, "X-Requested-With": "XMLHttpRequest"})
+    assert r.status_code == 401
 
 
 def test_employee_login_and_dashboard(client, users, fresh_ip):

@@ -742,8 +742,8 @@
                     <span>Dashboard</span>
                 </a>
 
-                <a href="{{ url_for('tasks') }}"
-                   class="salt-nav-item {% if request.endpoint == 'tasks' %}is-active{% endif %}">
+                <a href="{{ url_for('tasks.tasks') }}"
+                   class="salt-nav-item {% if request.endpoint == 'tasks.tasks' %}is-active{% endif %}">
                     <i class="fa-solid fa-list-check"></i>
                     <span>My Tasks</span>
                 </a>
@@ -770,14 +770,14 @@
                     <span>Employees</span>
                 </a>
 
-                <a href="{{ url_for('admin_tasks') }}"
-                   class="salt-nav-item {% if request.endpoint == 'admin_tasks' %}is-active{% endif %}">
+                <a href="{{ url_for('tasks.admin_tasks') }}"
+                   class="salt-nav-item {% if request.endpoint == 'tasks.admin_tasks' %}is-active{% endif %}">
                     <i class="fa-solid fa-clipboard-list"></i>
                     <span>Task Management</span>
                 </a>
 
-                <a href="{{ url_for('assign_task') }}"
-                   class="salt-nav-item {% if request.endpoint == 'assign_task' %}is-active{% endif %}">
+                <a href="{{ url_for('tasks.assign_task') }}"
+                   class="salt-nav-item {% if request.endpoint == 'tasks.assign_task' %}is-active{% endif %}">
                     <i class="fa-solid fa-list-check"></i>
                     <span>Assign Task</span>
                 </a>
@@ -797,6 +797,7 @@
                    class="salt-nav-item {% if request.endpoint == 'chat.messages' %}is-active{% endif %}">
                     <i class="fa-solid fa-comments"></i>
                     <span>Chat</span>
+                    <span id="saltChatBadge" class="salt-notification-badge" hidden></span>
                 </a>
 
                 <!-- Notifications are opened as a panel, not a page endpoint -->
@@ -904,6 +905,7 @@
                         aria-label="Chat"
                     >
                         <i class="fa-regular fa-comments"></i>
+                        <span id="saltTopChatBadge" class="salt-count-badge" hidden></span>
                     </a>
 
 
@@ -993,8 +995,8 @@
             <span>Home</span>
         </a>
 
-        <a href="{{ url_for('tasks') }}"
-           class="{% if request.endpoint == 'tasks' %}active{% endif %}">
+        <a href="{{ url_for('tasks.tasks') }}"
+           class="{% if request.endpoint == 'tasks.tasks' %}active{% endif %}">
             <i class="fa-solid fa-list-check"></i>
             <span>Tasks</span>
         </a>
@@ -1011,9 +1013,11 @@
         </button>
 
         <a href="{{ url_for('chat.messages') }}"
-           class="{% if request.endpoint == 'chat.messages' %}active{% endif %}">
+           class="{% if request.endpoint == 'chat.messages' %}active{% endif %}"
+           style="position:relative">
             <i class="fa-solid fa-comments"></i>
             <span>Chat</span>
+            <span id="saltMobileChatBadge" class="salt-count-badge" style="right:calc(50% - 26px)" hidden></span>
         </a>
 
         <a href="{{ url_for('profile_settings') }}"
@@ -1089,6 +1093,9 @@
     .salt-notification-item.is-unread .msg{font-weight:650}
     .salt-notification-item .time{color:var(--salt-muted,#64748b);font-size:12px;margin-top:3px}
     #saltMobileNotifications{position:relative}
+    .salt-count-badge{position:absolute;top:2px;right:2px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:99px;background:#F04444;color:#fff;font-size:10px;font-weight:800;line-height:17px;text-align:center}
+    .salt-count-badge[hidden]{display:none}
+    a.salt-icon-button[aria-label="Chat"]{position:relative}
     #saltMobileNotifications.has-unread::after{content:"";position:absolute;top:6px;left:calc(50% + 6px);width:8px;height:8px;border-radius:50%;background:#F04444}
     .salt-live-toast{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:16px;z-index:2000;max-width:min(360px,90vw);padding:12px 14px;border-radius:12px;background:#0b3d91;color:#fff;font-size:14px;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,.25)}
     </style>
@@ -1208,6 +1215,8 @@
             if (typeof io !== 'function' || USER_ID === null) return;
             const socket = io();
             socket.on('connect', () => socket.emit('join', { room: 'user_' + USER_ID }));
+            window.saltSocket = socket;
+            window.dispatchEvent(new CustomEvent('salt-socket', { detail: socket }));
             socket.on('new_notification', note => {
                 items.unshift({ id: note.id, message: note.message, created_at: note.created_at, is_read: false });
                 render();
@@ -1225,6 +1234,62 @@
 
         load();
         setInterval(() => { if (document.visibilityState === 'visible') load(); }, 30000);
+    })();
+    </script>
+
+    <script id="salt-chat-badge-client">
+    (() => {
+        const USER_ID = {{ session.get('user_id')|tojson }};
+        const badges = ['saltChatBadge', 'saltTopChatBadge', 'saltMobileChatBadge']
+            .map(id => document.getElementById(id)).filter(Boolean);
+        if (USER_ID === null || !badges.length) return;
+
+        let count = 0;
+
+        function show(value) {
+            count = Math.max(0, value);
+            const text = count > 99 ? '99+' : String(count);
+            badges.forEach(badge => { badge.textContent = text; badge.hidden = count === 0; });
+        }
+
+        async function refresh() {
+            try {
+                const response = await fetch('/api/chat/unread-count', { cache: 'no-store', credentials: 'same-origin' });
+                if (!response.ok) return;
+                const data = await response.json();
+                if (typeof data.count === 'number') show(data.count);
+            } catch (error) { /* offline: keep the last number */ }
+        }
+
+        function toast(text) {
+            const el = document.createElement('div');
+            el.className = 'salt-live-toast';
+            el.style.top = 'calc(76px + env(safe-area-inset-top, 0px))';
+            el.setAttribute('role', 'status');
+            el.textContent = text;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 6000);
+        }
+
+        function attach(socket) {
+            socket.on('new_message', message => {
+                // Only messages sent TO me by someone else count.
+                if (Number(message.receiver_id) !== Number(USER_ID) || Number(message.sender_id) === Number(USER_ID)) return;
+                show(count + 1);
+                const who = message.sender_name || message.sender || 'New message';
+                const what = message.message || (message.file_name ? 'Sent an attachment' : 'New message');
+                toast(who + ': ' + what);
+            });
+            socket.on('message_updated', refresh);   // edits and deletions
+            socket.on('connect', refresh);           // catch up after a reconnect
+        }
+
+        if (window.saltSocket) attach(window.saltSocket);
+        else window.addEventListener('salt-socket', event => attach(event.detail), { once: true });
+
+        refresh();
+        window.addEventListener('focus', refresh);
+        setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 30000);
     })();
     </script>
 

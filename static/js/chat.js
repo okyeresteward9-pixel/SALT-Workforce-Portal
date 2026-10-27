@@ -469,6 +469,7 @@ class ChatApp {
              * Rebuild the message state from PostgreSQL history.
              */
             this.chatBox.innerHTML = "";
+            this.lastDayKey = null;
             this.messages.clear();
 
             serverMessages.forEach(chat => {
@@ -512,6 +513,7 @@ class ChatApp {
             });
 
             this.chatBox.innerHTML = "";
+            this.lastDayKey = null;
             this.messages.clear();
 
             allMessages.forEach(chat => {
@@ -1225,9 +1227,9 @@ class ChatApp {
                 ? (
                     chat.seen
 
-                        ? "<span class='text-cyan-300'>✔✔</span>"
+                        ? "<span class='text-cyan-300' title='Seen'><i class='fas fa-check-double'></i></span>"
 
-                        : "<span>✔</span>"
+                        : "<span title='Sent'><i class='fas fa-check'></i></span>"
                 )
 
                 : "";
@@ -1247,7 +1249,7 @@ class ChatApp {
 
                         : "bg-white border border-gray-200 text-gray-800"
 
-                } px-4 md:px-5 py-3 rounded-3xl max-w-[85%] md:max-w-md shadow-sm">
+                } salt-bubble ${mine ? "salt-bubble-mine" : "salt-bubble-theirs"} px-4 md:px-5 py-3 rounded-3xl max-w-[85%] md:max-w-[32rem] shadow-sm">
 
 
                     <div class="break-words leading-relaxed">
@@ -1280,6 +1282,46 @@ class ChatApp {
 
         `;
 
+    }
+
+
+    // =====================================================
+    // DAY DIVIDER LABELS ("Today", "Yesterday", ...)
+    // =====================================================
+
+    dayInfo(value) {
+
+        if (!value) {
+            return null;
+        }
+
+        const date = value instanceof Date ? value : new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return null;
+        }
+
+        const startOf = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const day = startOf(date);
+        const diff = Math.round((startOf(new Date()) - day) / 86400000);
+
+        let label;
+
+        if (diff === 0) {
+            label = "Today";
+        } else if (diff === 1) {
+            label = "Yesterday";
+        } else if (diff > 1 && diff < 7) {
+            label = date.toLocaleDateString([], { weekday: "long" });
+        } else {
+            label = date.toLocaleDateString([], {
+                day: "numeric",
+                month: "short",
+                year: day.getFullYear() === new Date().getFullYear() ? undefined : "numeric"
+            });
+        }
+
+        return { key: day.getTime(), label: label };
     }
 
 
@@ -1348,6 +1390,17 @@ class ChatApp {
         wrapper.innerHTML =
             this.render(chat);
 
+
+        const dayInfo = this.dayInfo(chat.created_at);
+
+        if (dayInfo && dayInfo.key !== this.lastDayKey) {
+            const divider = document.createElement("div");
+            divider.className = "salt-day-divider";
+            divider.innerHTML = "<span></span>";
+            divider.firstChild.textContent = dayInfo.label;
+            this.chatBox.appendChild(divider);
+            this.lastDayKey = dayInfo.key;
+        }
 
         this.chatBox.appendChild(
             wrapper
@@ -2609,7 +2662,9 @@ class ChatApp {
 
                 if (
                     event.key === "Enter" &&
-                    !event.shiftKey
+                    !event.shiftKey &&
+                    !event.isComposing &&
+                    !window.matchMedia("(pointer: coarse)").matches
                 ) {
 
                     event.preventDefault();
