@@ -1286,195 +1286,80 @@ def complete_task(id):
     user_id = session['user_id']
 
     conn = get_db()
+    c = conn.cursor(cursor_factory=RealDictCursor)
 
-    c = conn.cursor(
-        cursor_factory=RealDictCursor
-    )
+    message = "Unable to complete task."
+    message_type = "error"
+    notify_creator = None
+    task_title = None
 
     try:
-
-        # ==========================================
-        # GET TASK
-        # ==========================================
-
         c.execute("""
-            SELECT
-                id,
-                title,
-                created_by,
-                assigned_to,
-                status,
-                deadline
+            SELECT id, title, created_by, assigned_to, status, deadline
             FROM tasks
             WHERE id = %s
         """, (id,))
-
         task = c.fetchone()
 
-
         if not task:
+            message, message_type = "Task not found.", "error"
 
+        elif task["assigned_to"] != user_id and task["created_by"] != user_id:
+            message = "You are not authorized to complete this task."
+            message_type = "error"
+
+        elif task["status"] == "Completed":
+            message = "This task is already completed."
+            message_type = "info"
+
+        else:
+            completed_at = datetime.now()
+
+            c.execute("""
+                UPDATE tasks
+                SET status = 'Completed', completed_at = %s
+                WHERE id = %s
+            """, (completed_at, id))
+            conn.commit()
+
+            message = "Task completed successfully."
+            message_type = "success"
+
+            task_title = task["title"]
+            if task["created_by"] and task["created_by"] != user_id:
+                notify_creator = task["created_by"]
+
+            deadline = task["deadline"]
+
+    except Exception:
+        if not conn.closed:
+            conn.rollback()
+        logging.exception("Complete task failed for task %s", id)
+        message, message_type = "Unable to complete task.", "error"
+
+    finally:
+        if not conn.closed:
             conn.close()
 
-            return redirect(
-                url_for(
-                    "tasks",
-                    task_message="Task not found.",
-                    task_message_type="error"
-                )
-            )
+    # The task is already committed at this point, so a failure in
+    # rewards or notifications must not report the completion as failed.
+    if message_type == "success":
+        try:
+            process_task_completion_rewards(user_id, id, deadline, completed_at)
+        except Exception:
+            logging.exception("Rewards failed for task %s", id)
 
-
-        # ==========================================
-        # CHECK OWNERSHIP
-        # ==========================================
-        #
-        # A user can complete:
-        #
-        # 1. A task assigned to them
-        # 2. A self-created task
-        #
-        # This also supports your current
-        # self-task structure.
-        # ==========================================
-
-        assigned_to = task.get(
-            "assigned_to"
-        )
-
-        created_by = task.get(
-            "created_by"
-        )
-
-
-        if (
-            assigned_to != user_id
-            and created_by != user_id
-        ):
-
-            conn.close()
-
-            return redirect(
-                url_for(
-                    "tasks",
-                    task_message="You are not authorized to complete this task.",
-                    task_message_type="error"
-                )
-            )
-
-
-        # ==========================================
-        # ALREADY COMPLETED
-        # ==========================================
-
-        if task.get("status") == "Completed":
-
-            conn.close()
-
-            return redirect(
-                url_for(
-                    "tasks",
-                    task_message="This task is already completed.",
-                    task_message_type="info"
-                )
-            )
-
-
-        # ==========================================
-        # COMPLETE TASK
-        # ==========================================
-
-        c.execute("""
-            UPDATE tasks
-            SET
-                status = 'Completed',
-                completed_at = %s
-            WHERE id = %s
-        """, (
-            datetime.now(),
-            id
-        ))
-
-
-        # ==========================================
-        # COMMIT
-        # ==========================================
-
-        conn.commit()
-
-
-        # ==========================================
-        # GAMIFICATION / REWARDS
-        # ==========================================
-        process_task_completion_rewards(
-            user_id,
-            id,
-            task.get('deadline'),
-            datetime.now()
-        )
-
-        # ==========================================
-        # NOTIFY CREATOR
-        # ==========================================
-        #
-        # Only notify if another employee completed
-        # the task.
-        #
-        # Self-created task:
-        # created_by == user_id
-        # → no notification needed.
-        # ==========================================
-
-        if (
-            created_by
-            and created_by != user_id
-        ):
-
+        if notify_creator:
             try:
+                create_notification(notify_creator, f"Task Completed: {task_title}")
+            except Exception:
+                logging.exception("Completion notification failed for task %s", id)
 
-                create_notification(
-                    created_by,
-                    f"Task Completed: {task['title']}"
-                )
-
-            except Exception as notification_error:
-
-                print(
-                    "TASK COMPLETION NOTIFICATION ERROR:",
-                    notification_error
-                )
-
-
-        conn.close()
-
-
-        return redirect(
-            url_for(
-                "tasks",
-                task_message="Task completed successfully.",
-                task_message_type="success"
-            )
-        )
-
-
-    except Exception as e:
-
-        conn.rollback()
-
-        conn.close()
-
-        print(
-            "COMPLETE TASK ERROR:",
-            e
-        )
-
-        return redirect(
-            url_for(
-                "tasks",
-                task_message="Unable to complete task.",
-                task_message_type="error"
-            )
-        )
+    return redirect(url_for(
+        "tasks.tasks",
+        task_message=message,
+        task_message_type=message_type
+    ))
 
 
 @tasks_bp.route('/tasks/create', methods=['POST'])
