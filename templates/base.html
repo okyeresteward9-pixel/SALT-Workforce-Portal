@@ -764,8 +764,8 @@
 
                 <div class="salt-nav-label">ADMINISTRATION</div>
 
-                <a href="{{ url_for('admin_employees') }}"
-                   class="salt-nav-item {% if request.endpoint == 'admin_employees' %}is-active{% endif %}">
+                <a href="{{ url_for('employees.admin_employees') }}"
+                   class="salt-nav-item {% if request.endpoint == 'employees.admin_employees' %}is-active{% endif %}">
                     <i class="fa-solid fa-users"></i>
                     <span>Employees</span>
                 </a>
@@ -782,8 +782,8 @@
                     <span>Assign Task</span>
                 </a>
 
-                <a href="{{ url_for('admin_announcements') }}"
-                   class="salt-nav-item {% if request.endpoint == 'admin_announcements' %}is-active{% endif %}">
+                <a href="{{ url_for('announcements.admin_announcements') }}"
+                   class="salt-nav-item {% if request.endpoint == 'announcements.admin_announcements' %}is-active{% endif %}">
                     <i class="fa-solid fa-bullhorn"></i>
                     <span>Announcements</span>
                 </a>

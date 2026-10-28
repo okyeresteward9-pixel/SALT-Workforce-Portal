@@ -2403,12 +2403,12 @@ h1,h2,h3,h4,.stat-value,.stats .card p{font-family:var(--s-display);letter-spaci
                         <div class="announcement-attachment">
                             {% if ann_file.endswith('.png') or ann_file.endswith('.jpg') or ann_file.endswith('.jpeg') or ann_file.endswith('.gif') or ann_file.endswith('.webp') %}
                                 <div style="width:100%; max-width:430px;">
-                                    <a class="announcement-image-link" href="{{ url_for('download_announcement_file', id=ann['id']) }}" target="_blank" rel="noopener" title="View announcement image">
-                                        <img src="{{ url_for('download_announcement_file', id=ann['id']) }}" alt="{{ ann['title'] }} attachment" loading="lazy">
+                                    <a class="announcement-image-link" href="{{ url_for('announcements.download_announcement_file', id=ann['id']) }}" target="_blank" rel="noopener" title="View announcement image">
+                                        <img src="{{ url_for('announcements.download_announcement_file', id=ann['id']) }}" alt="{{ ann['title'] }} attachment" loading="lazy">
                                     </a>
                                     <div class="announcement-file-actions">
-                                        <a class="announcement-file-button" href="{{ url_for('download_announcement_file', id=ann['id']) }}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> View</a>
-                                        <a class="announcement-file-button" href="{{ url_for('download_announcement_file', id=ann['id']) }}?download=1"><i class="fas fa-download"></i> Download</a>
+                                        <a class="announcement-file-button" href="{{ url_for('announcements.download_announcement_file', id=ann['id']) }}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> View</a>
+                                        <a class="announcement-file-button" href="{{ url_for('announcements.download_announcement_file', id=ann['id']) }}?download=1"><i class="fas fa-download"></i> Download</a>
                                     </div>
                                 </div>
                             {% elif ann_file.endswith('.pdf') %}
@@ -2417,8 +2417,8 @@ h1,h2,h3,h4,.stat-value,.stats .card p{font-family:var(--s-display);letter-spaci
                                     <div class="announcement-pdf-title" title="{{ ann_file_name }}">{{ ann_file_name }}</div>
                                     <div class="announcement-pdf-subtitle">PDF attachment</div>
                                     <div class="announcement-file-actions">
-                                        <a class="announcement-file-button pdf" href="{{ url_for('download_announcement_file', id=ann['id']) }}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> View PDF</a>
-                                        <a class="announcement-file-button" href="{{ url_for('download_announcement_file', id=ann['id']) }}" download="{{ ann['file_name'] or ann_file_name }}"><i class="fas fa-download"></i> Download</a>
+                                        <a class="announcement-file-button pdf" href="{{ url_for('announcements.download_announcement_file', id=ann['id']) }}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> View PDF</a>
+                                        <a class="announcement-file-button" href="{{ url_for('announcements.download_announcement_file', id=ann['id']) }}" download="{{ ann['file_name'] or ann_file_name }}"><i class="fas fa-download"></i> Download</a>
                                     </div>
                                 </div>
                             {% else %}
@@ -2427,7 +2427,7 @@ h1,h2,h3,h4,.stat-value,.stats .card p{font-family:var(--s-display);letter-spaci
                                     <div class="announcement-pdf-title" title="{{ ann_file_name }}">{{ ann_file_name }}</div>
                                     <div class="announcement-pdf-subtitle">File attachment</div>
                                     <div class="announcement-file-actions">
-                                        <a class="announcement-file-button" href="{{ url_for('download_announcement_file', id=ann['id']) }}" download="{{ ann['file_name'] or ann_file_name }}"><i class="fas fa-download"></i> Download</a>
+                                        <a class="announcement-file-button" href="{{ url_for('announcements.download_announcement_file', id=ann['id']) }}" download="{{ ann['file_name'] or ann_file_name }}"><i class="fas fa-download"></i> Download</a>
                                     </div>
                                 </div>
                             {% endif %}

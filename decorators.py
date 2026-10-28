@@ -67,6 +67,12 @@ def _forbidden():
     return "Access Denied", 403
 
 
+def is_admin():
+    """True if the logged-in user is an admin according to the DATABASE (not the cookie)."""
+    user = current_user()
+    return bool(user and user["role"] == "admin")
+
+
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
