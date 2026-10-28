@@ -1,9 +1,43 @@
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 {% extends "request_base.html" %}
 {% block title %}SALT — {{ req.request_no }}{% endblock %}
 
 {% block content %}
+
+{# Stylesheet + page styles live inside the content block so they render
+   regardless of which blocks request_base.html defines. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
+
+<style>
+.rq-action-btn.is-loading {
+    opacity: .85;
+    cursor: wait;
+    pointer-events: none;
+}
+.rq-action-btn.is-locked {
+    opacity: .45;
+    pointer-events: none;
+}
+.rq-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -2px;
+    animation: rq-spin .7s linear infinite;
+}
+@keyframes rq-spin { to { transform: rotate(360deg); } }
+
+/* Memo body: preserves line breaks without needing |safe */
+.rq-memo-body {
+    margin-top: 18px;
+    line-height: 1.75;
+    font-size: 13px;
+    white-space: pre-line;
+}
+</style>
 
 <div class="rq-hero">
     <div>
@@ -211,9 +245,8 @@
                 <strong>{{ req.memo_subject or req.title }}</strong>
             </div>
 
-            <div style="margin-top:18px;line-height:1.75;font-size:13px">
-                {{ req.memo_body|replace('\n','<br>')|safe }}
-            </div>
+            {# Auto-escaped (no |safe); white-space: pre-line keeps line breaks #}
+            <div class="rq-memo-body">{{ req.memo_body or '' }}</div>
 
         </div>
 
@@ -299,8 +332,7 @@
                 {% for a in attachments %}
 
                 <a class="rq-attachment"
-                   href="{{ url_for('requests_bp.attachment', request_id=req.id, attachment_id=a.id) }}"
-                   >
+                   href="{{ url_for('requests_bp.attachment', request_id=req.id, attachment_id=a.id) }}">
 
                     <span>📎 {{ a.original_name }}</span>
                     <span>Download ↓</span>
@@ -403,20 +435,23 @@
 
         <div class="rq-actions" style="margin-top:18px">
 
-            <button class="rq-btn rq-warning"
+            <button class="rq-btn rq-warning rq-action-btn"
                     type="submit"
+                    data-loading-text="Returning..."
                     formaction="{{ url_for('requests_bp.return_request', request_id=req.id) }}">
                 ↩ Return
             </button>
 
-            <button class="rq-btn rq-danger"
+            <button class="rq-btn rq-danger rq-action-btn"
                     type="submit"
+                    data-loading-text="Rejecting..."
                     formaction="{{ url_for('requests_bp.reject', request_id=req.id) }}">
                 ✕ Reject
             </button>
 
-            <button class="rq-btn rq-success"
+            <button class="rq-btn rq-success rq-action-btn"
                     type="submit"
+                    data-loading-text="Approving..."
                     formaction="{{ url_for('requests_bp.approve', request_id=req.id) }}">
                 ✓ Approve request
             </button>
@@ -431,4 +466,45 @@
 
 {% endblock %}
 
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.querySelector('.rq-approval form');
+    if (!form) return;
+
+    form.addEventListener('submit', function (e) {
+        var btn = e.submitter;
+        if (!btn || !btn.classList.contains('rq-action-btn')) return;
+
+        // Block double submits
+        if (form.dataset.submitting === '1') {
+            e.preventDefault();
+            return;
+        }
+        form.dataset.submitting = '1';
+
+        btn.dataset.originalHtml = btn.innerHTML;
+        btn.classList.add('is-loading');
+        btn.innerHTML = '<span class="rq-spinner"></span>' +
+                        (btn.dataset.loadingText || 'Processing...');
+
+        form.querySelectorAll('.rq-action-btn').forEach(function (b) {
+            if (b !== btn) b.classList.add('is-locked');
+        });
+    });
+
+    // Reset if the user returns via the Back button (bfcache)
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        delete form.dataset.submitting;
+        form.querySelectorAll('.rq-action-btn').forEach(function (b) {
+            b.classList.remove('is-loading', 'is-locked');
+            if (b.dataset.originalHtml) b.innerHTML = b.dataset.originalHtml;
+        });
+    });
+});
+</script>
+
+{# If request_base.html already loads this script, delete the line below #}
 <script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
+{% endblock %}

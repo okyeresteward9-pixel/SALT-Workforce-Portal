@@ -1,3 +1,10 @@
+{% extends "request_base.html" %}
+{% block title %}SALT — Approval Workspace{% endblock %}
+
+{% block content %}
+
+{# Stylesheet + page styles live inside the content block so they render
+   regardless of which blocks request_base.html defines. #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/salt-design-system.css') }}">
 
 <style>
@@ -7,6 +14,19 @@
     pointer-events: none;
     transform: none !important;
 }
+
+.rq-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -2px;
+    animation: rq-spin .7s linear infinite;
+}
+@keyframes rq-spin { to { transform: rotate(360deg); } }
 
 .rq-history-decision {
     font-weight: 900;
@@ -31,11 +51,6 @@
     line-height: 1.5;
 }
 </style>
-
-{% extends "request_base.html" %}
-{% block title %}SALT — Approval Workspace{% endblock %}
-
-{% block content %}
 
 <div class="rq-hero">
     <div>
@@ -116,6 +131,7 @@
 
                     <td>
                         <a class="rq-btn rq-primary rq-review-btn"
+                           data-loading-text="Opening..."
                            href="{{ url_for('requests_bp.detail', request_id=r.id) }}">
                             Review →
                         </a>
@@ -220,6 +236,7 @@
 
                     <td>
                         <a class="rq-btn rq-primary rq-review-btn"
+                           data-loading-text="Opening..."
                            href="{{ url_for('requests_bp.detail', request_id=r.id) }}">
                             View History →
                         </a>
@@ -244,28 +261,34 @@
 {% endblock %}
 
 {% block scripts %}
-<style>
-.rq-review-btn.is-loading {
-    opacity: .75;
-    cursor: wait;
-    pointer-events: none;
-    transform: none !important;
-}
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.rq-review-btn').forEach(function (btn) {
+    var buttons = document.querySelectorAll('.rq-review-btn');
+
+    buttons.forEach(function (btn) {
         btn.addEventListener('click', function () {
             if (btn.dataset.loading === '1') return;
 
             btn.dataset.loading = '1';
+            btn.dataset.originalHtml = btn.innerHTML;
             btn.classList.add('is-loading');
-            btn.innerHTML = '⏳ Opening...';
+            btn.innerHTML = '<span class="rq-spinner"></span>' +
+                            (btn.dataset.loadingText || 'Opening...');
+        });
+    });
+
+    // Reset buttons if the user returns with the browser Back button (bfcache)
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        buttons.forEach(function (btn) {
+            delete btn.dataset.loading;
+            btn.classList.remove('is-loading');
+            if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
         });
     });
 });
 </script>
-{% endblock %}
 
+{# If request_base.html already loads this script, delete the line below #}
 <script src="{{ url_for('static', filename='js/salt-mobile-navigation.js') }}" defer></script>
+{% endblock %}
